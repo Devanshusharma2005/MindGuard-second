@@ -185,16 +185,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
             SYSTEM
           </h2>
           <div className="space-y-1">
-            <Link href="/admin/logs">
-              <Button 
-                variant={pathname === '/admin/logs' ? 'secondary' : 'ghost'} 
-                size="sm" 
-                className="w-full justify-start"
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                System Logs
-              </Button>
-            </Link>
             <Link href="/admin/settings">
               <Button 
                 variant={pathname === '/admin/settings' ? 'secondary' : 'ghost'} 

@@ -2,10 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { PatientMap } from "../dashboard/patient-map";
 import { PatientConditionChart } from "../dashboard/patient-condition-chart";
 import { PatientTrendChart } from "../dashboard/patient-trend-chart";
-import { PatientMap } from "../dashboard/patient-map";
 
 export default function AnalyticsPage() {
   // Mock data - in a real app, this would come from an API
