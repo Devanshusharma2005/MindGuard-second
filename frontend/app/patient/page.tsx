@@ -47,20 +47,6 @@ export default function PatientDashboard() {
 
   return (
     <div className="space-y-8">
-      {/* Add Navbar with Logout */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-2xl font-bold">Welcome, {userData.username}</h1>
-            <button
-              onClick={handleLogout}
-              className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Rest of your dashboard content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

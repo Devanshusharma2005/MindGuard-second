@@ -33,7 +33,7 @@ export default function SignupPage() {
       }
 
       localStorage.setItem('token', data.token);
-      router.push('/');
+      router.push('/patient');
     } catch (err: any) {
       setError(err.message);
     }
