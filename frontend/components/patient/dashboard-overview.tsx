@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -9,11 +8,45 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, MessageSquare, Sparkles } from "lucide-react";
 
 export function DashboardOverview() {
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('No token found');
+          setUsername('Guest');
+          return;
+        }
+
+        const response = await fetch('http://localhost:5000/api/user/profile', {
+          headers: {
+            'x-auth-token': token,
+            'Content-Type': 'application/json'
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user data');
+        }
+
+        const data = await response.json();
+        setUsername(data.username || 'User');
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        setUsername('Guest');
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, Jessica</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {username}</h1>
           <p className="text-muted-foreground">
             Here's an overview of your mental health journey
           </p>

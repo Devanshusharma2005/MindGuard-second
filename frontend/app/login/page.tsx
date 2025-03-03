@@ -7,10 +7,7 @@ import { motion } from 'framer-motion';
 import { EyeIcon, EyeOffIcon } from 'lucide-react';
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -20,9 +17,7 @@ export default function LoginPage() {
     try {
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
@@ -35,7 +30,16 @@ export default function LoginPage() {
 
       localStorage.setItem('userData', JSON.stringify(data.user));
       localStorage.setItem('token', data.token);
-      router.push('/patient');
+
+      // Redirect based on role
+      if (data.user.role === 'doctor') {
+        router.push('/doctor');
+      } else if (data.user.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/patient'); // Default page
+      }
+
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message);
