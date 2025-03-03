@@ -140,7 +140,7 @@ class MentalHealthChat:
             except Exception as e:
                 print(f"Error generating response: {e}")
                 
-                # Try to switch providers if there's an API error
+                # Fallback logic
                 if "API key" in str(e) or "API error" in str(e) or "authentication" in str(e).lower():
                     success = False
                     for backup in self._get_backup_providers():
@@ -148,8 +148,8 @@ class MentalHealthChat:
                             print(f"Trying to switch to {backup.capitalize()}...")
                             self.provider = backup
                             self.agent = MentalHealthAgent(provider=self.provider, user_id=self.user_id)
-                            self.provider_name = backup.capitalize()
-                            # Try again with the new provider
+                            
+                            # Attempt to generate a response with the new provider
                             result = self.agent.workflow.invoke({
                                 "user_input": user_input,
                                 "history": [],
@@ -166,6 +166,7 @@ class MentalHealthChat:
                                 "mood_insights": None,
                                 "gamification_update": None
                             })
+                            
                             if "response" in result:
                                 print(f"MindGuard: {result['response']}")
                                 success = True
@@ -173,11 +174,14 @@ class MentalHealthChat:
                         except Exception as e2:
                             print(f"Error with fallback provider {backup}: {e2}")
                     
-                    if success:
-                        continue
-                
-                # If we get here, all providers failed or no fallback was available
-                print("MindGuard: I'm here to listen and support you. Let's continue our conversation when you're ready.")
+                    if not success:
+                        # Role-based fallback response
+                        if "stress" in user_input.lower() or "depression" in user_input.lower():
+                            print("MindGuard: It sounds like you're going through a tough time. Here are some strategies that might help: take deep breaths, talk to someone you trust, or consider journaling your thoughts.")
+                        elif "anxiety" in user_input.lower():
+                            print("MindGuard: Anxiety can be overwhelming. Have you tried grounding techniques, like focusing on your breath or counting objects around you?")
+                        else:
+                            print("MindGuard: I'm here to listen and support you. Could you tell me more about what you're experiencing?")
 
 
 if __name__ == "__main__":
