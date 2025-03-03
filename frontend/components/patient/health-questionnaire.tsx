@@ -1,12 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+
+interface HealthQuestionnaireProps {
+  onSubmit: (data: any) => void;
+  isLoading: boolean;
+}
 
 const initialQuestions = [
   {
@@ -59,10 +64,22 @@ const initialQuestions = [
   }
 ];
 
-export function HealthQuestionnaire() {
+export function HealthQuestionnaire({ onSubmit, isLoading }: HealthQuestionnaireProps) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [completed, setCompleted] = useState(false);
+  const [userId, setUserId] = useState<string>("");
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem("mindguard_user_id");
+    if (storedUserId) {
+      setUserId(storedUserId);
+    } else {
+      const newUserId = crypto.randomUUID();
+      localStorage.setItem("mindguard_user_id", newUserId);
+      setUserId(newUserId);
+    }
+  }, []);
 
   const handleSliderChange = (value: number[]) => {
     const updatedQuestions = [...questions];
@@ -80,6 +97,20 @@ export function HealthQuestionnaire() {
     const updatedQuestions = [...questions];
     updatedQuestions[currentQuestion].answer = e.target.value;
     setQuestions(updatedQuestions);
+  };
+
+  const handleSubmit = async () => {
+    const questionnaireData = {
+      user_id: userId,
+      mood: questions[0].answer,
+      anxiety: questions[1].answer,
+      sleep_quality: questions[2].answer,
+      self_care: questions[3].answer,
+      stress_factors: questions[4].answer
+    };
+
+    onSubmit(questionnaireData);
+    setCompleted(true);
   };
 
   const handleNext = () => {
@@ -110,13 +141,12 @@ export function HealthQuestionnaire() {
         </div>
         <h3 className="mb-2 text-xl font-bold">Assessment Completed</h3>
         <p className="mb-6 text-muted-foreground">
-          Thank you for completing your daily health assessment. Your responses have been recorded and will help us provide personalized insights.
+          Thank you for completing your daily health assessment. Your responses have been recorded.
         </p>
         <div className="flex gap-4">
-          <Button variant="outline" onClick={handleReset}>
+          <Button variant="outline" onClick={handleReset} disabled={isLoading}>
             Start New Assessment
           </Button>
-          <Button>View Insights</Button>
         </div>
       </div>
     );
@@ -188,14 +218,21 @@ export function HealthQuestionnaire() {
         <Button
           variant="outline"
           onClick={handlePrevious}
-          disabled={currentQuestion === 0}
+          disabled={currentQuestion === 0 || isLoading}
           className="gap-2"
         >
           <ArrowLeft className="h-4 w-4" /> Previous
         </Button>
-        <Button onClick={handleNext} className="gap-2">
-          {currentQuestion === questions.length - 1 ? "Complete" : "Next"}{" "}
-          <ArrowRight className="h-4 w-4" />
+        <Button 
+          onClick={currentQuestion === questions.length - 1 ? handleSubmit : handleNext}
+          disabled={isLoading}
+          className="gap-2"
+        >
+          {currentQuestion === questions.length - 1 ? (
+            isLoading ? "Submitting..." : "Complete"
+          ) : (
+            <>Next <ArrowRight className="h-4 w-4" /></>
+          )}
         </Button>
       </div>
     </div>

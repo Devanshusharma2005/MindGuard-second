@@ -7,37 +7,34 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, Send, User } from "lucide-react";
+import { useEffect } from "react";
 
-const initialMessages = [
+interface Message {
+  id: number;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+interface ChatResponse {
+  response: string;
+  user_id: string;
+  provider: string;
+  emotional_state?: {
+    emotion: string;
+    confidence: number;
+    valence: number;
+    is_crisis: boolean;
+    intensity: number;
+  };
+}
+
+const initialMessages: Message[] = [
   {
     id: 1,
     role: "assistant",
     content: "Hello! I'm your AI mental health assistant. How can I help you today?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString()
-  },
-  {
-    id: 2,
-    role: "user",
-    content: "I've been feeling anxious about an upcoming presentation at work.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 4).toISOString()
-  },
-  {
-    id: 3,
-    role: "assistant",
-    content: "I understand presentation anxiety can be challenging. Would you like some quick relaxation techniques you can use before your presentation, or would you prefer to explore the root causes of your anxiety?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 3).toISOString()
-  },
-  {
-    id: 4,
-    role: "user",
-    content: "I'd like some relaxation techniques I can use right before the presentation.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString()
-  },
-  {
-    id: 5,
-    role: "assistant",
-    content: "Here are three effective techniques you can use right before your presentation:\n\n1. **Box Breathing**: Inhale for 4 counts, hold for 4 counts, exhale for 4 counts, hold for 4 counts. Repeat 4 times.\n\n2. **Progressive Muscle Relaxation**: Tense and then release each muscle group in your body, starting from your toes and working up to your head.\n\n3. **Visualization**: Spend 2 minutes imagining yourself delivering the presentation confidently and successfully.\n\nWould you like me to explain any of these in more detail?",
-    timestamp: new Date(Date.now() - 1000 * 60 * 1).toISOString()
+    timestamp: new Date().toISOString()
   }
 ];
 
@@ -49,33 +46,71 @@ const suggestedQuestions = [
 ];
 
 export function AIChat() {
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [newMessage, setNewMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
+  useEffect(() => {
+    // Generate or retrieve user ID from localStorage
+    const storedUserId = localStorage.getItem("mindguard_user_id");
+    if (storedUserId) {
+      setUserId(storedUserId);
+    } else {
+      const newUserId = crypto.randomUUID();
+      localStorage.setItem("mindguard_user_id", newUserId);
+      setUserId(newUserId);
+    }
+  }, []);
 
-    // Add user message
-    const userMessage = {
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || isLoading) return;
+
+    const userMessage: Message = {
       id: messages.length + 1,
       role: "user",
       content: newMessage,
       timestamp: new Date().toISOString()
     };
     
-    setMessages([...messages, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setNewMessage("");
+    setIsLoading(true);
+    setError("");
 
-    // Simulate AI response (in a real app, this would be an API call)
-    setTimeout(() => {
-      const aiResponse = {
+    try {
+      const response = await fetch("http://127.0.0.1:8000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: newMessage,
+          user_id: userId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data: ChatResponse = await response.json();
+      
+      const aiMessage: Message = {
         id: messages.length + 2,
         role: "assistant",
-        content: "I understand your concern. This is a simulated response. In a real application, I would provide personalized guidance based on your message.",
+        content: data.response,
         timestamp: new Date().toISOString()
       };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (err) {
+      setError("Failed to get response. Please try again.");
+      console.error("Error:", err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSuggestedQuestion = (question: string) => {
@@ -120,10 +155,31 @@ export function AIChat() {
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="flex items-start gap-3 max-w-[80%]">
+                <Avatar className="mt-0.5">
+                  <AvatarFallback><Bot className="h-4 w-4" /></AvatarFallback>
+                </Avatar>
+                <div className="rounded-lg p-3 bg-muted">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-2 h-2 bg-current rounded-full animate-bounce [animation-delay:0.4s]" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ScrollArea>
       
       <div className="p-4 border-t">
+        {error && (
+          <div className="mb-4 p-2 text-sm text-red-500 bg-red-50 rounded">
+            {error}
+          </div>
+        )}
         <div className="mb-4">
           <p className="mb-2 text-xs text-muted-foreground">Suggested questions:</p>
           <div className="flex flex-wrap gap-2">
@@ -146,13 +202,20 @@ export function AIChat() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
                 handleSendMessage();
               }
             }}
+            disabled={isLoading}
             className="flex-1"
           />
-          <Button onClick={handleSendMessage} size="icon" className="h-10 w-10">
+          <Button 
+            onClick={handleSendMessage}
+            size="icon"
+            className="h-10 w-10"
+            disabled={isLoading}
+          >
             <Send className="h-4 w-4" />
           </Button>
         </div>

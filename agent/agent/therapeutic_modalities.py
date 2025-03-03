@@ -38,27 +38,160 @@ class TherapeuticModalities:
         self.breathing = BreathingExercises(os.path.join(resources_path, "breathing"))
         
     def recommend_for_emotion(self, emotion: str, intensity: float) -> Dict[str, Any]:
-        """
-        Get holistic recommendations for an emotional state.
-        
-        Args:
-            emotion: The detected emotional state
-            intensity: The intensity of the emotion (0.0-1.0)
-            
-        Returns:
-            Dictionary with recommendations from each modality
-        """
-        music_rec = self.music_therapy.recommend_for_emotion(emotion, intensity)
-        meditation_rec = self.meditation.recommend_for_emotion(emotion)
-        breathing_rec = self.breathing.get_exercise(emotion, intensity)
-        
-        return {
-            "primary_recommendation": self._select_primary_recommendation(emotion, intensity),
-            "music_therapy": music_rec,
-            "meditation": meditation_rec,
-            "breathing": breathing_rec,
-            "message": self._get_supportive_message(emotion)
+        """Generate personalized therapeutic recommendations based on emotional state."""
+        recommendations = {
+            "primary_recommendation": {},
+            "articles": [],
+            "videos": []
         }
+
+        # Map emotions to recommendation categories
+        emotion_categories = {
+            "anxiety": {
+                "primary": {
+                    "title": "Anxiety Management Techniques",
+                    "description": "Learn evidence-based strategies to manage anxiety and reduce stress.",
+                    "type": "Guide",
+                    "duration": "10 min read"
+                },
+                "articles": [
+                    {
+                        "title": "Understanding and Managing Anxiety",
+                        "type": "Article",
+                        "duration": "5 min read",
+                        "description": "Learn about the science of anxiety and practical coping strategies.",
+                        "action": {"label": "Read Now", "url": "/guides/anxiety-management"}
+                    },
+                    {
+                        "title": "Breathing Exercises for Anxiety Relief",
+                        "type": "Exercise Guide",
+                        "duration": "3 min read",
+                        "description": "Simple breathing techniques you can use anywhere to calm anxiety.",
+                        "action": {"label": "Start Exercise", "url": "/exercises/breathing"}
+                    }
+                ],
+                "videos": [
+                    {
+                        "title": "Guided Anxiety Relief Meditation",
+                        "type": "Video",
+                        "duration": "10 minutes",
+                        "description": "A calming meditation session to help reduce anxiety symptoms.",
+                        "action": {"label": "Watch Now", "url": "/meditations/anxiety-relief"}
+                    }
+                ]
+            },
+            "stress": {
+                "primary": {
+                    "title": "Stress Management Toolkit",
+                    "description": "Essential tools and techniques for managing daily stress.",
+                    "type": "Guide",
+                    "duration": "15 min read"
+                },
+                "articles": [
+                    {
+                        "title": "Quick Stress Relief Techniques",
+                        "type": "Guide",
+                        "duration": "5 min read",
+                        "description": "Fast and effective ways to reduce stress in any situation.",
+                        "action": {"label": "Read Now", "url": "/guides/stress-relief"}
+                    }
+                ],
+                "videos": [
+                    {
+                        "title": "Progressive Muscle Relaxation",
+                        "type": "Exercise Video",
+                        "duration": "15 minutes",
+                        "description": "Learn how to release physical tension and reduce stress.",
+                        "action": {"label": "Start Exercise", "url": "/exercises/muscle-relaxation"}
+                    }
+                ]
+            },
+            "low_mood": {
+                "primary": {
+                    "title": "Mood Enhancement Strategies",
+                    "description": "Evidence-based techniques to improve your mood and energy levels.",
+                    "type": "Guide",
+                    "duration": "12 min read"
+                },
+                "articles": [
+                    {
+                        "title": "Building a Positive Daily Routine",
+                        "type": "Guide",
+                        "duration": "8 min read",
+                        "description": "Create a daily schedule that supports better mental health.",
+                        "action": {"label": "Read Now", "url": "/guides/daily-routine"}
+                    }
+                ],
+                "videos": [
+                    {
+                        "title": "Mood-Boosting Exercise Routine",
+                        "type": "Workout Video",
+                        "duration": "20 minutes",
+                        "description": "A gentle exercise session designed to increase energy and mood.",
+                        "action": {"label": "Start Workout", "url": "/exercises/mood-boost"}
+                    }
+                ]
+            },
+            "sleep_issues": {
+                "primary": {
+                    "title": "Sleep Improvement Guide",
+                    "description": "Comprehensive guide to better sleep quality and habits.",
+                    "type": "Guide",
+                    "duration": "10 min read"
+                },
+                "articles": [
+                    {
+                        "title": "Creating a Perfect Sleep Environment",
+                        "type": "Guide",
+                        "duration": "5 min read",
+                        "description": "Tips for optimizing your bedroom for better sleep.",
+                        "action": {"label": "Read Now", "url": "/guides/sleep-environment"}
+                    }
+                ],
+                "videos": [
+                    {
+                        "title": "Bedtime Relaxation Routine",
+                        "type": "Relaxation Video",
+                        "duration": "15 minutes",
+                        "description": "A calming routine to help you prepare for restful sleep.",
+                        "action": {"label": "Watch Now", "url": "/relaxation/bedtime"}
+                    }
+                ]
+            }
+        }
+
+        # Determine primary emotion category
+        if emotion in ["anxiety", "fear", "panic"]:
+            category = "anxiety"
+        elif emotion in ["stress", "overwhelmed", "tension"]:
+            category = "stress"
+        elif emotion in ["sadness", "depression", "hopelessness"]:
+            category = "low_mood"
+        elif emotion in ["insomnia", "fatigue", "exhaustion"]:
+            category = "sleep_issues"
+        else:
+            category = "stress"  # Default category
+
+        # Get recommendations for the category
+        category_recs = emotion_categories.get(category, emotion_categories["stress"])
+
+        # Adjust recommendations based on intensity
+        if intensity > 0.7:  # High intensity
+            recommendations["primary_recommendation"] = {
+                "title": "Professional Support Resources",
+                "description": "Consider reaching out to a mental health professional for additional support.",
+                "type": "Resource Guide",
+                "duration": "5 min read",
+                "action": {"label": "Find Support", "url": "/resources/professional-help"}
+            }
+            recommendations["articles"] = category_recs["articles"][:1]  # Limit to most important
+            recommendations["videos"] = category_recs["videos"][:1]  # Limit to most important
+        else:
+            recommendations["primary_recommendation"] = category_recs["primary"]
+            recommendations["articles"] = category_recs["articles"]
+            recommendations["videos"] = category_recs["videos"]
+
+        return recommendations
     
     def _select_primary_recommendation(self, emotion: str, intensity: float) -> Dict[str, Any]:
         """

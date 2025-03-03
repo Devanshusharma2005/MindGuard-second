@@ -1,17 +1,146 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HealthQuestionnaire } from "@/components/patient/health-questionnaire";
 import { HealthInsights } from "@/components/patient/health-insights";
 import { ProgressCharts } from "@/components/patient/progress-charts";
-import  Recommendations  from "@/components/patient/recommendations";
+import Recommendations from "@/components/patient/recommendations";
+
+interface HealthData {
+  insights: {
+    mainInsight: string;
+    riskAnalysis: {
+      low: number;
+      moderate: number;
+      high: number;
+    };
+    anxietyTrend: {
+      status: "increasing" | "decreasing" | "stable";
+      percentage: number;
+      detail: string;
+    };
+    stressResponse: {
+      status: "improving" | "worsening" | "stable";
+      percentage: number;
+      detail: string;
+    };
+    moodStability: {
+      status: "stable" | "fluctuating";
+      detail: string;
+    };
+    patterns: string[];
+  };
+  progress: {
+    moodData: Array<{
+      date: string;
+      mood: number;
+      anxiety: number;
+      stress: number;
+    }>;
+    sleepData: Array<{
+      date: string;
+      hours: number;
+      quality: number;
+    }>;
+    activityData: Array<{
+      date: string;
+      exercise: number;
+      meditation: number;
+      social: number;
+    }>;
+    summary: {
+      mood: { change: number };
+      anxiety: { change: number };
+      stress: { change: number };
+      sleep: {
+        durationChange: number;
+        qualityChange: number;
+      };
+      activities: {
+        exerciseChange: number;
+        meditationChange: number;
+        socialChange: number;
+      };
+    };
+  };
+  recommendations: {
+    articles: Array<{
+      title: string;
+      type: string;
+      duration: string;
+      description: string;
+      action: {
+        label: string;
+        url: string;
+      };
+    }>;
+    videos: Array<{
+      title: string;
+      type: string;
+      duration: string;
+      description: string;
+      action: {
+        label: string;
+        url: string;
+      };
+    }>;
+  };
+}
 
 export default function HealthTracking() {
   const [activeTab, setActiveTab] = useState("questionnaire");
-  
+  const [healthData, setHealthData] = useState<HealthData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>("");
+
+  useEffect(() => {
+    const userId = localStorage.getItem("mindguard_user_id");
+    if (userId) {
+      fetchHealthHistory(userId);
+    }
+  }, []);
+
+  const fetchHealthHistory = async (userId: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/health-history/${userId}`);
+      if (!response.ok) throw new Error("Failed to fetch health history");
+      const data = await response.json();
+      setHealthData(data);
+    } catch (err) {
+      console.error("Error fetching health history:", err);
+      setError("Failed to load health history");
+    }
+  };
+
+  const handleQuestionnaireSubmit = async (data: any) => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      const response = await fetch("http://127.0.0.1:8000/health-tracking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) throw new Error("Failed to submit questionnaire");
+
+      const result = await response.json();
+      setHealthData(result);
+      setActiveTab("insights");
+    } catch (err) {
+      console.error("Error submitting questionnaire:", err);
+      setError("Failed to submit questionnaire");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -21,7 +150,11 @@ export default function HealthTracking() {
             Monitor your mental health progress and receive personalized insights
           </p>
         </div>
-        <Button>Complete Today's Check-in</Button>
+        {error && (
+          <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
+            {error}
+          </div>
+        )}
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -40,7 +173,10 @@ export default function HealthTracking() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <HealthQuestionnaire />
+              <HealthQuestionnaire 
+                onSubmit={handleQuestionnaireSubmit}
+                isLoading={loading}
+              />
             </CardContent>
           </Card>
         </TabsContent>
@@ -53,7 +189,7 @@ export default function HealthTracking() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <HealthInsights />
+              <HealthInsights insights={healthData?.insights} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -66,7 +202,7 @@ export default function HealthTracking() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ProgressCharts />
+              <ProgressCharts progressData={healthData?.progress} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -79,7 +215,7 @@ export default function HealthTracking() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Recommendations />
+              <Recommendations recommendations={healthData?.recommendations} />
             </CardContent>
           </Card>
         </TabsContent>

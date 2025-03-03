@@ -5,13 +5,49 @@ import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 import { AlertTriangle, Brain, Heart, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 
-const riskData = [
-  { name: "Low", value: 60, color: "hsl(var(--chart-2))" },
-  { name: "Moderate", value: 30, color: "hsl(var(--chart-4))" },
-  { name: "High", value: 10, color: "hsl(var(--chart-1))" },
-];
+interface InsightData {
+  mainInsight: string;
+  riskAnalysis: {
+    low: number;
+    moderate: number;
+    high: number;
+  };
+  anxietyTrend: {
+    status: "increasing" | "decreasing" | "stable";
+    percentage: number;
+    detail: string;
+  };
+  stressResponse: {
+    status: "improving" | "worsening" | "stable";
+    percentage: number;
+    detail: string;
+  };
+  moodStability: {
+    status: "stable" | "fluctuating";
+    detail: string;
+  };
+  patterns: string[];
+}
 
-export function HealthInsights() {
+interface HealthInsightsProps {
+  insights?: InsightData;
+}
+
+export function HealthInsights({ insights }: HealthInsightsProps) {
+  if (!insights) {
+    return (
+      <div className="text-center p-4 text-muted-foreground">
+        Complete the questionnaire to see your health insights.
+      </div>
+    );
+  }
+
+  const riskData = [
+    { name: "Low", value: insights.riskAnalysis.low, color: "hsl(var(--chart-2))" },
+    { name: "Moderate", value: insights.riskAnalysis.moderate, color: "hsl(var(--chart-4))" },
+    { name: "High", value: insights.riskAnalysis.high, color: "hsl(var(--chart-1))" },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="rounded-lg border bg-card p-4">
@@ -22,7 +58,7 @@ export function HealthInsights() {
           <div className="space-y-1">
             <p className="font-medium">AI-Generated Insight</p>
             <p className="text-sm text-muted-foreground">
-              Based on your recent responses, your anxiety symptoms appear to be triggered primarily by work-related stress. Your sleep patterns show improvement when you practice evening meditation. Consider establishing a consistent bedtime routine that includes 10 minutes of meditation.
+              {insights.mainInsight}
             </p>
           </div>
         </div>
@@ -77,12 +113,21 @@ export function HealthInsights() {
                 <p className="text-sm font-medium">Anxiety Levels</p>
               </div>
               <div className="flex items-center gap-1">
-                <TrendingDown className="h-4 w-4 text-green-500" />
-                <span className="text-xs font-medium text-green-500">Decreasing</span>
+                {insights.anxietyTrend.status === "decreasing" ? (
+                  <>
+                    <TrendingDown className="h-4 w-4 text-green-500" />
+                    <span className="text-xs font-medium text-green-500">Decreasing</span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-medium text-amber-500">Increasing</span>
+                  </>
+                )}
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Your anxiety levels have decreased by 15% over the past two weeks, likely due to your consistent meditation practice.
+              {insights.anxietyTrend.detail}
             </p>
           </div>
 
@@ -93,12 +138,21 @@ export function HealthInsights() {
                 <p className="text-sm font-medium">Stress Response</p>
               </div>
               <div className="flex items-center gap-1">
-                <TrendingDown className="h-4 w-4 text-green-500" />
-                <span className="text-xs font-medium text-green-500">Improving</span>
+                {insights.stressResponse.status === "improving" ? (
+                  <>
+                    <TrendingDown className="h-4 w-4 text-green-500" />
+                    <span className="text-xs font-medium text-green-500">Improving</span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-medium text-amber-500">Worsening</span>
+                  </>
+                )}
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Your physiological response to stressors is showing improvement. Heart rate variability has increased by 8%.
+              {insights.stressResponse.detail}
             </p>
           </div>
 
@@ -109,12 +163,21 @@ export function HealthInsights() {
                 <p className="text-sm font-medium">Mood Stability</p>
               </div>
               <div className="flex items-center gap-1">
-                <TrendingUp className="h-4 w-4 text-amber-500" />
-                <span className="text-xs font-medium text-amber-500">Fluctuating</span>
+                {insights.moodStability.status === "stable" ? (
+                  <>
+                    <TrendingDown className="h-4 w-4 text-green-500" />
+                    <span className="text-xs font-medium text-green-500">Stable</span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="h-4 w-4 text-amber-500" />
+                    <span className="text-xs font-medium text-amber-500">Fluctuating</span>
+                  </>
+                )}
               </div>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Your mood shows some variability throughout the week, with lower points typically occurring on Mondays and Tuesdays.
+              {insights.moodStability.detail}
             </p>
           </div>
         </div>
@@ -123,11 +186,11 @@ export function HealthInsights() {
       <div className="rounded-lg border bg-card p-4">
         <p className="mb-3 font-medium">Key Patterns Identified</p>
         <div className="flex flex-wrap gap-2">
-          <Badge variant="secondary" className="text-xs">Sleep quality affects anxiety</Badge>
-          <Badge variant="secondary" className="text-xs">Exercise improves mood</Badge>
-          <Badge variant="secondary" className="text-xs">Work stress triggers</Badge>
-          <Badge variant="secondary" className="text-xs">Social interaction benefits</Badge>
-          <Badge variant="secondary" className="text-xs">Evening routine importance</Badge>
+          {insights.patterns.map((pattern, index) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {pattern}
+            </Badge>
+          ))}
         </div>
       </div>
     </div>

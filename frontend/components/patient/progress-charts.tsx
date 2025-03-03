@@ -5,40 +5,52 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
-const moodData = [
-  { date: "Week 1", mood: 4, anxiety: 7, stress: 8 },
-  { date: "Week 2", mood: 5, anxiety: 6, stress: 7 },
-  { date: "Week 3", mood: 6, anxiety: 5, stress: 6 },
-  { date: "Week 4", mood: 7, anxiety: 4, stress: 5 },
-  { date: "Week 5", mood: 6, anxiety: 5, stress: 6 },
-  { date: "Week 6", mood: 7, anxiety: 4, stress: 4 },
-  { date: "Week 7", mood: 8, anxiety: 3, stress: 3 },
-  { date: "Week 8", mood: 8, anxiety: 3, stress: 3 },
-];
+interface ProgressData {
+  moodData: Array<{
+    date: string;
+    mood: number;
+    anxiety: number;
+    stress: number;
+  }>;
+  sleepData: Array<{
+    date: string;
+    hours: number;
+    quality: number;
+  }>;
+  activityData: Array<{
+    date: string;
+    exercise: number;
+    meditation: number;
+    social: number;
+  }>;
+  summary: {
+    mood: { change: number };
+    anxiety: { change: number };
+    stress: { change: number };
+    sleep: { durationChange: number; qualityChange: number };
+    activities: {
+      exerciseChange: number;
+      meditationChange: number;
+      socialChange: number;
+    };
+  };
+}
 
-const sleepData = [
-  { date: "Week 1", hours: 5.5, quality: 4 },
-  { date: "Week 2", hours: 6.0, quality: 5 },
-  { date: "Week 3", hours: 6.5, quality: 6 },
-  { date: "Week 4", hours: 7.0, quality: 7 },
-  { date: "Week 5", hours: 7.5, quality: 8 },
-  { date: "Week 6", hours: 7.0, quality: 7 },
-  { date: "Week 7", hours: 7.5, quality: 8 },
-  { date: "Week 8", hours: 8.0, quality: 9 },
-];
+interface ProgressChartsProps {
+  progressData?: ProgressData;
+}
 
-const activityData = [
-  { date: "Week 1", exercise: 2, meditation: 1, social: 3 },
-  { date: "Week 2", exercise: 3, meditation: 2, social: 2 },
-  { date: "Week 3", exercise: 3, meditation: 3, social: 4 },
-  { date: "Week 4", exercise: 4, meditation: 4, social: 3 },
-  { date: "Week 5", exercise: 4, meditation: 5, social: 4 },
-  { date: "Week 6", exercise: 5, meditation: 5, social: 5 },
-  { date: "Week 7", exercise: 5, meditation: 6, social: 4 },
-  { date: "Week 8", exercise: 6, meditation: 6, social: 5 },
-];
+export function ProgressCharts({ progressData }: ProgressChartsProps) {
+  if (!progressData) {
+    return (
+      <div className="text-center p-4 text-muted-foreground">
+        Complete the questionnaire to see your progress charts.
+      </div>
+    );
+  }
 
-export function ProgressCharts() {
+  const { moodData, sleepData, activityData, summary } = progressData;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -109,7 +121,7 @@ export function ProgressCharts() {
                 </ResponsiveContainer>
               </div>
               <p className="mt-4 text-sm text-muted-foreground text-center">
-                Your mood has improved by 100% while anxiety and stress have decreased by 57% and 62% respectively over the past 8 weeks.
+                Your mood has improved by {summary.mood.change}% while anxiety and stress have decreased by {summary.anxiety.change}% and {summary.stress.change}% respectively.
               </p>
             </CardContent>
           </Card>
@@ -167,7 +179,7 @@ export function ProgressCharts() {
                 </ResponsiveContainer>
               </div>
               <p className="mt-4 text-sm text-muted-foreground text-center">
-                Your sleep duration has increased by 45% and sleep quality has improved by 125% over the past 8 weeks.
+                Your sleep duration has increased by {summary.sleep.durationChange}% and sleep quality has improved by {summary.sleep.qualityChange}%.
               </p>
             </CardContent>
           </Card>
@@ -214,7 +226,7 @@ export function ProgressCharts() {
                 </ResponsiveContainer>
               </div>
               <p className="mt-4 text-sm text-muted-foreground text-center">
-                Your weekly exercise has increased by 200%, meditation by 500%, and social activities by 67% over the past 8 weeks.
+                Your weekly exercise has increased by {summary.activities.exerciseChange}%, meditation by {summary.activities.meditationChange}%, and social activities by {summary.activities.socialChange}%.
               </p>
             </CardContent>
           </Card>

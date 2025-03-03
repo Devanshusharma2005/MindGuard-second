@@ -40,7 +40,7 @@ export default function PatientDashboard() {
     localStorage.removeItem('token');
     
     // Redirect to login page
-    router.push('/login');
+    router.push('/');
   };
 
   if (!userData) return null;

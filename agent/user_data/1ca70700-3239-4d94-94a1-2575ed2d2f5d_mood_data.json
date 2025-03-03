@@ -150,6 +150,56 @@
       "intensity": 0.1,
       "context": "\"i feel like i'm in a crisis and don't know where to turn.\"",
       "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:19:15.125015",
+      "date": "2025-03-03",
+      "time": "18:19",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:19:17.548360",
+      "date": "2025-03-03",
+      "time": "18:19",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:19:19.732648",
+      "date": "2025-03-03",
+      "time": "18:19",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:19:25.207845",
+      "date": "2025-03-03",
+      "time": "18:19",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hi",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:20:23.543466",
+      "date": "2025-03-03",
+      "time": "18:20",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "i feel so baad because i lost my someone special ",
+      "triggers": []
     }
   ],
   "insights": [
@@ -174,6 +224,12 @@
     {
       "type": "pattern",
       "timestamp": "2025-03-01T12:01:16.473569",
+      "description": "You've experienced 'neutral' frequently in recent interactions.",
+      "recommendation": "This is a good time for reflection. Consider what you want to focus on."
+    },
+    {
+      "type": "pattern",
+      "timestamp": "2025-03-03T18:20:23.546269",
       "description": "You've experienced 'neutral' frequently in recent interactions.",
       "recommendation": "This is a good time for reflection. Consider what you want to focus on."
     }

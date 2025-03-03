@@ -1,0 +1,176 @@
+{
+  "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+  "entries": [
+    {
+      "timestamp": "2025-03-03T18:37:23.516505",
+      "date": "2025-03-03",
+      "time": "18:37",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:37:41.631961",
+      "date": "2025-03-03",
+      "time": "18:37",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hi",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T18:42:26.838192",
+      "date": "2025-03-03",
+      "time": "18:42",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hi",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:06:30.878294",
+      "date": "2025-03-03",
+      "time": "19:06",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "{'user_id': 'e045643d-37cf-44fe-86d4-eb329456b5ab', 'mood': 1, 'anxiety': 'moderate', 'sleep_quality': 2, 'self_care': 'no', 'stress_factors': 'angry and low feeling'}",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:07:59.082842",
+      "date": "2025-03-03",
+      "time": "19:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "fetch_history",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:08:01.421162",
+      "date": "2025-03-03",
+      "time": "19:08",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "fetch_history",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:08:40.562060",
+      "date": "2025-03-03",
+      "time": "19:08",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "{'user_id': 'e045643d-37cf-44fe-86d4-eb329456b5ab', 'mood': 2, 'anxiety': 'moderate', 'sleep_quality': 2, 'self_care': 'no', 'stress_factors': 'angry and low feeling'}",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:10:23.464540",
+      "date": "2025-03-03",
+      "time": "19:10",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "fetch_history",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:10:25.663688",
+      "date": "2025-03-03",
+      "time": "19:10",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "fetch_history",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:12:18.058277",
+      "date": "2025-03-03",
+      "time": "19:12",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "{'user_id': 'e045643d-37cf-44fe-86d4-eb329456b5ab', 'mood': 3, 'anxiety': 'moderate', 'sleep_quality': 2, 'self_care': 'no', 'stress_factors': 'i feel very angry'}",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:54:12.930529",
+      "date": "2025-03-03",
+      "time": "19:54",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:55:17.332502",
+      "date": "2025-03-03",
+      "time": "19:55",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "i am feel very depresed ",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:55:47.194505",
+      "date": "2025-03-03",
+      "time": "19:55",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:56:05.112302",
+      "date": "2025-03-03",
+      "time": "19:56",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "my name is aryan pal",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-03T19:56:39.530605",
+      "date": "2025-03-03",
+      "time": "19:56",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i overcome my deprestion",
+      "triggers": []
+    }
+  ],
+  "insights": [
+    {
+      "type": "pattern",
+      "timestamp": "2025-03-03T19:07:59.088300",
+      "description": "You've experienced 'neutral' frequently in recent interactions.",
+      "recommendation": "This is a good time for reflection. Consider what you want to focus on."
+    },
+    {
+      "type": "pattern",
+      "timestamp": "2025-03-03T19:12:18.065011",
+      "description": "You've experienced 'neutral' frequently in recent interactions.",
+      "recommendation": "This is a good time for reflection. Consider what you want to focus on."
+    },
+    {
+      "type": "pattern",
+      "timestamp": "2025-03-03T19:56:39.535298",
+      "description": "You've experienced 'neutral' frequently in recent interactions.",
+      "recommendation": "This is a good time for reflection. Consider what you want to focus on."
+    }
+  ],
+  "last_report_date": null
+}

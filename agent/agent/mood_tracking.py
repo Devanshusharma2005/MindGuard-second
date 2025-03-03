@@ -112,58 +112,96 @@ class MoodTracker:
         return entry
     
     def _generate_insights(self) -> List[Dict[str, Any]]:
-        """
-        Generate insights based on mood patterns.
-        
-        Returns:
-            List of newly generated insights
-        """
-        if len(self.mood_data["entries"]) < 3:
-            return []  # Not enough data
-            
+        """Generate insights based on mood tracking data."""
         new_insights = []
         
-        # Calculate mood distribution
-        mood_counts = defaultdict(int)
-        for entry in self.mood_data["entries"][-10:]:  # Last 10 entries
-            mood_counts[entry["mood"]] += 1
+        if not self.mood_data["entries"]:
+            return new_insights
             
-        # Find most common mood
-        if mood_counts:
-            most_common_mood = max(mood_counts, key=mood_counts.get)
-            most_common_count = mood_counts[most_common_mood]
+        # Get recent entries (last 2 weeks)
+        recent_entries = self.mood_data["entries"][-14:]
+        
+        # Analyze sleep patterns
+        sleep_hours = [e.get("sleep_quality", 0) for e in recent_entries]
+        avg_sleep = sum(sleep_hours) / len(sleep_hours) if sleep_hours else 0
+        
+        if avg_sleep < 5:
+            new_insights.append({
+                "type": "sleep",
+                "timestamp": datetime.datetime.now().isoformat(),
+                "description": "You might be experiencing sleep deprivation, which can impact mood and energy levels.",
+                "recommendation": "Try establishing a consistent sleep schedule and practice good sleep hygiene: avoid screens before bedtime, create a relaxing bedtime routine, and keep your bedroom cool and dark."
+            })
+        
+        # Analyze stress levels
+        stress_scores = [e.get("stress", 0) for e in recent_entries]
+        avg_stress = sum(stress_scores) / len(stress_scores) if stress_scores else 0
+        
+        if avg_stress > 7:
+            new_insights.append({
+                "type": "stress",
+                "timestamp": datetime.datetime.now().isoformat(),
+                "description": "Your stress levels are consistently high, which may affect your overall well-being.",
+                "recommendation": "Consider incorporating stress-reduction techniques like deep breathing exercises, meditation, or progressive muscle relaxation. Taking regular breaks and practicing mindfulness can help manage stress levels."
+            })
+        
+        # Analyze mood stability
+        mood_scores = [e.get("mood", 0) for e in recent_entries]
+        mood_fluctuation = max(mood_scores) - min(mood_scores) if mood_scores else 0
+        
+        if mood_fluctuation > 5:
+            new_insights.append({
+                "type": "mood_fluctuation",
+                "timestamp": datetime.datetime.now().isoformat(),
+                "description": "Your mood shows significant fluctuations, which might indicate emotional instability.",
+                "recommendation": "Track your mood triggers and try to identify patterns. Consider journaling or using mood tracking apps to better understand what affects your emotional state."
+            })
+        
+        # Analyze persistent low mood
+        low_mood_days = sum(1 for score in mood_scores if score < 4)
+        if low_mood_days > 10:  # More than 10 days of low mood in 2 weeks
+            new_insights.append({
+                "type": "persistent_low_mood",
+                "timestamp": datetime.datetime.now().isoformat(),
+                "description": "Signs of persistent low mood detected. This could indicate chronic stress or mild depression.",
+                "recommendation": "Consider reaching out to a mental health professional. In the meantime, try engaging in activities you usually enjoy, maintain social connections, and establish a daily routine."
+            })
+        
+        # Analyze anxiety patterns
+        anxiety_scores = [e.get("anxiety", "none") for e in recent_entries]
+        high_anxiety_days = sum(1 for score in anxiety_scores if score in ["moderate", "severe"])
+        
+        if high_anxiety_days > 7:  # More than 7 days of high anxiety in 2 weeks
+            new_insights.append({
+                "type": "anxiety_pattern",
+                "timestamp": datetime.datetime.now().isoformat(),
+                "description": "You're experiencing frequent anxiety symptoms, which may be affecting your daily life.",
+                "recommendation": "Practice grounding techniques when feeling anxious: try the 5-4-3-2-1 method, deep breathing, or progressive muscle relaxation. Consider consulting with a mental health professional for additional support."
+            })
+        
+        # Analyze improvement trends
+        if len(recent_entries) >= 7:  # At least a week of data
+            week_ago = recent_entries[-7:]
+            current_avg = sum(e.get("mood", 0) for e in week_ago[-3:]) / 3  # Last 3 days
+            previous_avg = sum(e.get("mood", 0) for e in week_ago[:4]) / 4  # Previous 4 days
             
-            if most_common_count >= 3:  # At least 3 occurrences
-                insight = {
-                    "type": "pattern",
-                    "timestamp": datetime.datetime.now().isoformat(),
-                    "description": f"You've experienced '{most_common_mood}' frequently in recent interactions.",
-                    "recommendation": self._get_recommendation_for_mood(most_common_mood)
-                }
-                new_insights.append(insight)
-                
-        # Analyze mood trends (improving or worsening)
-        if len(self.mood_data["entries"]) >= 5:
-            recent_valences = [e["valence"] for e in self.mood_data["entries"][-5:]]
-            avg_valence = sum(recent_valences) / len(recent_valences)
+            improvement = ((current_avg - previous_avg) / previous_avg * 100) if previous_avg != 0 else 0
             
-            if avg_valence > 0.2:
-                insight = {
-                    "type": "trend",
+            if improvement > 20:  # 20% improvement
+                new_insights.append({
+                    "type": "improvement",
                     "timestamp": datetime.datetime.now().isoformat(),
-                    "description": "Your mood has been generally positive recently.",
-                    "recommendation": "Keep up the good work! Continue the activities that bring you joy."
-                }
-                new_insights.append(insight)
-            elif avg_valence < -0.2:
-                insight = {
-                    "type": "trend",
+                    "description": f"Your mood has improved by {improvement:.0f}% over the past week!",
+                    "recommendation": "Keep up the positive momentum! Continue the activities and practices that have been helping you feel better."
+                })
+            elif improvement < -20:  # 20% decline
+                new_insights.append({
+                    "type": "decline",
                     "timestamp": datetime.datetime.now().isoformat(),
-                    "description": "Your mood has been trending downward recently.",
-                    "recommendation": "Consider trying some new self-care activities or reaching out for support."
-                }
-                new_insights.append(insight)
-                
+                    "description": "Your mood has declined recently. This happens sometimes and it's okay.",
+                    "recommendation": "Be gentle with yourself. Focus on basic self-care: adequate sleep, healthy meals, light exercise, and connecting with supportive people in your life."
+                })
+        
         # Add insights to storage
         self.mood_data["insights"].extend(new_insights)
         self._save_data()
