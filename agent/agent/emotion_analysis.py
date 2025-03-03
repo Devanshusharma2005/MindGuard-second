@@ -9,15 +9,7 @@ from typing import Dict, List, Any, Optional, Union, Callable
 import os
 import json
 import re
-from models import EmotionDetectionModel
-
-# Try to import transformers, but have fallback if it's not available
-try:
-    from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-    TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-
+from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
 
 class EmotionAnalyzer:
     """
@@ -31,7 +23,7 @@ class EmotionAnalyzer:
     """
     
     def __init__(self, 
-                model_path: str = "j-hartmann/emotion-english-distilroberta-base",
+                model_path: str = "borisn70/bert-43-multilabel-emotion-detection",
                 offline_mode: bool = True,
                 cache_dir: Optional[str] = None):
         """
@@ -45,190 +37,16 @@ class EmotionAnalyzer:
         self.model_path = model_path
         self.offline_mode = offline_mode
         self.cache_dir = cache_dir or os.path.join(os.path.dirname(__file__), "cached_models")
-        self.emotion_detection_model = EmotionDetectionModel()  # Initialize the emotion detection model
         
-        # Define rich emotion lexicon for lexicon-based detection
-        self.emotion_lexicon = self._initialize_emotion_lexicon()
+        # Initialize the Hugging Face emotion detection model
+        self.analyzer = pipeline("text-classification", model=self.model_path)
         
-        # Define emotional patterns for rule-based detection
-        self.emotion_patterns = self._initialize_emotion_patterns()
+        # Initialize the crisis detection model
+        self.crisis_detection_model = CrisisDetectionModel()
         
-        # Initialize the primary analyzer with fallbacks
-        self.analyzer = self._initialize_analyzer()
+        # Initialize the emotion detection model
+        self.emotion_detection_model = EmotionDetectionModel()
         
-    def _initialize_emotion_lexicon(self) -> Dict[str, List[str]]:
-        """Initialize the emotion lexicon for fallback detection."""
-        # Comprehensive emotion lexicon (extended from the original)
-        return {
-            # Positive emotions
-            "joy": ["happy", "joy", "joyful", "delighted", "pleased", "content", "thrilled", "ecstatic", "elated", "glad", "cheerful", "blissful", "jubilant"],
-            "contentment": ["content", "satisfied", "fulfilled", "peaceful", "calm", "serene", "relaxed", "at ease"],
-            "excitement": ["excited", "thrilled", "eager", "enthusiastic", "exhilarated", "animated", "energetic"],
-            "gratitude": ["grateful", "thankful", "appreciative", "blessed", "fortunate"],
-            "pride": ["proud", "accomplished", "successful", "confident", "self-assured"],
-            "love": ["love", "adore", "cherish", "affection", "fondness", "passionate", "devoted", "cared"],
-            "hope": ["hopeful", "optimistic", "encouraged", "positive", "looking forward"],
-            
-            # Neutral emotions
-            "surprise": ["surprised", "shocked", "astonished", "amazed", "startled", "stunned", "unexpected"],
-            "confusion": ["confused", "puzzled", "perplexed", "unsure", "uncertain", "disoriented", "bewildered"],
-            "neutral": ["neutral", "fine", "okay", "alright", "so-so", "neither good nor bad"],
-            
-            # Negative emotions
-            "sadness": ["sad", "unhappy", "depressed", "sorrowful", "gloomy", "downcast", "blue", "down", "upset", "miserable", "heartbroken"],
-            "fear": ["afraid", "scared", "fearful", "terrified", "panicked", "frightened", "petrified"],
-            "anxiety": ["anxious", "worried", "nervous", "tense", "uneasy", "apprehensive", "distressed", "stressed", "restless"],
-            "anger": ["angry", "mad", "furious", "outraged", "irritated", "annoyed", "enraged", "irate", "infuriated", "agitated"],
-            "disgust": ["disgusted", "repulsed", "revolted", "appalled", "nauseated", "offended", "repelled"],
-            "frustration": ["frustrated", "annoyed", "thwarted", "exasperated", "irritated", "hindered", "blocked"],
-            "guilt": ["guilty", "remorseful", "shameful", "regretful", "apologetic", "sorry", "contrite"],
-            "hopelessness": ["hopeless", "despairing", "helpless", "despondent", "worthless", "futile", "desperate", "no point", "no use", "can't see a way out"],
-            "loneliness": ["lonely", "alone", "isolated", "abandoned", "neglected", "solitary", "disconnected", "unwanted", "left out"],
-            "grief": ["grief", "grieving", "mourning", "bereft", "devastated", "inconsolable"],
-            "dread": ["dread", "dreading", "foreboding", "impending doom", "sense of doom", "apprehensive"],
-            "embarrassment": ["embarrassed", "humiliated", "mortified", "self-conscious", "ashamed"]
-        }
-    
-    def _initialize_emotion_patterns(self) -> Dict[str, List[str]]:
-        """Initialize the emotion patterns for rule-based detection."""
-        return {
-            # Patterns for suicidal ideation and severe depression
-            "crisis": [
-                r"(want|thinking about|planning) to (die|end it|kill myself|suicide|take my life)",
-                r"(don't|do not|can't|cannot) (see a point|want to live|go on|see a way out)",
-                r"(better off|would be better) without me",
-                r"(no one|nobody) (would care|would notice|would miss) if I (die|was gone|wasn't here)"
-            ],
-            
-            # Patterns for specific emotions
-            "hopelessness": [
-                r"(nothing|no point|no use|can't|cannot) (will|ever|going to) (change|get better|improve)",
-                r"(feel|feeling) (stuck|trapped|hopeless|helpless|worthless)",
-                r"what's the point of (trying|living|going on|anything)",
-                r"(never|won't|will not) get better"
-            ],
-            
-            "anxiety": [
-                r"(can't|cannot) stop (worrying|thinking about|obsessing over)",
-                r"(constantly|always) (anxious|worried|nervous|on edge)",
-                r"mind (racing|won't stop|keeps going)",
-                r"(panic|anxiety) attack"
-            ],
-            
-            "grief": [
-                r"(lost|miss|missing) (someone|him|her|them) (so much|terribly)",
-                r"(can't|cannot) (accept|believe) they're gone",
-                r"(grieving|mourning) (for|over)",
-                r"(heart|soul) is broken"
-            ]
-        }
-    
-    def _initialize_analyzer(self) -> Callable:
-        """Initialize the primary analyzer with fallbacks."""
-        # Try to use transformers if available and not in offline mode
-        if TRANSFORMERS_AVAILABLE and not self.offline_mode:
-            try:
-                # Try to load the model from Hugging Face
-                analyzer = pipeline(
-                    "text-classification",
-                    model=self.model_path
-                )
-                print(f"Successfully loaded Hugging Face emotion analyzer: {self.model_path}")
-                return analyzer
-            except Exception as e:
-                print(f"Could not load Hugging Face model: {e}")
-                
-                # Try loading from local cache if available
-                try:
-                    local_model_path = os.path.join(self.cache_dir, "emotion_model")
-                    if os.path.exists(local_model_path):
-                        model = AutoModelForSequenceClassification.from_pretrained(local_model_path)
-                        tokenizer = AutoTokenizer.from_pretrained(local_model_path)
-                        analyzer = pipeline(
-                            "text-classification",
-                            model=model,
-                            tokenizer=tokenizer
-                        )
-                        print(f"Successfully loaded cached emotion analyzer")
-                        return analyzer
-                except Exception as e:
-                    print(f"Could not load cached model: {e}")
-        
-        # Fall back to the hybrid analyzer
-        print("Using hybrid lexicon and rule-based emotion analyzer (fallback)")
-        return self._hybrid_emotion_analyzer
-    
-    def _hybrid_emotion_analyzer(self, text: str) -> List[Dict[str, Any]]:
-        """
-        Hybrid lexicon and rule-based emotion analyzer for offline use.
-        
-        Args:
-            text: The text to analyze
-            
-        Returns:
-            A list with emotion predictions and confidence scores
-        """
-        text_lower = text.lower()
-        emotions_scores = {}
-        
-        # Check for crisis patterns first (highest priority)
-        for pattern in self.emotion_patterns.get("crisis", []):
-            if re.search(pattern, text_lower):
-                # This is a critical pattern - high confidence
-                return [{"label": "crisis", "score": 0.95}]
-        
-        # Check for each emotion in the lexicon
-        for emotion, keywords in self.emotion_lexicon.items():
-            # Count exact keyword matches
-            exact_matches = sum(1 for keyword in keywords if f" {keyword} " in f" {text_lower} ")
-            
-            # Count partial matches (word boundaries less strict)
-            partial_matches = sum(1 for keyword in keywords if keyword in text_lower) - exact_matches
-            
-            # Weight exact matches higher than partial matches
-            score = (exact_matches * 0.2) + (partial_matches * 0.05)
-            
-            # Store if there's any score
-            if score > 0:
-                emotions_scores[emotion] = score
-        
-        # Check for specific emotion patterns to boost confidence
-        for emotion, patterns in self.emotion_patterns.items():
-            if emotion == "crisis":  # We already checked crisis patterns
-                continue
-                
-            for pattern in patterns:
-                if re.search(pattern, text_lower):
-                    # Add a significant boost for pattern matches
-                    emotions_scores[emotion] = emotions_scores.get(emotion, 0) + 0.4
-        
-        # Get the top emotion
-        if emotions_scores:
-            max_emotion = max(emotions_scores, key=emotions_scores.get)
-            max_score = emotions_scores[max_emotion]
-            
-            # Cap at 0.9 for lexicon-based (less confident than ML model)
-            normalized_score = min(max_score, 0.9)
-            
-            return [{"label": max_emotion, "score": normalized_score}]
-        
-        # If no emotions detected, default to neutral
-        return [{"label": "neutral", "score": 0.7}]
-    
-    def _advanced_rule_analyzer(self, text: str) -> Dict[str, float]:
-        """
-        Advanced rule-based analyzer for complex emotional states.
-        
-        Args:
-            text: The text to analyze
-            
-        Returns:
-            Dictionary of emotions and confidence scores
-        """
-        # TODO: Implement advanced rule-based detection with linguistic patterns
-        # and contextual analysis for more accurate offline detection
-        pass
-    
     def analyze(self, text: str) -> Dict[str, Any]:
         """
         Analyze text for emotional content.
@@ -265,12 +83,12 @@ class EmotionAnalyzer:
             }
         
         # Use the emotion detection model to analyze text
-        emotion_scores = self.emotion_detection_model.detect_emotion(text)
+        emotion_scores = self.analyzer(text)  # Get the predictions from the model
         
         # Process the scores and return the results
         if emotion_scores:
-            max_emotion = max(emotion_scores, key=emotion_scores.get)
-            max_score = emotion_scores[max_emotion]
+            max_emotion = emotion_scores[0]['label']  # Extract the label from the first prediction
+            max_score = emotion_scores[0]['score']  # Extract the score from the first prediction
             
             # Map emotion to valence (positive/negative scale)
             valence_map = {
@@ -311,37 +129,6 @@ class EmotionAnalyzer:
             "is_crisis": False,
             "intensity": 0.1
         }
-    
-    def download_models_for_offline(self) -> bool:
-        """
-        Download models for offline use.
-        
-        Returns:
-            True if successful, False otherwise
-        """
-        if not TRANSFORMERS_AVAILABLE:
-            print("Cannot download models: transformers library not available")
-            return False
-            
-        try:
-            # Create cache directory if it doesn't exist
-            os.makedirs(self.cache_dir, exist_ok=True)
-            
-            # Download model and tokenizer
-            model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
-            tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-            
-            # Save to local directory
-            local_model_path = os.path.join(self.cache_dir, "emotion_model")
-            model.save_pretrained(local_model_path)
-            tokenizer.save_pretrained(local_model_path)
-            
-            print(f"Successfully downloaded emotion model to {local_model_path}")
-            return True
-        except Exception as e:
-            print(f"Error downloading models for offline use: {e}")
-            return False
-
 
 # Test the analyzer if run directly
 if __name__ == "__main__":
@@ -360,4 +147,4 @@ if __name__ == "__main__":
         print(f"Text: {text}")
         print(f"Emotion: {result['emotion']} (Confidence: {result['confidence']:.2f})")
         print(f"Valence: {result['valence']:.2f}, Crisis: {result['is_crisis']}")
-        print("-" * 50) 
+        print("-" * 50)
