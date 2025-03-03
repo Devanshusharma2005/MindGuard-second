@@ -4,6 +4,29 @@ from emotion_questions import questions
 from emotion_analysis import EmotionAnalyzer
 import json
 
+questions = [
+    "How would you describe your overall mood in the past week?",
+    "Can you recall a recent moment when you felt particularly happy? What was happening?",
+    "What thoughts come to mind when you think about your future?",
+    "How often do you feel overwhelmed by your responsibilities?",
+    "When was the last time you felt truly relaxed? What were you doing?",
+    "Do you find yourself avoiding social situations? If so, why?",
+    "How do you cope when you feel stressed or anxious?",
+    "Can you describe a time when you felt really sad? What triggered it?",
+    "How do you feel about your ability to manage your emotions?",
+    "What do you do when you feel like you can't cope with everything?",
+    "How often do you experience feelings of hopelessness or despair?",
+    "Do you have any recurring thoughts that you find distressing?",
+    "How do you feel about seeking help or support from others?",
+    "What activities or hobbies bring you joy, and how often do you engage in them?",
+    "How do you feel when you think about your relationships with family and friends?",
+    "What do you do to take care of your mental health?",
+    "How often do you feel lonely, even when you are around others?",
+    "Can you describe a situation that makes you feel anxious?",
+    "How do you feel about your self-worth and confidence?",
+    "What are your thoughts on how you handle criticism or feedback?"
+]
+
 class EmotionReportGenerator:
     def __init__(self):
         self.analyzer = EmotionAnalyzer()
@@ -15,19 +38,22 @@ class EmotionReportGenerator:
             self.responses.append(response)  # Store response
 
     def analyze_responses(self):
-        report = []
-        if not self.responses:
-            return report  # Return empty report if no responses
-        for response in self.responses:
-            analysis = self.analyzer.analyze(response)  # Analyze each response
-            report.append({
-                "response": response,
-                "emotion": analysis["emotion"],
-                "confidence": analysis["confidence"],
-                "valence": analysis["valence"],
-                "is_crisis": analysis["is_crisis"]
-            })
-        return report
+        # Load sample responses from JSON file
+        sample_responses = self.load_sample_responses('agent/agent/sample_responses.json')
+        analysis_report = []
+
+        for response in sample_responses:
+            # Here you would implement your analysis logic
+            # For demonstration, let's assume we analyze the 'answer' field
+            analysis = {
+                'emotion': 'sad',  # Placeholder for actual emotion detection logic
+                'confidence': 0.8,  # Placeholder for confidence score
+                'valence': -0.5,  # Placeholder for valence score
+                'is_crisis': False  # Placeholder for crisis detection
+            }
+            analysis_report.append(analysis)
+
+        return analysis_report
 
     def summarize_report(self, analysis_report):
         summary = {
@@ -46,9 +72,13 @@ class EmotionReportGenerator:
             summary['average_confidence'] += entry['confidence']
             summary['average_valence'] += entry['valence']
 
-        # Calculate averages
-        summary['average_confidence'] /= summary['total_responses']
-        summary['average_valence'] /= summary['total_responses']
+        # Calculate averages only if there are responses
+        if summary['total_responses'] > 0:
+            summary['average_confidence'] /= summary['total_responses']
+            summary['average_valence'] /= summary['total_responses']
+        else:
+            summary['average_confidence'] = 0.0
+            summary['average_valence'] = 0.0
 
         return summary
 

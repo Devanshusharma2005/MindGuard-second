@@ -455,6 +455,78 @@
         {
             "question": "How do you cope with feelings of guilt?",
             "answer": "I often feel guilty about things I can't change, which adds to my emotional burden."
+        },
+        {
+            "question": "How would you describe your overall mood in the past week?",
+            "answer": "I've been feeling a bit overwhelmed and stressed due to work deadlines."
+        },
+        {
+            "question": "Can you recall a recent moment when you felt particularly happy? What was happening?",
+            "answer": "I felt really happy when I spent the weekend with my family at the park."
+        },
+        {
+            "question": "What thoughts come to mind when you think about your future?",
+            "answer": "I feel uncertain about my career path and worry about making the right choices."
+        },
+        {
+            "question": "How often do you feel overwhelmed by your responsibilities?",
+            "answer": "I often feel overwhelmed, especially when I have multiple projects due at the same time."
+        },
+        {
+            "question": "When was the last time you felt truly relaxed? What were you doing?",
+            "answer": "I felt relaxed last Sunday when I spent the day reading a book at home."
+        },
+        {
+            "question": "How do you cope when you feel stressed or anxious?",
+            "answer": "I usually go for a walk or practice deep breathing exercises to calm myself down."
+        },
+        {
+            "question": "How do you feel about seeking help or support from others?",
+            "answer": "I feel hesitant to seek help because I don't want to burden anyone with my problems."
+        },
+        {
+            "question": "How often do you experience feelings of hopelessness or despair?",
+            "answer": "I occasionally feel hopeless, especially during tough times at work."
+        },
+        {
+            "question": "What activities or hobbies bring you joy, and how often do you engage in them?",
+            "answer": "I enjoy painting, but I haven't had much time to do it lately."
+        },
+        {
+            "question": "How do you feel when you think about your relationships with family and friends?",
+            "answer": "I feel grateful for my supportive friends and family, but I sometimes feel distant from them."
+        },
+        {
+            "question": "How do you feel about your self-worth and confidence?",
+            "answer": "I struggle with self-worth and often doubt my abilities."
+        },
+        {
+            "question": "Can you describe a time when you felt really sad? What triggered it?",
+            "answer": "I felt really sad when I had to say goodbye to a close friend who moved away."
+        },
+        {
+            "question": "How do you feel about your ability to manage your emotions?",
+            "answer": "I think I manage my emotions fairly well, but I have my moments of struggle."
+        },
+        {
+            "question": "What do you do when you feel like you can't cope with everything?",
+            "answer": "I try to take a step back and prioritize my tasks, but it can be hard."
+        },
+        {
+            "question": "How do you feel when you think about your future?",
+            "answer": "I feel a mix of excitement and anxiety about what lies ahead."
+        },
+        {
+            "question": "How often do you feel lonely, even when you are around others?",
+            "answer": "I sometimes feel lonely in social situations, even when I'm with friends."
+        },
+        {
+            "question": "Can you describe a situation that makes you feel anxious?",
+            "answer": "I feel anxious when I have to speak in public or present in front of a group."
+        },
+        {
+            "question": "What are your thoughts on how you handle criticism or feedback?",
+            "answer": "I try to take criticism constructively, but it can be hard not to take it personally."
         }
     ]
 } 
