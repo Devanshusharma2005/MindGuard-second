@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const userRoutes = require('./routes/user');
 
 const app = express();
 
@@ -12,6 +14,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Routes
+app.use('/api/user', userRoutes);
+
 // MongoDB Connection with error handling
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
@@ -20,29 +25,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => console.error('MongoDB Connection Error:', err));
 
-// User Schema
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String,
-    required: [true, 'Username is required'],
-    trim: true
-  },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    unique: true,
-    trim: true,
-    lowercase: true
-  },
-  password: {
-    type: String,
-    required: [true, 'Password is required']
-  }
-}, {
-  timestamps: true
-});
-
-const User = mongoose.model('User', userSchema);
+// Import User model
+const User = require('./models/User');
 
 // Signup Route
 app.post('/api/auth/signup', async (req, res) => {
@@ -110,7 +94,6 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({
@@ -127,9 +110,17 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { user: { id: user._id } },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
     res.json({
       success: true,
       msg: 'Login successful',
+      token,
       user: {
         id: user._id,
         username: user.username,
