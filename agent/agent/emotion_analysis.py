@@ -10,7 +10,9 @@ import os
 import json
 import re
 from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-from models import CrisisDetectionModel, EmotionDetectionModel
+# from models import CrisisDetectionModel, EmotionDetectionModel
+from agent.models import CrisisDetectionModel, EmotionDetectionModel
+
 
 class EmotionAnalyzer:
     """
