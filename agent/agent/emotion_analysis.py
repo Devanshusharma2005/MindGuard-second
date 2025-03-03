@@ -59,24 +59,24 @@ class EmotionAnalyzer:
         # Comprehensive emotion lexicon (extended from the original)
         return {
             # Positive emotions
-            "joy": ["happy", "joy", "joyful", "delighted", "pleased", "content", "thrilled", "ecstatic", "elated", "glad", "cheerful", "blissful", "jubilant"],
-            "contentment": ["content", "satisfied", "fulfilled", "peaceful", "calm", "serene", "relaxed", "at ease"],
-            "excitement": ["excited", "thrilled", "eager", "enthusiastic", "exhilarated", "animated", "energetic"],
-            "gratitude": ["grateful", "thankful", "appreciative", "blessed", "fortunate"],
-            "pride": ["proud", "accomplished", "successful", "confident", "self-assured"],
-            "love": ["love", "adore", "cherish", "affection", "fondness", "passionate", "devoted", "cared"],
-            "hope": ["hopeful", "optimistic", "encouraged", "positive", "looking forward"],
+            "joy": ["happy", "joy", "joyful", "delighted", "pleased", "content", "thrilled", "ecstatic", "elated", "glad", "cheerful", "blissful", "jubilant", "excited", "overjoyed"],
+            "contentment": ["content", "satisfied", "fulfilled", "peaceful", "calm", "serene", "relaxed", "at ease", "comfortable"],
+            "excitement": ["excited", "thrilled", "eager", "enthusiastic", "exhilarated", "animated", "energetic", "pumped"],
+            "gratitude": ["grateful", "thankful", "appreciative", "blessed", "fortunate", "indebted"],
+            "pride": ["proud", "accomplished", "successful", "confident", "self-assured", "satisfied with oneself"],
+            "love": ["love", "adore", "cherish", "affection", "fondness", "passionate", "devoted", "cared", "attachment"],
+            "hope": ["hopeful", "optimistic", "encouraged", "positive", "looking forward", "aspirational"],
             
             # Neutral emotions
-            "surprise": ["surprised", "shocked", "astonished", "amazed", "startled", "stunned", "unexpected"],
-            "confusion": ["confused", "puzzled", "perplexed", "unsure", "uncertain", "disoriented", "bewildered"],
-            "neutral": ["neutral", "fine", "okay", "alright", "so-so", "neither good nor bad"],
+            "surprise": ["surprised", "shocked", "astonished", "amazed", "startled", "stunned", "unexpected", "bewildered"],
+            "confusion": ["confused", "puzzled", "perplexed", "unsure", "uncertain", "disoriented", "bewildered", "lost"],
+            "neutral": ["neutral", "fine", "okay", "alright", "so-so", "neither good nor bad", "indifferent"],
             
             # Negative emotions
-            "sadness": ["sad", "unhappy", "depressed", "sorrowful", "gloomy", "downcast", "blue", "down", "upset", "miserable", "heartbroken"],
-            "fear": ["afraid", "scared", "fearful", "terrified", "panicked", "frightened", "petrified"],
-            "anxiety": ["anxious", "worried", "nervous", "tense", "uneasy", "apprehensive", "distressed", "stressed", "restless"],
-            "anger": ["angry", "mad", "furious", "outraged", "irritated", "annoyed", "enraged", "irate", "infuriated", "agitated"],
+            "sadness": ["sad", "unhappy", "depressed", "sorrowful", "gloomy", "downcast", "blue", "down", "upset", "miserable", "heartbroken", "disheartened", "despondent"],
+            "fear": ["afraid", "scared", "fearful", "terrified", "panicked", "frightened", "petrified", "anxious", "nervous"],
+            "anxiety": ["anxious", "worried", "nervous", "tense", "uneasy", "apprehensive", "distressed", "stressed", "restless", "jittery"],
+            "anger": ["angry", "mad", "furious", "outraged", "irritated", "annoyed", "enraged", "irate", "infuriated", "agitated", "frustrated"],
             "disgust": ["disgusted", "repulsed", "revolted", "appalled", "nauseated", "offended", "repelled"],
             "frustration": ["frustrated", "annoyed", "thwarted", "exasperated", "irritated", "hindered", "blocked"],
             "guilt": ["guilty", "remorseful", "shameful", "regretful", "apologetic", "sorry", "contrite"],
@@ -173,7 +173,6 @@ class EmotionAnalyzer:
         # Check for crisis patterns first (highest priority)
         for pattern in self.emotion_patterns.get("crisis", []):
             if re.search(pattern, text_lower):
-                # This is a critical pattern - high confidence
                 return [{"label": "crisis", "score": 0.95}]
         
         # Check for each emotion in the lexicon
@@ -185,7 +184,7 @@ class EmotionAnalyzer:
             partial_matches = sum(1 for keyword in keywords if keyword in text_lower) - exact_matches
             
             # Weight exact matches higher than partial matches
-            score = (exact_matches * 0.2) + (partial_matches * 0.05)
+            score = (exact_matches * 0.3) + (partial_matches * 0.1)  # Adjusted weights for better accuracy
             
             # Store if there's any score
             if score > 0:
@@ -199,7 +198,7 @@ class EmotionAnalyzer:
             for pattern in patterns:
                 if re.search(pattern, text_lower):
                     # Add a significant boost for pattern matches
-                    emotions_scores[emotion] = emotions_scores.get(emotion, 0) + 0.4
+                    emotions_scores[emotion] = emotions_scores.get(emotion, 0) + 0.5  # Increased boost for patterns
         
         # Get the top emotion
         if emotions_scores:
