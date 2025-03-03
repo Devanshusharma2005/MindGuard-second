@@ -9,6 +9,7 @@ from typing import Dict, List, Any, Optional, Union, Callable
 import os
 import json
 import re
+from models import EmotionDetectionModel
 
 # Try to import transformers, but have fallback if it's not available
 try:
@@ -44,6 +45,7 @@ class EmotionAnalyzer:
         self.model_path = model_path
         self.offline_mode = offline_mode
         self.cache_dir = cache_dir or os.path.join(os.path.dirname(__file__), "cached_models")
+        self.emotion_detection_model = EmotionDetectionModel()  # Initialize the emotion detection model
         
         # Define rich emotion lexicon for lexicon-based detection
         self.emotion_lexicon = self._initialize_emotion_lexicon()
@@ -129,8 +131,7 @@ class EmotionAnalyzer:
                 # Try to load the model from Hugging Face
                 analyzer = pipeline(
                     "text-classification",
-                    model=self.model_path,
-                    cache_dir=self.cache_dir
+                    model=self.model_path
                 )
                 print(f"Successfully loaded Hugging Face emotion analyzer: {self.model_path}")
                 return analyzer
@@ -263,11 +264,13 @@ class EmotionAnalyzer:
                 "intensity": 0.9
             }
         
-        # Analyze with primary analyzer (ML or hybrid)
-        try:
-            result = self.analyzer(text)[0]
-            emotion = result["label"] 
-            confidence = result["score"]
+        # Use the emotion detection model to analyze text
+        emotion_scores = self.emotion_detection_model.detect_emotion(text)
+        
+        # Process the scores and return the results
+        if emotion_scores:
+            max_emotion = max(emotion_scores, key=emotion_scores.get)
+            max_score = emotion_scores[max_emotion]
             
             # Map emotion to valence (positive/negative scale)
             valence_map = {
@@ -285,31 +288,29 @@ class EmotionAnalyzer:
                 "dread": -0.7, "embarrassment": -0.5
             }
             
-            valence = valence_map.get(emotion, 0.0)
+            valence = valence_map.get(max_emotion, 0.0)
             
             # Determine if this is a potential crisis  
             is_crisis = (
-                emotion in ["hopelessness", "sadness", "fear"] and confidence > 0.8
+                max_emotion in ["hopelessness", "sadness", "fear"] and max_score > 0.8
             )
             
             return {
-                "emotion": emotion,
-                "confidence": confidence,
+                "emotion": max_emotion,
+                "confidence": max_score,
                 "valence": valence,
                 "is_crisis": is_crisis,
-                "intensity": abs(valence) * confidence
+                "intensity": abs(valence) * max_score
             }
-            
-        except Exception as e:
-            print(f"Error in emotion analysis: {e}")
-            # Fall back to a safe neutral response
-            return {
-                "emotion": "neutral",
-                "confidence": 0.5,
-                "valence": 0.0,
-                "is_crisis": False,
-                "intensity": 0.1
-            }
+        
+        # If no emotions detected, default to neutral
+        return {
+            "emotion": "neutral",
+            "confidence": 0.5,
+            "valence": 0.0,
+            "is_crisis": False,
+            "intensity": 0.1
+        }
     
     def download_models_for_offline(self) -> bool:
         """
