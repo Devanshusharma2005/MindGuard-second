@@ -290,6 +290,76 @@
       "intensity": 0.1,
       "context": "how can i improve my sleep quality?",
       "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:18:57.199718",
+      "date": "2025-03-06",
+      "time": "22:18",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:18:58.115070",
+      "date": "2025-03-06",
+      "time": "22:18",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:19:41.885310",
+      "date": "2025-03-06",
+      "time": "22:19",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "i'm very tired ",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:19:54.246997",
+      "date": "2025-03-06",
+      "time": "22:19",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "low",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:20:03.658010",
+      "date": "2025-03-06",
+      "time": "22:20",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:37:34.379286",
+      "date": "2025-03-06",
+      "time": "22:37",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-06T22:37:37.623540",
+      "date": "2025-03-06",
+      "time": "22:37",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
     }
   ],
   "insights": [

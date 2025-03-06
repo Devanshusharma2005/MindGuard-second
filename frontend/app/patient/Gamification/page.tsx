@@ -13,6 +13,20 @@ const games = [
     icon: <LucideBrain size={40} className="text-primary" />,
     link: "Gamification/lets-breathe",
   },
+  {
+    id: "puzzle",
+    title: "puzzle",
+    description: "A puzzle game to help you focus.",
+    icon: <LucideBrain size={40} className="text-primary" />,
+    link: "Gamification/puzzle",
+  },
+  {
+    id: "notes",
+    title: "notes",
+    description: "A notes game to help you practice mindfulness.",
+    icon: <LucideBrain size={40} className="text-primary" />,
+    link: "Gamification/notes",
+  },
 ];
 
 export default function GamesPage() {
