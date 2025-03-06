@@ -56,10 +56,7 @@ export default function PatientDashboard() {
           <MoodTracker />
           <UpcomingAppointments />
         </div>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <RecommendedActivities />
-          <CommunityHighlights />
-        </div>
+        
       </div>
     </div>
   );

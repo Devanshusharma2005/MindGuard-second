@@ -11,7 +11,9 @@ import Recommendations from "@/components/patient/recommendations";
 
 interface HealthData {
   insights: {
-    mainInsight: string;
+    mainInsight: {
+      [key: string]: number;
+    };
     riskAnalysis: {
       low: number;
       moderate: number;
@@ -105,7 +107,7 @@ export default function HealthTracking() {
 
   const fetchHealthHistory = async (userId: string) => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/health-history/${userId}`);
+      const response = await fetch(`http://localhost:5000/health-tracking/${userId}`);
       if (!response.ok) throw new Error("Failed to fetch health history");
       const data = await response.json();
       setHealthData(data);
@@ -120,7 +122,8 @@ export default function HealthTracking() {
     setError("");
     
     try {
-      const response = await fetch("http://127.0.0.1:8000/health-tracking", {
+      console.log("Submitting questionnaire data:", data);
+      const response = await fetch("http://localhost:5000/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -128,14 +131,18 @@ export default function HealthTracking() {
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) throw new Error("Failed to submit questionnaire");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || `Failed to submit questionnaire: ${response.status}`);
+      }
 
       const result = await response.json();
+      console.log("Received response:", result);
       setHealthData(result);
       setActiveTab("insights");
     } catch (err) {
       console.error("Error submitting questionnaire:", err);
-      setError("Failed to submit questionnaire");
+      setError(err instanceof Error ? err.message : "Failed to submit questionnaire");
     } finally {
       setLoading(false);
     }

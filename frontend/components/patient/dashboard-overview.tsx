@@ -6,9 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, MessageSquare, Sparkles } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export function DashboardOverview() {
   const [username, setUsername] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [healthData, setHealthData] = useState({
+    healthreports: {
+      mood: 0,
+      anxiety: 0,
+      sleep: 0,
+      energy: 0,
+      concentration: 0,
+      socialInteraction: 0,
+      optimism: 0
+    }
+  });
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -42,6 +56,197 @@ export function DashboardOverview() {
     fetchUserData();
   }, []);
 
+  useEffect(() => {
+    const fetchHealthData = async () => {
+      setIsLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          console.error('No token found');
+          return;
+        }
+
+        const response = await fetch('http://localhost:5000/api/questionnaire/latest', {
+          headers: {
+            'x-auth-token': token,
+            'Content-Type': 'application/json'
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch health data');
+        }
+
+        const data = await response.json();
+        console.log('Received data:', data); // Debug log
+
+        // Update to use healthreports structure
+        setHealthData({
+          healthreports: {
+            mood: data.healthreports?.mood ?? 0,
+            anxiety: data.healthreports?.anxiety ?? 0,
+            sleep: data.healthreports?.sleep ?? 0,
+            energy: data.healthreports?.energy ?? 0,
+            concentration: data.healthreports?.concentration ?? 0,
+            socialInteraction: data.healthreports?.socialInteraction ?? 0,
+            optimism: data.healthreports?.optimism ?? 0
+          }
+        });
+        
+        localStorage.setItem('healthData', JSON.stringify(data));
+      } catch (error) {
+        console.error('Error fetching health data:', error);
+        const cachedData = localStorage.getItem('healthData');
+        if (cachedData) {
+          setHealthData(JSON.parse(cachedData));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHealthData();
+  }, []);
+
+  // Add this after fetching data
+  console.log('Current health data:', healthData.healthreports);
+
+  const submitQuestionnaireData = async (data: any) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/questionnaire/update', {
+        method: 'PUT',
+        headers: {
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update questionnaire data');
+      }
+
+      const updatedData = await response.json();
+      setHealthData({
+        healthreports: {
+          mood: updatedData.mood/10 * 100 || 0,
+          anxiety: updatedData.anxiety/10 * 100 || 0,
+          sleep: updatedData.sleep/10 * 100 || 0,
+          energy: updatedData.energy/10 * 100 || 0,
+          concentration: updatedData.concentration/10 * 100 || 0,
+          socialInteraction: updatedData.socialInteraction/10 * 100 || 0,
+          optimism: updatedData.optimism/10 * 100 || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error updating questionnaire data:', error);
+    }
+  };
+
+  const handleDailyCheckIn = () => {
+    const newData = {
+      mood: 75,
+      anxiety: 30,
+      sleep: 80,
+      energy: 65,
+      concentration: 70,
+      socialInteraction: 60,
+      optimism: 85
+    };
+    submitQuestionnaireData(newData);
+  };
+
+  const handleTestSubmit = async () => {
+    const testData = {
+      healthreports: {
+        mood: 75,
+        anxiety: 60,
+        sleep: 80,
+        energy: 70,
+        concentration: 65,
+        socialInteraction: 55,
+        optimism: 85
+      }
+    };
+
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await fetch('http://localhost:5000/api/questionnaire/update', {
+        method: 'PUT',
+        headers: {
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(testData)
+      });
+
+      if (!response.ok) throw new Error('Failed to submit test data');
+
+      const updatedData = await response.json();
+      setHealthData({
+        healthreports: {
+          mood: updatedData.mood/10 * 100 || 0,
+          anxiety: updatedData.anxiety/10 * 100 || 0,
+          sleep: updatedData.sleep/10 * 100 || 0,
+          energy: updatedData.energy/10 * 100 || 0,
+          concentration: updatedData.concentration/10 * 100 || 0,
+          socialInteraction: updatedData.socialInteraction/10 * 100 || 0,
+          optimism: updatedData.optimism/10 * 100 || 0
+        }
+      });
+    } catch (error) {
+      console.error('Error submitting test data:', error);
+    }
+  };
+
+  const submitTestData = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
+      const response = await fetch('http://localhost:5000/api/questionnaire/submit', {
+        method: 'POST',
+        headers: {
+          'x-auth-token': token,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit test data');
+      }
+
+      const data = await response.json();
+      console.log('Submitted test data:', data);
+      
+      setHealthData({
+        healthreports: data.healthreports
+      });
+    } catch (error) {
+      console.error('Error submitting test data:', error);
+    }
+  };
+
+  // Add this before the return statement
+  useEffect(() => {
+    console.log('Rendered health data:', healthData.healthreports);
+  }, [healthData]);
+
+  if (isLoading) {
+    return <div>Loading health data...</div>;
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -56,9 +261,13 @@ export function DashboardOverview() {
             <CalendarDays className="h-4 w-4" />
             Book Consultation
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={handleDailyCheckIn}>
             <Sparkles className="h-4 w-4" />
             Daily Check-in
+          </Button>
+          <Button className="gap-2" onClick={submitTestData}>
+            <Sparkles className="h-4 w-4" />
+            Submit Test Data
           </Button>
         </div>
       </div>
@@ -75,42 +284,89 @@ export function DashboardOverview() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Mood Stability</p>
-                <Badge variant="outline">Improving</Badge>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.mood}%
+                </span>
               </div>
-              <Progress value={68} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                68% improvement from last month
-              </p>
+              <Progress 
+                value={healthData.healthreports.mood} 
+                className="h-2" 
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Anxiety Level</p>
-                <Badge variant="outline">Decreasing</Badge>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.anxiety}%
+                </span>
               </div>
-              <Progress value={42} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                42% reduction in anxiety symptoms
-              </p>
+              <Progress 
+                value={healthData.healthreports.anxiety} 
+                className="h-2" 
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Sleep Quality</p>
-                <Badge variant="outline">Stable</Badge>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.sleep}%
+                </span>
               </div>
-              <Progress value={75} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                75% of optimal sleep achieved
-              </p>
+              <Progress 
+                value={healthData.healthreports.sleep} 
+                className="h-2" 
+              />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Wellness Streak</p>
-                <Badge variant="outline">12 Days</Badge>
+                <p className="text-sm font-medium">Energy Level</p>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.energy}%
+                </span>
               </div>
-              <Progress value={40} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                12 days of consecutive check-ins
-              </p>
+              <Progress 
+                value={healthData.healthreports.energy} 
+                className="h-2" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Concentration</p>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.concentration}%
+                </span>
+              </div>
+              <Progress 
+                value={healthData.healthreports.concentration} 
+                className="h-2" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Social Interaction</p>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.socialInteraction}%
+                </span>
+              </div>
+              <Progress 
+                value={healthData.healthreports.socialInteraction} 
+                className="h-2" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium">Optimism</p>
+                <span className="text-sm text-muted-foreground">
+                  {healthData.healthreports.optimism}%
+                </span>
+              </div>
+              <Progress 
+                value={healthData.healthreports.optimism} 
+                className="h-2" 
+              />
             </div>
           </div>
 

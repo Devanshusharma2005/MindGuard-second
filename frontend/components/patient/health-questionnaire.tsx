@@ -8,12 +8,27 @@ import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 
+interface Question {
+  id: number;
+  question: string;
+  type: "slider" | "radio" | "textarea";
+  min?: number;
+  max?: number;
+  step?: number;
+  labels?: string[];
+  options?: Array<{
+    value: string;
+    label: string;
+  }>;
+  answer: number | string;
+}
+
 interface HealthQuestionnaireProps {
   onSubmit: (data: any) => void;
   isLoading: boolean;
 }
 
-const initialQuestions = [
+const initialQuestions: Question[] = [
   {
     id: 1,
     question: "How would you rate your overall mood today?",
@@ -48,17 +63,117 @@ const initialQuestions = [
   },
   {
     id: 4,
-    question: "Have you engaged in any self-care activities today?",
+    question: "How would you rate your energy levels today?",
+    type: "slider",
+    min: 1,
+    max: 10,
+    step: 1,
+    labels: ["Very low", "Moderate", "Very high"],
+    answer: 5
+  },
+  {
+    id: 5,
+    question: "Have you experienced any physical symptoms of stress today?",
     type: "radio",
     options: [
-      { value: "yes", label: "Yes" },
-      { value: "no", label: "No" }
+      { value: "none", label: "None" },
+      { value: "mild", label: "Mild (e.g., slight tension)" },
+      { value: "moderate", label: "Moderate (e.g., headache, muscle tension)" },
+      { value: "severe", label: "Severe (e.g., chest pain, difficulty breathing)" }
     ],
     answer: ""
   },
   {
-    id: 5,
-    question: "Is there anything specific causing you stress right now?",
+    id: 6,
+    question: "How would you rate your ability to concentrate today?",
+    type: "slider",
+    min: 1,
+    max: 10,
+    step: 1,
+    labels: ["Very poor", "Average", "Excellent"],
+    answer: 5
+  },
+  {
+    id: 7,
+    question: "Have you engaged in any self-care activities today?",
+    type: "radio",
+    options: [
+      { value: "none", label: "None" },
+      { value: "minimal", label: "Minimal (basic hygiene)" },
+      { value: "moderate", label: "Moderate (exercise, healthy eating)" },
+      { value: "extensive", label: "Extensive (multiple activities)" }
+    ],
+    answer: ""
+  },
+  {
+    id: 8,
+    question: "How would you rate your social interactions today?",
+    type: "slider",
+    min: 1,
+    max: 10,
+    step: 1,
+    labels: ["Very negative", "Neutral", "Very positive"],
+    answer: 5
+  },
+  {
+    id: 9,
+    question: "Have you experienced any intrusive or recurring thoughts today?",
+    type: "radio",
+    options: [
+      { value: "none", label: "None" },
+      { value: "mild", label: "Occasionally" },
+      { value: "moderate", label: "Frequently" },
+      { value: "severe", label: "Constantly" }
+    ],
+    answer: ""
+  },
+  {
+    id: 10,
+    question: "How optimistic do you feel about the near future?",
+    type: "slider",
+    min: 1,
+    max: 10,
+    step: 1,
+    labels: ["Very pessimistic", "Neutral", "Very optimistic"],
+    answer: 5
+  },
+  {
+    id: 11,
+    question: "What are your main sources of stress or concern right now?",
+    type: "textarea",
+    answer: ""
+  },
+  {
+    id: 12,
+    question: "What coping strategies have you used today to manage your emotions?",
+    type: "textarea",
+    answer: ""
+  },
+  {
+    id: 13,
+    question: "How supported do you feel by your social network?",
+    type: "slider",
+    min: 1,
+    max: 10,
+    step: 1,
+    labels: ["Not at all", "Somewhat", "Very supported"],
+    answer: 5
+  },
+  {
+    id: 14,
+    question: "Have you had any thoughts of self-harm or suicide?",
+    type: "radio",
+    options: [
+      { value: "none", label: "None" },
+      { value: "passive", label: "Passive thoughts only" },
+      { value: "active", label: "Active thoughts" },
+      { value: "severe", label: "Immediate risk" }
+    ],
+    answer: ""
+  },
+  {
+    id: 15,
+    question: "Is there anything specific you'd like to discuss with a mental health professional?",
     type: "textarea",
     answer: ""
   }
@@ -105,8 +220,18 @@ export function HealthQuestionnaire({ onSubmit, isLoading }: HealthQuestionnaire
       mood: questions[0].answer,
       anxiety: questions[1].answer,
       sleep_quality: questions[2].answer,
-      self_care: questions[3].answer,
-      stress_factors: questions[4].answer
+      energy_levels: questions[3].answer,
+      physical_symptoms: questions[4].answer,
+      concentration: questions[5].answer,
+      self_care: questions[6].answer,
+      social_interactions: questions[7].answer,
+      intrusive_thoughts: questions[8].answer,
+      optimism: questions[9].answer,
+      stress_factors: questions[10].answer,
+      coping_strategies: questions[11].answer,
+      social_support: questions[12].answer,
+      self_harm: questions[13].answer,
+      discuss_professional: questions[14].answer
     };
 
     onSubmit(questionnaireData);
@@ -180,7 +305,7 @@ export function HealthQuestionnaire({ onSubmit, isLoading }: HealthQuestionnaire
               onValueChange={handleSliderChange}
             />
             <div className="flex justify-between">
-              {question.labels.map((label, index) => (
+              {question.labels?.map((label, index) => (
                 <span key={index} className="text-xs text-muted-foreground">
                   {label}
                 </span>

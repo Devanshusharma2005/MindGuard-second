@@ -1,27 +1,12 @@
 import axios from 'axios';
 
 export interface HealthQuestionnaireData {
-  sleep: {
-    duration: number;
-    quality: number;
-  };
-  mood: {
-    level: number;
-    description: string;
-  };
-  anxiety: {
-    level: number;
-    triggers: string[];
-  };
-  stress: {
-    level: number;
-    sources: string[];
-  };
-  activities: {
-    exercise: number;
-    meditation: number;
-    social: number;
-  };
+  user_id?: string;
+  mood: number;
+  anxiety: string;
+  sleep_quality: number;
+  self_care: string;
+  stress_factors: string;
 }
 
 export interface HealthAnalysisResponse {
@@ -102,12 +87,15 @@ export interface HealthAnalysisResponse {
   };
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const healthTrackingService = {
   async submitQuestionnaire(data: HealthQuestionnaireData): Promise<HealthAnalysisResponse> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/health-tracking`, data);
+      const response = await axios.post(`${API_BASE_URL}/health-tracking`, {
+        user_id: localStorage.getItem('mindguard_user_id'),
+        ...data
+      });
       return response.data;
     } catch (error) {
       console.error('Error submitting health questionnaire:', error);

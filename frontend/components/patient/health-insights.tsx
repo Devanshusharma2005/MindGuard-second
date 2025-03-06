@@ -1,12 +1,12 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 import { AlertTriangle, Brain, Heart, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 
 interface InsightData {
-  mainInsight: string;
+  mainInsight: { [key: string]: number };
   riskAnalysis: {
     low: number;
     moderate: number;
@@ -27,6 +27,7 @@ interface InsightData {
     detail: string;
   };
   patterns: string[];
+  risk_factors?: string[];
 }
 
 interface HealthInsightsProps {
@@ -36,11 +37,21 @@ interface HealthInsightsProps {
 export function HealthInsights({ insights }: HealthInsightsProps) {
   if (!insights) {
     return (
-      <div className="text-center p-4 text-muted-foreground">
-        Complete the questionnaire to see your health insights.
+      <div className="text-center text-muted-foreground">
+        Complete the questionnaire to view your insights
       </div>
     );
   }
+
+  const getEmotionSummary = (emotions: { [key: string]: number }) => {
+    const sortedEmotions = Object.entries(emotions)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3);
+    
+    return sortedEmotions.map(([emotion, count]) => 
+      `${emotion} (${count} instances)`
+    ).join(", ");
+  };
 
   const riskData = [
     { name: "Low", value: insights.riskAnalysis.low, color: "hsl(var(--chart-2))" },
@@ -50,149 +61,184 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border bg-card p-4">
-        <div className="flex items-start gap-4">
-          <div className="rounded-full bg-primary/10 p-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-          </div>
-          <div className="space-y-1">
-            <p className="font-medium">AI-Generated Insight</p>
-            <p className="text-sm text-muted-foreground">
-              {insights.mainInsight}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-sm font-medium">Risk Analysis</p>
-                <p className="text-xs text-muted-foreground">
-                  Current mental health risk factors
-                </p>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-primary" />
+              Emotional Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              {getEmotionSummary(insights.mainInsight)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Risk Analysis
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Low Risk:</span>
+                <Badge variant="outline" className="bg-green-50">
+                  {insights.riskAnalysis.low}
+                </Badge>
               </div>
-              <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="h-[200px] mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={riskData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {riskData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Legend 
-                    verticalAlign="bottom" 
-                    height={36} 
-                    iconType="circle" 
-                    iconSize={8}
-                    wrapperStyle={{ fontSize: "12px" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="flex justify-between">
+                <span>Moderate Risk:</span>
+                <Badge variant="outline" className="bg-yellow-50">
+                  {insights.riskAnalysis.moderate}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>High Risk:</span>
+                <Badge variant="outline" className="bg-red-50">
+                  {insights.riskAnalysis.high}
+                </Badge>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <div className="space-y-4">
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">Anxiety Levels</p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-primary" />
+              Anxiety Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span>Status:</span>
+                <Badge 
+                  variant={insights.anxietyTrend.status === "increasing" ? "destructive" : "outline"}
+                  className="flex items-center gap-1"
+                >
+                  {insights.anxietyTrend.status === "increasing" ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
+                  {insights.anxietyTrend.status}
+                </Badge>
               </div>
-              <div className="flex items-center gap-1">
-                {insights.anxietyTrend.status === "decreasing" ? (
-                  <>
-                    <TrendingDown className="h-4 w-4 text-green-500" />
-                    <span className="text-xs font-medium text-green-500">Decreasing</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="h-4 w-4 text-amber-500" />
-                    <span className="text-xs font-medium text-amber-500">Increasing</span>
-                  </>
-                )}
+              <div className="flex justify-between">
+                <span>Change:</span>
+                <span>{insights.anxietyTrend.percentage}%</span>
               </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {insights.anxietyTrend.detail}
+              </p>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {insights.anxietyTrend.detail}
-            </p>
-          </div>
-
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Heart className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">Stress Response</p>
-              </div>
-              <div className="flex items-center gap-1">
-                {insights.stressResponse.status === "improving" ? (
-                  <>
-                    <TrendingDown className="h-4 w-4 text-green-500" />
-                    <span className="text-xs font-medium text-green-500">Improving</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="h-4 w-4 text-amber-500" />
-                    <span className="text-xs font-medium text-amber-500">Worsening</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {insights.stressResponse.detail}
-            </p>
-          </div>
-
-          <div className="rounded-lg border bg-card p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-muted-foreground" />
-                <p className="text-sm font-medium">Mood Stability</p>
-              </div>
-              <div className="flex items-center gap-1">
-                {insights.moodStability.status === "stable" ? (
-                  <>
-                    <TrendingDown className="h-4 w-4 text-green-500" />
-                    <span className="text-xs font-medium text-green-500">Stable</span>
-                  </>
-                ) : (
-                  <>
-                    <TrendingUp className="h-4 w-4 text-amber-500" />
-                    <span className="text-xs font-medium text-amber-500">Fluctuating</span>
-                  </>
-                )}
-              </div>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              {insights.moodStability.detail}
-            </p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="rounded-lg border bg-card p-4">
-        <p className="mb-3 font-medium">Key Patterns Identified</p>
-        <div className="flex flex-wrap gap-2">
-          {insights.patterns.map((pattern, index) => (
-            <Badge key={index} variant="secondary" className="text-xs">
-              {pattern}
-            </Badge>
-          ))}
-        </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-yellow-500" />
+              Stress Response
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span>Status:</span>
+                <Badge 
+                  variant={insights.stressResponse.status === "improving" ? "outline" : "destructive"}
+                  className="flex items-center gap-1"
+                >
+                  {insights.stressResponse.status === "improving" ? (
+                    <TrendingDown className="h-3 w-3" />
+                  ) : (
+                    <TrendingUp className="h-3 w-3" />
+                  )}
+                  {insights.stressResponse.status}
+                </Badge>
+              </div>
+              <div className="flex justify-between">
+                <span>Change:</span>
+                <span>{insights.stressResponse.percentage}%</span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {insights.stressResponse.detail}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-primary" />
+              Mood Stability
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span>Status:</span>
+                <Badge 
+                  variant={insights.moodStability.status === "stable" ? "outline" : "secondary"}
+                >
+                  {insights.moodStability.status}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {insights.moodStability.detail}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            Risk Factors & Patterns
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {insights.risk_factors && insights.risk_factors.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Risk Factors</h4>
+                <ul className="list-disc pl-4 space-y-1">
+                  {insights.risk_factors.map((factor, index) => (
+                    <li key={index} className="text-sm text-muted-foreground">
+                      {factor}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {insights.patterns && insights.patterns.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Identified Patterns</h4>
+                <ul className="list-disc pl-4 space-y-1">
+                  {insights.patterns.map((pattern, index) => (
+                    <li key={index} className="text-sm text-muted-foreground">
+                      {pattern}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

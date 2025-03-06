@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const userRoutes = require('./routes/user');
+const healthTrackingRoutes = require('./routes/healthTracking');
+const questionnaireRoutes = require('./routes/api/questionnaire');
 
 const app = express();
 
@@ -16,14 +18,37 @@ app.use(express.json());
 
 // Routes
 app.use('/api/user', userRoutes);
+app.use('/health-tracking', healthTrackingRoutes);
+app.use('/api/questionnaire', questionnaireRoutes);
+
+// Debug endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
 
 // MongoDB Connection with error handling
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('✅ MongoDB Connected'))
-.catch(err => console.error('MongoDB Connection Error:', err));
+.then(() => {
+  console.log('✅ MongoDB Connected');
+  console.log('Database Name:', mongoose.connection.name);
+})
+.catch(err => {
+  console.error('MongoDB Connection Error:', err);
+  console.error('Connection string:', process.env.MONGODB_URI.replace(/:[^:@]+@/, ':****@'));
+  process.exit(1);
+});
+
+// Add connection event listeners
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
 
 // Import User model
 const User = require('./models/User');

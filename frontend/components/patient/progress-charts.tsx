@@ -1,9 +1,7 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Bar, LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface ProgressData {
   moodData: Array<{
@@ -27,7 +25,10 @@ interface ProgressData {
     mood: { change: number };
     anxiety: { change: number };
     stress: { change: number };
-    sleep: { durationChange: number; qualityChange: number };
+    sleep: {
+      durationChange: number;
+      qualityChange: number;
+    };
     activities: {
       exerciseChange: number;
       meditationChange: number;
@@ -43,195 +44,233 @@ interface ProgressChartsProps {
 export function ProgressCharts({ progressData }: ProgressChartsProps) {
   if (!progressData) {
     return (
-      <div className="text-center p-4 text-muted-foreground">
-        Complete the questionnaire to see your progress charts.
+      <div className="text-center text-muted-foreground">
+        Complete the questionnaire to view your progress
       </div>
     );
   }
 
-  const { moodData, sleepData, activityData, summary } = progressData;
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+  };
+
+  const formatChange = (value: number) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    return numValue > 0 ? `+${numValue}%` : `${numValue}%`;
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-medium">Tracking Period</p>
-        <Select defaultValue="8weeks">
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select period" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="4weeks">Last 4 Weeks</SelectItem>
-            <SelectItem value="8weeks">Last 8 Weeks</SelectItem>
-            <SelectItem value="3months">Last 3 Months</SelectItem>
-            <SelectItem value="6months">Last 6 Months</SelectItem>
-            <SelectItem value="1year">Last Year</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Mood & Anxiety Trends</CardTitle>
+            <CardDescription>
+              Track your emotional well-being over time
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={progressData.moodData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={formatDate}
+                    type="category"
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis domain={[0, 10]} />
+                  <Tooltip
+                    labelFormatter={(label) => formatDate(label as string)}
+                    formatter={(value: number) => [value.toFixed(1), ""]}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="mood"
+                    stroke="hsl(var(--primary))"
+                    name="Mood"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="anxiety"
+                    stroke="hsl(var(--destructive))"
+                    name="Anxiety"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="stress"
+                    stroke="hsl(var(--warning))"
+                    name="Stress"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Mood Change</div>
+                <div className={progressData.summary.mood.change >= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(progressData.summary.mood.change)}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Anxiety Change</div>
+                <div className={progressData.summary.anxiety.change <= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(progressData.summary.anxiety.change)}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Stress Change</div>
+                <div className={progressData.summary.stress.change <= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(progressData.summary.stress.change)}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sleep Patterns</CardTitle>
+            <CardDescription>
+              Monitor your sleep quality and duration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={progressData.sleepData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="date" 
+                    tickFormatter={formatDate}
+                    type="category"
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis domain={[0, 10]} />
+                  <Tooltip
+                    labelFormatter={(label) => formatDate(label as string)}
+                    formatter={(value: number) => [value.toFixed(1), ""]}
+                  />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="hours"
+                    stroke="hsl(var(--primary))"
+                    name="Hours"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="quality"
+                    stroke="hsl(var(--secondary))"
+                    name="Quality"
+                    strokeWidth={2}
+                    dot={{ r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <div className="text-muted-foreground">Duration Change</div>
+                <div className={progressData.summary.sleep.durationChange >= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(progressData.summary.sleep.durationChange)}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Quality Change</div>
+                <div className={progressData.summary.sleep.qualityChange >= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(progressData.summary.sleep.qualityChange)}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <Tabs defaultValue="mood">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="mood">Mood & Emotions</TabsTrigger>
-          <TabsTrigger value="sleep">Sleep Patterns</TabsTrigger>
-          <TabsTrigger value="activities">Wellness Activities</TabsTrigger>
-        </TabsList>
-        <TabsContent value="mood">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={moodData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 10]} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: "var(--radius)",
-                        boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
-                      }}
-                      itemStyle={{ color: "hsl(var(--foreground))" }}
-                      labelStyle={{ fontWeight: "bold", marginBottom: "4px" }}
-                    />
-                    <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="mood" 
-                      name="Mood (higher is better)"
-                      stroke="hsl(var(--chart-2))" 
-                      strokeWidth={2} 
-                      activeDot={{ r: 8 }} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="anxiety" 
-                      name="Anxiety (lower is better)"
-                      stroke="hsl(var(--chart-1))" 
-                      strokeWidth={2} 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="stress" 
-                      name="Stress (lower is better)"
-                      stroke="hsl(var(--chart-3))" 
-                      strokeWidth={2} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+      <Card>
+        <CardHeader>
+          <CardTitle>Activity Tracking</CardTitle>
+          <CardDescription>
+            Monitor your engagement in various activities
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={progressData.activityData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="date" 
+                  tickFormatter={formatDate}
+                  type="category"
+                  interval="preserveStartEnd"
+                />
+                <YAxis domain={[0, 10]} />
+                <Tooltip
+                  labelFormatter={(label) => formatDate(label as string)}
+                  formatter={(value: number) => [value.toFixed(1), ""]}
+                />
+                <Legend />
+                <Line
+                  type="monotone"
+                  dataKey="exercise"
+                  stroke="hsl(var(--primary))"
+                  name="Exercise"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="meditation"
+                  stroke="hsl(var(--secondary))"
+                  name="Meditation"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="social"
+                  stroke="hsl(var(--accent))"
+                  name="Social"
+                  strokeWidth={2}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <div className="text-muted-foreground">Exercise Change</div>
+              <div className={progressData.summary.activities.exerciseChange >= 0 ? "text-green-600" : "text-red-600"}>
+                {formatChange(progressData.summary.activities.exerciseChange)}
               </div>
-              <p className="mt-4 text-sm text-muted-foreground text-center">
-                Your mood has improved by {summary.mood.change}% while anxiety and stress have decreased by {summary.anxiety.change}% and {summary.stress.change}% respectively.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="sleep">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={sleepData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <defs>
-                      <linearGradient id="sleepHours" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--chart-4))" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="hsl(var(--chart-4))" stopOpacity={0}/>
-                      </linearGradient>
-                      <linearGradient id="sleepQuality" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="hsl(var(--chart-5))" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="hsl(var(--chart-5))" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="date" />
-                    <YAxis yAxisId="left" domain={[0, 10]} />
-                    <YAxis yAxisId="right" orientation="right" domain={[0, 10]} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: "var(--radius)",
-                        boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
-                      }}
-                      itemStyle={{ color: "hsl(var(--foreground))" }}
-                      labelStyle={{ fontWeight: "bold", marginBottom: "4px" }}
-                    />
-                    <Legend />
-                    <Area 
-                      type="monotone" 
-                      dataKey="hours" 
-                      name="Sleep Hours"
-                      yAxisId="left"
-                      stroke="hsl(var(--chart-4))" 
-                      fillOpacity={1} 
-                      fill="url(#sleepHours)" 
-                    />
-                    <Area 
-                      type="monotone" 
-                      dataKey="quality" 
-                      name="Sleep Quality (1-10)"
-                      yAxisId="right"
-                      stroke="hsl(var(--chart-5))" 
-                      fillOpacity={1} 
-                      fill="url(#sleepQuality)" 
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Meditation Change</div>
+              <div className={progressData.summary.activities.meditationChange >= 0 ? "text-green-600" : "text-red-600"}>
+                {formatChange(progressData.summary.activities.meditationChange)}
               </div>
-              <p className="mt-4 text-sm text-muted-foreground text-center">
-                Your sleep duration has increased by {summary.sleep.durationChange}% and sleep quality has improved by {summary.sleep.qualityChange}%.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="activities">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={activityData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="date" />
-                    <YAxis domain={[0, 7]} />
-                    <Tooltip 
-                      contentStyle={{ 
-                        backgroundColor: "hsl(var(--card))", 
-                        borderColor: "hsl(var(--border))",
-                        borderRadius: "var(--radius)",
-                        boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
-                      }}
-                      itemStyle={{ color: "hsl(var(--foreground))" }}
-                      labelStyle={{ fontWeight: "bold", marginBottom: "4px" }}
-                    />
-                    <Legend />
-                    <Bar 
-                      dataKey="exercise" 
-                      name="Exercise (days/week)" 
-                      fill="hsl(var(--chart-1))" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar 
-                      dataKey="meditation" 
-                      name="Meditation (days/week)" 
-                      fill="hsl(var(--chart-2))" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                    <Bar 
-                      dataKey="social" 
-                      name="Social Activities (times/week)" 
-                      fill="hsl(var(--chart-3))" 
-                      radius={[4, 4, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Social Change</div>
+              <div className={progressData.summary.activities.socialChange >= 0 ? "text-green-600" : "text-red-600"}>
+                {formatChange(progressData.summary.activities.socialChange)}
               </div>
-              <p className="mt-4 text-sm text-muted-foreground text-center">
-                Your weekly exercise has increased by {summary.activities.exerciseChange}%, meditation by {summary.activities.meditationChange}%, and social activities by {summary.activities.socialChange}%.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

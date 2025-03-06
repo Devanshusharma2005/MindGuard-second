@@ -13,6 +13,7 @@ import {
   Settings,
   HelpCircle,
   Home,
+  Gamepad2,
 } from "lucide-react";
 
 const navItems = [
@@ -50,6 +51,11 @@ const navItems = [
     name: "Music Therapy",
     href: "/patient/music-therapy",
     icon: Music,
+  },
+  {
+    name: "Gamification",
+    href: "/patient/Gamification",
+    icon: Gamepad2,
   },
 ];
 
