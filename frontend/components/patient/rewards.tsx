@@ -107,7 +107,7 @@ export function Rewards() {
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="p-4 flex flex-col items-center justify-center text-center">
-          <div className="text-2xl font-bold">1,850</div>
+          <div className="text-2xl font-bold">{userRewards.totalPoints}  </div>
           <div className="text-muted-foreground">Total Points</div>
         </Card>
         <Card className="p-4 flex flex-col items-center justify-center text-center">

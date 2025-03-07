@@ -4,10 +4,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChallengesList } from "@/components/patient/challenges-list";
+
 import { Leaderboard } from "@/components/patient/leaderboard";
 import { MoodCheckIn } from "@/components/patient/mood-check-in";
 import { Rewards } from "@/components/patient/rewards";
+import ChallengesList from "@/components/patient/challenges-list";
 
 export default function WellnessChallenges() {
   const [activeTab, setActiveTab] = useState("challenges");
@@ -33,12 +34,6 @@ export default function WellnessChallenges() {
         </TabsList>
         <TabsContent value="challenges">
           <Card>
-            <CardHeader>
-              <CardTitle>Self-Care Challenges</CardTitle>
-              <CardDescription>
-                Mindfulness exercises, journaling prompts, and gratitude tasks
-              </CardDescription>
-            </CardHeader>
             <CardContent>
               <ChallengesList />
             </CardContent>

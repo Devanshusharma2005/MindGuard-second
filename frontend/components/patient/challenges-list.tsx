@@ -1,226 +1,295 @@
-"use client";
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2, Clock, Trophy } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react"
+import { Navbar } from "@/components/navbar"
+import { TaskTimeline } from "@/components/task-timeline"
+import { RewardPopup } from "@/components/reward-popup"
+import { WalkProgress } from "@/components/walk-progress"
+import type { Task, UserStats } from "@/types"
+import { tasks as initialTasks } from "@/data/tasks"
+import { Button } from "@/components/ui/button"
+import { Toaster } from "@/components/ui/toaster"
+import { useToast } from "@/components/ui/use-toast"
 
-const activeChallenges = [
-  {
-    id: 1,
-    title: "7-Day Mindfulness Challenge",
-    description: "Practice mindfulness meditation for at least 10 minutes each day",
-    category: "Mindfulness",
-    progress: 57,
-    daysCompleted: 4,
-    totalDays: 7,
-    reward: "Silver Mindfulness Badge",
-    deadline: "3 days left"
-  },
-  {
-    id: 2,
-    title: "Gratitude Journal",
-    description: "Write down 3 things you're grateful for each day",
-    category: "Self-reflection",
-    progress: 40,
-    daysCompleted: 4,
-    totalDays: 10,
-    reward: "Gratitude Master Badge",
-    deadline: "6 days left"
-  },
-  {
-    id: 3,
-    title: "Mood Tracking Streak",
-    description: "Record your mood consistently every day",
-    category: "Self-awareness",
-    progress: 80,
-    daysCompleted: 24,
-    totalDays: 30,
-    reward: "Premium Content Unlock",
-    deadline: "6 days left"
+export default function ChallengesList() {
+  const { toast } = useToast()
+  const [tasks, setTasks] = useState<Task[]>(initialTasks)
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0)
+  const [showReward, setShowReward] = useState(false)
+  const [rewardPoints, setRewardPoints] = useState(0)
+  const [userStats, setUserStats] = useState<UserStats>({
+    points: 0,
+    streak: 0,
+    lastCompletedDate: null,
+  })
+  const [showRewardPopups, setShowRewardPopups] = useState(true)
+  const [walkStartTime, setWalkStartTime] = useState<Date | null>(null)
+  const [stepCount, setStepCount] = useState(0)
+  const initialStepCountRef = useRef<number | null>(null)
+
+  // Load user stats from localStorage on initial render
+  useEffect(() => {
+    const savedStats = localStorage.getItem("mindTrackUserStats")
+    const savedTasks = localStorage.getItem("mindTrackTasks")
+    const savedCurrentTaskIndex = localStorage.getItem("mindTrackCurrentTaskIndex")
+
+    if (savedStats) {
+      setUserStats(JSON.parse(savedStats))
+    }
+
+    if (savedTasks) {
+      setTasks(JSON.parse(savedTasks))
+    }
+
+    if (savedCurrentTaskIndex) {
+      setCurrentTaskIndex(Number.parseInt(savedCurrentTaskIndex))
+    }
+
+    // Check streak
+    checkStreak()
+  }, [])
+
+  // Save user stats to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("mindTrackUserStats", JSON.stringify(userStats))
+  }, [userStats])
+
+  // Save tasks to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("mindTrackTasks", JSON.stringify(tasks))
+  }, [tasks])
+
+  // Save current task index to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("mindTrackCurrentTaskIndex", currentTaskIndex.toString())
+  }, [currentTaskIndex])
+
+  // Setup step counter when walk starts
+  useEffect(() => {
+    if (!walkStartTime) return;
+
+    let stepSensor: any = null;
+
+    const startStepCounting = async () => {
+      try {
+        if ('Sensor' in window && 'StepCounter' in window) {
+          stepSensor = new (window as any).StepCounter();
+          initialStepCountRef.current = null;
+
+          stepSensor.onreading = () => {
+            const currentSteps = stepSensor.steps;
+            
+            if (initialStepCountRef.current === null) {
+              initialStepCountRef.current = currentSteps;
+              setStepCount(0);
+              return;
+            }
+
+            const stepsTaken = currentSteps - initialStepCountRef.current;
+            setStepCount(stepsTaken);
+          };
+
+          stepSensor.start();
+          
+          toast({
+            title: "Step Counter Active",
+            description: "Your steps are being counted automatically.",
+          });
+        } else {
+          toast({
+            title: "Step Counter Not Available",
+            description: "Using timer-based tracking instead.",
+          });
+        }
+      } catch (error) {
+        console.error('Error starting step counter:', error);
+        toast({
+          title: "Step Counter Error",
+          description: "Using timer-based tracking instead.",
+        });
+      }
+    };
+
+    startStepCounting();
+
+    return () => {
+      if (stepSensor) {
+        stepSensor.stop();
+      }
+    };
+  }, [walkStartTime]);
+
+  const checkStreak = () => {
+    const today = new Date().toDateString()
+    const lastCompleted = userStats.lastCompletedDate
+
+    if (!lastCompleted) return
+
+    const lastDate = new Date(lastCompleted)
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    // If last completed date is before yesterday, reset streak
+    if (lastDate < new Date(yesterday.toDateString())) {
+      setUserStats((prev) => ({
+        ...prev,
+        streak: 0,
+      }))
+
+      toast({
+        title: "Streak Reset",
+        description: "You missed a day! Your streak has been reset.",
+        variant: "destructive",
+      })
+    }
   }
-];
 
-const availableChallenges = [
-  {
-    id: 4,
-    title: "Nature Connection",
-    description: "Spend at least 20 minutes outdoors in nature each day",
-    category: "Physical Wellbeing",
-    duration: "14 days",
-    difficulty: "Easy",
-    reward: "Nature Explorer Badge"
-  },
-  {
-    id: 5,
-    title: "Digital Detox",
-    description: "Reduce screen time by 50% and practice being present",
-    category: "Mindfulness",
-    duration: "7 days",
-    difficulty: "Medium",
-    reward: "Digital Balance Badge"
-  },
-  {
-    id: 6,
-    title: "Sleep Improvement",
-    description: "Maintain a consistent sleep schedule and practice good sleep hygiene",
-    category: "Physical Wellbeing",
-    duration: "21 days",
-    difficulty: "Medium",
-    reward: "Sleep Master Badge + 15% discount on premium features"
-  },
-  {
-    id: 7,
-    title: "Anxiety Management Toolkit",
-    description: "Learn and practice a new anxiety management technique each day",
-    category: "Stress Management",
-    duration: "10 days",
-    difficulty: "Medium",
-    reward: "Anxiety Management Badge"
-  },
-  {
-    id: 8,
-    title: "Social Connection",
-    description: "Reach out to a friend or family member each day",
-    category: "Social Wellbeing",
-    duration: "7 days",
-    difficulty: "Easy",
-    reward: "Connection Champion Badge"
+  const startWalk = () => {
+    setWalkStartTime(new Date());
+    setStepCount(0);
+    initialStepCountRef.current = null;
+    toast({
+      title: "Walk Started",
+      description: "Your 15-minute walk has begun. Keep moving!",
+    });
+  };
+
+  const completeTask = (taskId: string) => {
+    // Find the task index
+    const taskIndex = tasks.findIndex((t) => t.id === taskId)
+    if (taskIndex !== currentTaskIndex) {
+      toast({
+        title: "Task Locked",
+        description: "You need to complete the current task first!",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Check if it's the afternoon walk task
+    const isAfternoonWalk = tasks[taskIndex].title === "Afternoon Walk";
+    if (isAfternoonWalk) {
+      if (!walkStartTime) {
+        startWalk();
+        return;
+      }
+
+      const walkDuration = (new Date().getTime() - walkStartTime.getTime()) / (1000 * 60); // Duration in minutes
+      const minimumSteps = 1500; // Approximately 1500 steps for a 15-minute walk
+      
+      if (walkDuration < 15) {
+        const remainingMinutes = Math.ceil(15 - walkDuration);
+        toast({
+          title: "Keep Walking",
+          description: `You've taken ${stepCount} steps. Keep going for ${remainingMinutes} more minutes!`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Reset walk tracking
+      setWalkStartTime(null);
+    }
+
+    // Update the task as completed
+    const updatedTasks = [...tasks]
+    updatedTasks[taskIndex] = {
+      ...updatedTasks[taskIndex],
+      completed: true,
+      progress: 100,
+    }
+
+    setTasks(updatedTasks)
+
+    // Generate random reward points (10-50)
+    const points = Math.floor(Math.random() * 41) + 10
+    setRewardPoints(points)
+
+    // Only show reward popup if enabled
+    if (showRewardPopups) {
+      setShowReward(true)
+    } else {
+      // If popups are disabled, just update the points directly
+      const today = new Date().toDateString()
+      setUserStats((prev) => ({
+        points: prev.points + points,
+        streak: prev.lastCompletedDate === today ? prev.streak : prev.streak + 1,
+        lastCompletedDate: today,
+      }))
+
+      // Show a toast notification instead
+      toast({
+        title: "Task Completed!",
+        description: `You earned ${points} points!`,
+      })
+    }
+
+    // Update current task index if there are more tasks
+    if (currentTaskIndex < tasks.length - 1) {
+      setCurrentTaskIndex(currentTaskIndex + 1)
+    }
   }
-];
 
-const completedChallenges = [
-  {
-    id: 9,
-    title: "5-Day Meditation Challenge",
-    description: "Complete a guided meditation session each day",
-    category: "Mindfulness",
-    completedDate: "May 15, 2025",
-    reward: "Meditation Beginner Badge"
-  },
-  {
-    id: 10,
-    title: "Positive Affirmations",
-    description: "Practice daily positive affirmations for self-esteem",
-    category: "Self-care",
-    completedDate: "April 28, 2025",
-    reward: "Positivity Badge"
+  const closeReward = () => {
+    setShowReward(false)
   }
-];
 
-export function ChallengesList() {
+  const resetTasks = () => {
+    setTasks(initialTasks)
+    setCurrentTaskIndex(0)
+    toast({
+      title: "Tasks Reset",
+      description: "All tasks have been reset. Your points and streak remain.",
+    })
+  }
+
   return (
-    <div className="space-y-6">
-      <Tabs defaultValue="active">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="active">Active Challenges</TabsTrigger>
-          <TabsTrigger value="available">Available</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-        </TabsList>
-        <TabsContent value="active" className="space-y-4">
-          {activeChallenges.map((challenge) => (
-            <Card key={challenge.id}>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{challenge.title}</h3>
-                        <Badge variant="outline">{challenge.category}</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Clock className="mr-1 h-3 w-3" />
-                      {challenge.deadline}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>Progress</span>
-                      <span className="font-medium">{challenge.daysCompleted}/{challenge.totalDays} days</span>
-                    </div>
-                    <Progress value={challenge.progress} className="h-2" />
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center">
-                      <Trophy className="mr-1 h-3 w-3" />
-                      Reward: {challenge.reward}
-                    </div>
-                    <Button variant="outline" size="sm">
-                      Check In Today
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-        <TabsContent value="available" className="space-y-4">
-          {availableChallenges.map((challenge) => (
-            <Card key={challenge.id}>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{challenge.title}</h3>
-                        <Badge variant="outline">{challenge.category}</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
-                    </div>
-                    <Badge variant="secondary">{challenge.difficulty}</Badge>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center">
-                      <Clock className="mr-1 h-3 w-3" />
-                      Duration: {challenge.duration}
-                    </div>
-                    <div className="flex items-center">
-                      <Trophy className="mr-1 h-3 w-3" />
-                      Reward: {challenge.reward}
-                    </div>
-                  </div>
-                  <Button size="sm" className="w-full">
-                    Start Challenge
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-        <TabsContent value="completed" className="space-y-4">
-          {completedChallenges.map((challenge) => (
-            <Card key={challenge.id}>
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 text-primary">
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium">{challenge.title}</h3>
-                        <Badge variant="outline">{challenge.category}</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{challenge.description}</p>
-                      <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                        <div>Completed on: {challenge.completedDate}</div>
-                        <div className="flex items-center">
-                          <Trophy className="mr-1 h-3 w-3" />
-                          Reward: {challenge.reward}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-      </Tabs>
+    <div className="min-h-screen bg-gradient-to-b from-background to-background/90 bg-[url('/pattern.svg')] bg-fixed">
+      <main className="container mx-auto px-4 py-8">
+        <div className="flex flex-col items-center mb-8">
+          <h1 className="text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500 mb-2">
+            MindTrack Journey
+          </h1>
+          <p className="text-center text-muted-foreground max-w-2xl">
+            Complete daily wellness tasks to earn rewards and maintain your streak. Your mental health journey
+            visualized as a path to wellness.
+          </p>
+          <Button variant="outline" className="mt-4" onClick={resetTasks}>
+            Reset Tasks
+          </Button>
+          <div className="flex items-center gap-2 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRewardPopups(!showRewardPopups)}
+              className="text-xs"
+            >
+              {showRewardPopups ? "Disable" : "Enable"} Reward Popups
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {showRewardPopups ? "Popups are enabled" : "Using toast notifications instead"}
+            </span>
+          </div>
+        </div>
+
+        {/* Show walk progress if afternoon walk is active */}
+        {tasks[currentTaskIndex]?.title === "Afternoon Walk" && (
+          <div className="max-w-md mx-auto mb-8">
+            <WalkProgress
+              startTime={walkStartTime}
+              stepCount={stepCount}
+              targetSteps={1500}
+              targetMinutes={15}
+            />
+          </div>
+        )}
+
+        <TaskTimeline tasks={tasks} currentTaskIndex={currentTaskIndex} onCompleteTask={completeTask} />
+
+        {showReward && <RewardPopup points={rewardPoints} onClose={closeReward} />}
+      </main>
+      <Toaster />
     </div>
-  );
+  )
 }
+
