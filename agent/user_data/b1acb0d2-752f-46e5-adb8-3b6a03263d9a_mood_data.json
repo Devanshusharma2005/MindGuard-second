@@ -40,6 +40,46 @@
       "intensity": 0.1,
       "context": "what are some mindfulness exercises for anxiety?",
       "triggers": []
+    },
+    {
+      "timestamp": "2025-03-09T04:16:51.732383",
+      "date": "2025-03-09",
+      "time": "04:16",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hello",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-09T04:16:53.663416",
+      "date": "2025-03-09",
+      "time": "04:16",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hello",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-09T04:17:11.712016",
+      "date": "2025-03-09",
+      "time": "04:17",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hello i am archit agarwal and i am little depressed today",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-09T04:17:27.618055",
+      "date": "2025-03-09",
+      "time": "04:17",
+      "mood": "crisis",
+      "valence": -0.9,
+      "intensity": 0.9,
+      "context": "my girlfriend has broken up with me and i am feeling so much stress and now feeling to suicide",
+      "triggers": []
     }
   ],
   "insights": [],

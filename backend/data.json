@@ -582,5 +582,44 @@
             },
             "disorder_indicators": []
         }
+    },
+    {
+        "input": {
+            "mood": 9,
+            "anxiety": "none",
+            "sleep_quality": 9,
+            "energy_levels": 5,
+            "physical_symptoms": "none",
+            "concentration": 5,
+            "self_care": "moderate",
+            "social_interactions": 5,
+            "intrusive_thoughts": "mild",
+            "optimism": 5,
+            "stress_factors": "feeling any concern or worries today I am feeling quite happy",
+            "coping_strategies": "my current stress level is low",
+            "social_support": 5,
+            "self_harm": "none",
+            "discuss_professional": "feeling any concern or worries today I am feeling quite happy",
+            "medication_adherence": "yes I have taken a paracetamol tablet and I am taking my prescribed medications regularly",
+            "substance_use": "no I haven't used any substances in the last 24 hours",
+            "appetite_changes": "hungry today and filling a better appetite",
+            "user_id": "b1acb0d2-752f-46e5-adb8-3b6a03263d9a"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "joyful": 2,
+                    "energetic": 1,
+                    "optimistic": 1,
+                    "calm": 2,
+                    "relaxed": 1
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.9,
+                "crisis_count": 0,
+                "risk_factors": []
+            },
+            "disorder_indicators": []
+        }
     }
 ]

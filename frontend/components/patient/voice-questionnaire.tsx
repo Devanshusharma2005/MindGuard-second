@@ -41,6 +41,7 @@ export function VoiceQuestionnaire() {
   const [isStarted, setIsStarted] = useState(false);
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [userId, setUserId] = useState<string>("");
 
   useEffect(() => {
     // Load voices when component mounts
@@ -57,6 +58,17 @@ export function VoiceQuestionnaire() {
       }
       window.speechSynthesis.cancel();
     };
+  }, []);
+
+  useEffect(() => {
+    const storedUserId = localStorage.getItem("mindguard_user_id");
+    if (storedUserId) {
+      setUserId(storedUserId);
+    } else {
+      const newUserId = crypto.randomUUID();
+      localStorage.setItem("mindguard_user_id", newUserId);
+      setUserId(newUserId);
+    }
   }, []);
 
   const speakMessage = (text: string): Promise<void> => {
@@ -173,13 +185,19 @@ export function VoiceQuestionnaire() {
       // Format responses for the backend
       const formattedData = formatResponsesForBackend(finalResponses);
       
+      // Add userId to the request body
+      const requestBody = {
+        ...formattedData,
+        user_id: userId
+      };
+
       // Send to backend
       const response = await fetch("http://localhost:5000/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formattedData),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
