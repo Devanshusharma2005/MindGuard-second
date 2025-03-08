@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, MessageSquare, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
+import localData from '../../../backend/data.json';
 
 export function DashboardOverview() {
   const [username, setUsername] = useState<string>("");
@@ -60,42 +61,30 @@ export function DashboardOverview() {
     const fetchHealthData = async () => {
       setIsLoading(true);
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          console.error('No token found');
-          return;
-        }
-
-        const response = await fetch('http://localhost:5000/api/questionnaire/latest', {
-          headers: {
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch health data');
-        }
-
-        const data = await response.json();
-        console.log('Received data:', data); // Debug log
-
-        // Update to use healthreports structure
-        setHealthData({
-          healthreports: {
-            mood: data.healthreports?.mood ?? 0,
-            anxiety: data.healthreports?.anxiety ?? 0,
-            sleep: data.healthreports?.sleep ?? 0,
-            energy: data.healthreports?.energy ?? 0,
-            concentration: data.healthreports?.concentration ?? 0,
-            socialInteraction: data.healthreports?.socialInteraction ?? 0,
-            optimism: data.healthreports?.optimism ?? 0
-          }
-        });
+        // Get the latest entry from local data
+        const latestEntry = localData[localData.length - 1];
         
-        localStorage.setItem('healthData', JSON.stringify(data));
+        if (latestEntry) {
+          // Convert the input values to the format expected by the UI
+          const convertedData = {
+            healthreports: {
+              mood: (latestEntry.input.mood / 10) * 100,
+              anxiety: latestEntry.input.anxiety === "none" ? 0 : 
+                      latestEntry.input.anxiety === "moderate" ? 50 : 
+                      latestEntry.input.anxiety === "severe" ? 100 : 0,
+              sleep: (latestEntry.input.sleep_quality / 10) * 100,
+              energy: (latestEntry.input.energy_levels / 10) * 100,
+              concentration: (latestEntry.input.concentration / 10) * 100,
+              socialInteraction: (latestEntry.input.social_interactions / 10) * 100,
+              optimism: (latestEntry.input.optimism / 10) * 100
+            }
+          };
+
+          setHealthData(convertedData);
+          localStorage.setItem('healthData', JSON.stringify(convertedData));
+        }
       } catch (error) {
-        console.error('Error fetching health data:', error);
+        console.error('Error loading local health data:', error);
         const cachedData = localStorage.getItem('healthData');
         if (cachedData) {
           setHealthData(JSON.parse(cachedData));

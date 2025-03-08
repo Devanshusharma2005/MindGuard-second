@@ -3,6 +3,7 @@ const router = express.Router();
 const { spawn } = require('child_process');
 const path = require('path');
 const HealthReport = require('../models/HealthReport');
+const fs = require('fs');
 
 // Helper function to run Python emotion report generator
 const generateEmotionReport = async (responses) => {
@@ -170,6 +171,28 @@ const validateQuestionnaireData = (data) => {
   };
 };
 
+// Function to store input and output in JSON
+function storeDataInJson(input, output, filePath = 'data.json') {
+    try {
+        // Read existing data
+        let data = [];
+        if (fs.existsSync(filePath)) {
+            const fileData = fs.readFileSync(filePath);
+            data = JSON.parse(fileData);
+        }
+
+        // Append new input and output
+        data.push({ input, output });
+
+        // Write updated data back to the file
+        console.log(`Writing data to ${filePath}`);
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 4));
+        console.log(`Data successfully written to ${filePath}`);
+    } catch (error) {
+        console.error(`Error writing to file ${filePath}:`, error);
+    }
+}
+
 // Submit questionnaire and get analysis
 router.post('/', async (req, res) => {
   try {
@@ -252,6 +275,9 @@ router.post('/', async (req, res) => {
     // Save to database
     await healthReport.save();
     console.log('Saved health report to database');
+
+    // Store the report in JSON
+    storeDataInJson(validatedData, report);
 
     // Get previous reports for calculating changes
     const previousReports = await HealthReport.find({ userId: user_id })

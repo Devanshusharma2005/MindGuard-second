@@ -360,6 +360,66 @@
       "intensity": 0.1,
       "context": "how can i improve my sleep quality?",
       "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T09:56:02.331247",
+      "date": "2025-03-08",
+      "time": "09:56",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T09:57:12.519729",
+      "date": "2025-03-08",
+      "time": "09:57",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "i am feeling very sad these days so suggest me some physical exercises to overcome this",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T09:57:27.533236",
+      "date": "2025-03-08",
+      "time": "09:57",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "yes",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T09:57:54.211982",
+      "date": "2025-03-08",
+      "time": "09:57",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "can you suggest some self-care activities?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T09:57:55.424288",
+      "date": "2025-03-08",
+      "time": "09:57",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "can you suggest some self-care activities?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T09:58:17.858193",
+      "date": "2025-03-08",
+      "time": "09:58",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "what should i do to remain healthy",
+      "triggers": []
     }
   ],
   "insights": [

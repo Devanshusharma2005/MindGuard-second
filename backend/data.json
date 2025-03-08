@@ -1,0 +1,396 @@
+[
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 2,
+            "anxiety": "severe",
+            "sleep_quality": 2,
+            "energy_levels": 5,
+            "physical_symptoms": "severe",
+            "concentration": 2,
+            "self_care": "extensive",
+            "social_interactions": 2,
+            "intrusive_thoughts": "severe",
+            "optimism": 2,
+            "stress_factors": "smartphone",
+            "coping_strategies": "const",
+            "social_support": 2,
+            "self_harm": "severe",
+            "discuss_professional": "fdgersg"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "sad": 1,
+                    "discouraged": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.2,
+                "crisis_count": 5,
+                "risk_factors": [
+                    "Poor sleep quality",
+                    "Significant physical symptoms",
+                    "Poor concentration",
+                    "Social withdrawal",
+                    "Persistent intrusive thoughts",
+                    "Low optimism",
+                    "Limited social support",
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Moderate anxiety-depression indicators",
+                "Anxiety disorder indicators",
+                "Critical risk indicators"
+            ]
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 2,
+            "anxiety": "severe",
+            "sleep_quality": 2,
+            "energy_levels": 5,
+            "physical_symptoms": "severe",
+            "concentration": 2,
+            "self_care": "extensive",
+            "social_interactions": 2,
+            "intrusive_thoughts": "severe",
+            "optimism": 2,
+            "stress_factors": "smartphone",
+            "coping_strategies": "const",
+            "social_support": 2,
+            "self_harm": "severe",
+            "discuss_professional": "fdgersg"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "sad": 1,
+                    "discouraged": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.2,
+                "crisis_count": 5,
+                "risk_factors": [
+                    "Poor sleep quality",
+                    "Significant physical symptoms",
+                    "Poor concentration",
+                    "Social withdrawal",
+                    "Persistent intrusive thoughts",
+                    "Low optimism",
+                    "Limited social support",
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Moderate anxiety-depression indicators",
+                "Anxiety disorder indicators",
+                "Critical risk indicators"
+            ]
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 10,
+            "anxiety": "none",
+            "sleep_quality": 10,
+            "energy_levels": 5,
+            "physical_symptoms": "none",
+            "concentration": 10,
+            "self_care": "none",
+            "social_interactions": 10,
+            "intrusive_thoughts": "none",
+            "optimism": 10,
+            "stress_factors": "hacathon prepration",
+            "coping_strategies": "avoid screen overtime",
+            "social_support": 10,
+            "self_harm": "none",
+            "discuss_professional": "doctor"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "joyful": 2,
+                    "energetic": 1,
+                    "optimistic": 1,
+                    "calm": 2,
+                    "relaxed": 1
+                },
+                "average_confidence": 0.7,
+                "average_valence": 1,
+                "crisis_count": 1,
+                "risk_factors": [
+                    "Neglecting self-care"
+                ]
+            },
+            "disorder_indicators": []
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 5,
+            "anxiety": "severe",
+            "sleep_quality": 5,
+            "energy_levels": 5,
+            "physical_symptoms": "none",
+            "concentration": 5,
+            "self_care": "minimal",
+            "social_interactions": 5,
+            "intrusive_thoughts": "moderate",
+            "optimism": 5,
+            "stress_factors": "hi",
+            "coping_strategies": "hi",
+            "social_support": 5,
+            "self_harm": "none",
+            "discuss_professional": "jo"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "neutral": 1,
+                    "uncertain": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.5,
+                "crisis_count": 1,
+                "risk_factors": [
+                    "Persistent intrusive thoughts"
+                ]
+            },
+            "disorder_indicators": [
+                "Anxiety disorder indicators"
+            ]
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 2,
+            "anxiety": "severe",
+            "sleep_quality": 2,
+            "energy_levels": 5,
+            "physical_symptoms": "moderate",
+            "concentration": 2,
+            "self_care": "moderate",
+            "social_interactions": 1,
+            "intrusive_thoughts": "none",
+            "optimism": 1,
+            "stress_factors": "hi",
+            "coping_strategies": "hi",
+            "social_support": 2,
+            "self_harm": "active",
+            "discuss_professional": "hihi"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "sad": 1,
+                    "discouraged": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.2,
+                "crisis_count": 4,
+                "risk_factors": [
+                    "Poor sleep quality",
+                    "Significant physical symptoms",
+                    "Poor concentration",
+                    "Social withdrawal",
+                    "Low optimism",
+                    "Limited social support",
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Moderate anxiety-depression indicators",
+                "Critical risk indicators"
+            ]
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 10,
+            "anxiety": "none",
+            "sleep_quality": 10,
+            "energy_levels": 5,
+            "physical_symptoms": "none",
+            "concentration": 10,
+            "self_care": "none",
+            "social_interactions": 10,
+            "intrusive_thoughts": "none",
+            "optimism": 10,
+            "stress_factors": "nothing",
+            "coping_strategies": "deals with taking simile on the face",
+            "social_support": 10,
+            "self_harm": "none",
+            "discuss_professional": "no"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "joyful": 2,
+                    "energetic": 1,
+                    "optimistic": 1,
+                    "calm": 2,
+                    "relaxed": 1
+                },
+                "average_confidence": 0.7,
+                "average_valence": 1,
+                "crisis_count": 1,
+                "risk_factors": [
+                    "Neglecting self-care"
+                ]
+            },
+            "disorder_indicators": []
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 1,
+            "anxiety": "severe",
+            "sleep_quality": 1,
+            "energy_levels": 5,
+            "physical_symptoms": "severe",
+            "concentration": 1,
+            "self_care": "none",
+            "social_interactions": 1,
+            "intrusive_thoughts": "severe",
+            "optimism": 1,
+            "stress_factors": "study",
+            "coping_strategies": "i don't know",
+            "social_support": 1,
+            "self_harm": "severe",
+            "discuss_professional": "im very lonly anddepressed"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "depressed": 2,
+                    "hopeless": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.1,
+                "crisis_count": 6,
+                "risk_factors": [
+                    "Poor sleep quality",
+                    "Significant physical symptoms",
+                    "Poor concentration",
+                    "Neglecting self-care",
+                    "Social withdrawal",
+                    "Persistent intrusive thoughts",
+                    "Low optimism",
+                    "Limited social support",
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Moderate anxiety-depression indicators",
+                "Anxiety disorder indicators",
+                "Critical risk indicators"
+            ]
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 5,
+            "anxiety": "none",
+            "sleep_quality": 5,
+            "energy_levels": 5,
+            "physical_symptoms": "none",
+            "concentration": 5,
+            "self_care": "minimal",
+            "social_interactions": 5,
+            "intrusive_thoughts": "mild",
+            "optimism": 5,
+            "stress_factors": "study",
+            "coping_strategies": "i dont know",
+            "social_support": 5,
+            "self_harm": "active",
+            "discuss_professional": "no"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "neutral": 1,
+                    "uncertain": 1,
+                    "calm": 2,
+                    "relaxed": 1
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.5,
+                "crisis_count": 2,
+                "risk_factors": [
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Critical risk indicators"
+            ]
+        }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 2,
+            "anxiety": "mild",
+            "sleep_quality": 3,
+            "energy_levels": 2,
+            "physical_symptoms": "mild",
+            "concentration": 3,
+            "self_care": "moderate",
+            "social_interactions": 3,
+            "intrusive_thoughts": "mild",
+            "optimism": 4,
+            "stress_factors": "Projects and my studies",
+            "coping_strategies": "Take a deep breadth",
+            "social_support": 4,
+            "self_harm": "active",
+            "discuss_professional": "How can i overcome fear of failure"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "sad": 1,
+                    "discouraged": 1,
+                    "anxious": 1,
+                    "uneasy": 1
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.2,
+                "crisis_count": 3,
+                "risk_factors": [
+                    "Poor sleep quality",
+                    "Low energy levels",
+                    "Poor concentration",
+                    "Social withdrawal",
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Sleep disturbance indicators",
+                "Critical risk indicators"
+            ]
+        }
+    }
+]
