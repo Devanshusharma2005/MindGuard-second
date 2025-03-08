@@ -1,64 +1,112 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Search, ThumbsUp, Users } from "lucide-react";
+import { MessageSquare, Search, ThumbsUp, Users, X, Send, Circle } from "lucide-react";
 
 interface CommunityForumsProps {
   anonymousMode: boolean;
 }
 
-const forumTopics = [
+const inspiringPeople = [
   {
     id: 1,
-    title: "Anxiety Management Strategies",
-    description: "Share and discuss effective techniques for managing anxiety in daily life",
-    members: 1245,
-    posts: 324,
-    lastActive: "10 minutes ago"
+    name: "Ravi Kumar",
+    description: "Overcame severe anxiety with mindfulness and therapy.",
+    avatar: "https://randomuser.me/api/portraits/men/1.jpg",
+    online: true,
+    calLink: "https://cal.com/vikrantsharma"
   },
   {
     id: 2,
-    title: "Depression Support",
-    description: "A safe space to discuss depression, treatment options, and recovery journeys",
-    members: 987,
-    posts: 256,
-    lastActive: "1 hour ago"
+    name: "Priya Sharma",
+    description: "Battled depression and found hope through journaling and CBT.",
+    avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    online: false,
+    calLink: "https://cal.com/ayushijain"
   },
   {
     id: 3,
-    title: "Mindfulness & Meditation",
-    description: "Learn and share mindfulness practices and meditation techniques",
-    members: 756,
-    posts: 189,
-    lastActive: "3 hours ago"
+    name: "Ayushi Jain",
+    description: "Recovered from insomnia with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    online: true,
+    calLink: "https://cal.com/ayushijain"
   },
   {
     id: 4,
-    title: "Sleep Improvement",
-    description: "Discuss sleep hygiene, insomnia, and strategies for better rest",
-    members: 543,
-    posts: 142,
-    lastActive: "Yesterday"
+    name: "Vikrant Sharma",
+    description: "Recovered from Possible Major Depressive Disorder with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
   },
   {
     id: 5,
-    title: "Stress Management",
-    description: "Share tips and support for managing stress in work and personal life",
-    members: 876,
-    posts: 231,
-    lastActive: "2 days ago"
-  }
+    name: "Amimesh Lamba",
+    description: "Recovered from Mild Mood Disturbance with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  },
+  {
+    id: 6,
+    name: "Neha Singh",
+    description: "Recovered from Severe Anxiety Disorder with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  },
+  {
+    id: 7,
+    name: "Rohan Khanna",
+    description: "Recovered from Severe Sleep Disturbance with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  },
+  {
+    id: 8,
+    name: "Rohan Khanna",
+    description: "Recovered from Self-Care Deficit with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  },
+  {
+    id: 9,
+    name: "Amit Patel",
+    description: "Recovered from Stress Management & Burnout with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  },
+  {
+    id: 10,
+    name: "Amit Patel",
+    description: "Recovered from Social Anxiety Support    with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  },
+  {
+    id: 11,
+    name: "Amit Patel",
+    description: "Recovered from Mild Anxiety Symptoms with a disciplined sleep routine.",
+    avatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    online: true,
+    calLink: "https://cal.com/gauravgupta"
+  }  
 ];
-
 const popularPosts = [
   {
     id: 1,
     title: "How I overcame panic attacks using the 5-4-3-2-1 technique",
-    author: "Sarah M.",
+    author: "Meera Sharma",
     authorAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=256&h=256&auto=format&fit=crop",
     forum: "Anxiety Management Strategies",
     likes: 87,
@@ -78,16 +126,92 @@ const popularPosts = [
   {
     id: 3,
     title: "A simple 10-minute meditation that changed my life",
-    author: "Michael K.",
+    author: "Rohan Khanna",
     authorAvatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=256&h=256&auto=format&fit=crop",
     forum: "Mindfulness & Meditation",
     likes: 112,
     comments: 45,
     time: "1 week ago"
+  },
+  {
+    id: 4,
+    title: "How I managed severe anxiety through mindfulness",
+    author: "Ravi Kumar",
+    authorAvatar: "https://randomuser.me/api/portraits/men/1.jpg",
+    forum: "Anxiety Management Strategies",
+    likes: 74,
+    comments: 30,
+    time: "5 days ago"
+  },
+  {
+    id: 5,
+    title: "Journaling helped me fight depression: My personal story",
+    author: "Priya Sharma",
+    authorAvatar: "https://randomuser.me/api/portraits/women/2.jpg",
+    forum: "Depression Support",
+    likes: 95,
+    comments: 40,
+    time: "1 week ago"
+  },
+  {
+    id: 6,
+    title: "Overcoming insomnia with a disciplined sleep routine",
+    author: "Amit Patel",
+    authorAvatar: "https://randomuser.me/api/portraits/men/3.jpg",
+    forum: "Sleep & Insomnia Support",
+    likes: 82,
+    comments: 22,
+    time: "3 days ago"
+  },
+  {
+    id: 7,
+    title: "My journey of battling social anxiety and gaining confidence",
+    author: "Neha Singh",
+    authorAvatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=256&h=256&auto=format&fit=crop",
+    forum: "Social Anxiety Support",
+    likes: 120,
+    comments: 50,
+    time: "2 weeks ago"
+  },
+  {
+    id: 8,
+    title: "How I managed stress and avoided burnout",
+    author: "Rahul Verma",
+    authorAvatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&h=256&auto=format&fit=crop",
+    forum: "Stress Management & Burnout",
+    likes: 98,
+    comments: 37,
+    time: "4 days ago"
   }
 ];
 
+
 export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<string[]>([]);
+  const [chatMessage, setChatMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentChat, setCurrentChat] = useState(inspiringPeople[0]);
+
+  const handleSendMessage = () => {
+    if (chatMessage.trim()) {
+      setChatMessages([...chatMessages, chatMessage]);
+      setChatMessage("");
+    }
+  };
+
+  
+
+  const handleOpenChat = (person: typeof inspiringPeople[0]) => {
+    setCurrentChat(person);
+    setChatMessages([]); // Reset chat for new person
+    setChatOpen(true);
+  };
+
+  const filteredPeople = inspiringPeople.filter(person =>
+    person.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -97,6 +221,8 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
             type="search"
             placeholder="Search forums and posts..."
             className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
         <Button>New Post</Button>
@@ -104,29 +230,21 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
 
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2 space-y-4">
-          <h3 className="font-medium">Discussion Forums</h3>
-          {forumTopics.map((topic) => (
-            <Card key={topic.id}>
+          <h3 className="font-medium">Inspiring Stories</h3>
+          {filteredPeople.map((person) => (
+            <Card key={person.id}>
               <CardContent className="p-4">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h4 className="font-medium">{topic.title}</h4>
-                      <p className="text-sm text-muted-foreground">{topic.description}</p>
-                    </div>
-                    <Button variant="outline" size="sm">Join</Button>
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={person.avatar} />
+                    <AvatarFallback>{person.name[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <h4 className="font-medium">{person.name}</h4>
+                    <p className="text-sm text-muted-foreground">{person.description}</p>
                   </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <div className="flex items-center">
-                      <Users className="mr-1 h-3 w-3" />
-                      {topic.members} members
-                    </div>
-                    <div className="flex items-center">
-                      <MessageSquare className="mr-1 h-3 w-3" />
-                      {topic.posts} posts
-                    </div>
-                    <div>Last active: {topic.lastActive}</div>
-                  </div>
+                  <Button variant="outline" size="sm" onClick={() => window.open(person.calLink, "_blank")}>Join</Button>
+                  <Button size="sm" onClick={() => handleOpenChat(person)}>Chat</Button>
                 </div>
               </CardContent>
             </Card>
@@ -141,8 +259,11 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6">
-                      <AvatarImage src={anonymousMode ? "" : post.authorAvatar} />
-                      <AvatarFallback>{post.author[0]}</AvatarFallback>
+                      {post.authorAvatar && !anonymousMode ? (
+                        <AvatarImage src={post.authorAvatar} />
+                      ) : (
+                        <AvatarFallback>{post.author[0]}</AvatarFallback>
+                      )}
                     </Avatar>
                     <span className="text-sm font-medium">
                       {anonymousMode ? "Anonymous" : post.author}
@@ -152,26 +273,55 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
                     </Badge>
                   </div>
                   <p className="text-sm font-medium">{post.title}</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center">
-                        <ThumbsUp className="mr-1 h-3 w-3" />
-                        {post.likes}
-                      </div>
-                      <div className="flex items-center">
-                        <MessageSquare className="mr-1 h-3 w-3" />
-                        {post.comments}
-                      </div>
-                    </div>
-                    <div>{post.time}</div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
           ))}
-          <Button variant="outline" className="w-full">View More</Button>
         </div>
       </div>
+
+
+      {chatOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white p-4 rounded-lg shadow-lg w-96 flex flex-col">
+            <div className="flex justify-between items-center mb-2 border-b pb-2">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={currentChat.avatar} />
+                  <AvatarFallback>{currentChat.name[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-lg font-medium">{currentChat.name}</h3>
+                  <span className={`text-sm flex items-center gap-1 ${currentChat.online ? 'text-green-500' : 'text-gray-500'}`}>
+                    <Circle className={`h-3 w-3 ${currentChat.online ? 'fill-green-500' : 'fill-gray-500'}`} /> 
+                    {currentChat.online ? 'Online' : 'Offline'}
+                  </span>
+                </div>
+              </div>
+              
+              <Button onClick={() => setChatOpen(false)}>✖</Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 border rounded-md bg-gray-100 flex flex-col gap-2 h-96">
+              {chatMessages.map((msg, index) => (
+                <p key={index} className={`p-2 rounded-lg max-w-[75%] ${index % 2 === 0 ? 'bg-green-500 text-white self-end' : 'bg-white border self-start'}`}>
+                  {msg}
+                </p>
+              ))}
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <Input 
+                type="text" 
+                placeholder="Type a message..." 
+                value={chatMessage} 
+                onChange={(e) => setChatMessage(e.target.value)} 
+              />
+              <Button onClick={handleSendMessage}>
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

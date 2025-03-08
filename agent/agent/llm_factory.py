@@ -74,6 +74,7 @@ class LLMFactory:
     def create_llm(
         provider: Optional[str] = None, 
         temperature: float = 0.7,
+        max_tokens: int = 4096,
         **kwargs
     ) -> BaseChatModel:
         """

@@ -10,6 +10,7 @@ import { CommunityForums } from "@/components/patient/community-forums";
 import { SupportGroups } from "@/components/patient/support-groups";
 import  MyPosts  from "@/components/patient/my-posts";
 
+
 export default function Community() {
   const [activeTab, setActiveTab] = useState("forums");
   const [anonymousMode, setAnonymousMode] = useState(false);
@@ -32,15 +33,13 @@ export default function Community() {
             />
             <Label htmlFor="anonymous-mode">Anonymous Mode</Label>
           </div>
-          <Button>Create New Post</Button>
         </div>
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="forums">Discussion Forums</TabsTrigger>
           <TabsTrigger value="groups">Support Groups</TabsTrigger>
-          <TabsTrigger value="myposts">My Posts</TabsTrigger>
         </TabsList>
         <TabsContent value="forums">
           <Card>
@@ -65,19 +64,6 @@ export default function Community() {
             </CardHeader>
             <CardContent>
               <SupportGroups anonymousMode={anonymousMode} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="myposts">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Activity</CardTitle>
-              <CardDescription>
-                View and manage your posts and responses
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MyPosts />
             </CardContent>
           </Card>
         </TabsContent>

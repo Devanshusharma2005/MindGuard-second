@@ -438,37 +438,36 @@
     {
         "input": {
             "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
-            "mood": 2,
-            "anxiety": "severe",
-            "sleep_quality": 2,
+            "mood": 1,
+            "anxiety": "moderate",
+            "sleep_quality": 1,
             "energy_levels": 5,
-            "physical_symptoms": "severe",
-            "concentration": 2,
-            "self_care": "extensive",
-            "social_interactions": 2,
-            "intrusive_thoughts": "severe",
-            "optimism": 2,
-            "stress_factors": "exams",
-            "coping_strategies": "reduce screeen time",
-            "social_support": 2,
-            "self_harm": "severe",
-            "discuss_professional": "no"
+            "physical_symptoms": "none",
+            "concentration": 1,
+            "self_care": "moderate",
+            "social_interactions": 1,
+            "intrusive_thoughts": "moderate",
+            "optimism": 1,
+            "stress_factors": "hi",
+            "coping_strategies": "jihi",
+            "social_support": 1,
+            "self_harm": "active",
+            "discuss_professional": "dgfvd"
         },
         "output": {
             "summary": {
                 "emotions_count": {
-                    "sad": 1,
-                    "discouraged": 1,
+                    "depressed": 2,
+                    "hopeless": 1,
                     "anxious": 2,
-                    "panicked": 1,
-                    "overwhelmed": 2
+                    "stressed": 1,
+                    "worried": 1
                 },
                 "average_confidence": 0.7,
-                "average_valence": 0.2,
-                "crisis_count": 5,
+                "average_valence": 0.1,
+                "crisis_count": 4,
                 "risk_factors": [
                     "Poor sleep quality",
-                    "Significant physical symptoms",
                     "Poor concentration",
                     "Social withdrawal",
                     "Persistent intrusive thoughts",
