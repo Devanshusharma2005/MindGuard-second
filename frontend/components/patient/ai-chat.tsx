@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, Send, User } from "lucide-react";
-import { useEffect } from "react";
+import { Bot, Send, User, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: number;
@@ -51,9 +51,11 @@ export function AIChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Generate or retrieve user ID from localStorage
     const storedUserId = localStorage.getItem("mindguard_user_id");
     if (storedUserId) {
       setUserId(storedUserId);
@@ -64,13 +66,109 @@ export function AIChat() {
     }
   }, []);
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || isLoading) return;
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const startListening = () => {
+    try {
+      setIsListening(true);
+      setError("");
+
+      const recognition = new (window as any).webkitSpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        console.log("Speech recognition started");
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setNewMessage(transcript);
+        handleSendMessage(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error("Speech recognition error:", event.error);
+        setError("Failed to recognize speech. Please try again.");
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (error) {
+      console.error("Speech recognition error:", error);
+      setError("Speech recognition is not supported in this browser");
+      setIsListening(false);
+    }
+  };
+
+  const speakMessage = (text: string) => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      
+      // Get available voices and set a natural-sounding English voice
+      const voices = window.speechSynthesis.getVoices();
+      const englishVoice = voices.find(voice => 
+        voice.lang.includes('en') && voice.name.includes('Natural')
+      ) || voices.find(voice => voice.lang.includes('en')) || voices[0];
+      
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+
+      utterance.lang = 'en-US';
+      utterance.rate = 1;
+      utterance.pitch = 1;
+
+      utterance.onstart = () => {
+        console.log("Started speaking");
+        setIsSpeaking(true);
+      };
+
+      utterance.onend = () => {
+        console.log("Finished speaking");
+        setIsSpeaking(false);
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setIsSpeaking(false);
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } else {
+      console.error('Speech synthesis not supported');
+    }
+  };
+
+  const stopSpeaking = () => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const handleSendMessage = async (voiceMessage?: string) => {
+    const messageToSend = voiceMessage || newMessage;
+    if (!messageToSend.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: messages.length + 1,
       role: "user",
-      content: newMessage,
+      content: messageToSend,
       timestamp: new Date().toISOString()
     };
     
@@ -86,7 +184,7 @@ export function AIChat() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          message: newMessage,
+          message: messageToSend,
           user_id: userId
         }),
       });
@@ -105,6 +203,8 @@ export function AIChat() {
       };
 
       setMessages(prev => [...prev, aiMessage]);
+      // Automatically read out the AI's response
+      speakMessage(data.response);
     } catch (err) {
       setError("Failed to get response. Please try again.");
       console.error("Error:", err);
@@ -124,7 +224,7 @@ export function AIChat() {
 
   return (
     <div className="flex h-[600px] flex-col rounded-md border overflow-hidden">
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
         <div className="space-y-4">
           {messages.map((message) => (
             <div
@@ -145,7 +245,23 @@ export function AIChat() {
                   }`}
                 >
                   <div className="whitespace-pre-line text-sm">{message.content}</div>
-                  <p className="mt-1 text-right text-xs opacity-70">{formatTime(message.timestamp)}</p>
+                  <div className="mt-1 flex items-center justify-end gap-2">
+                    {message.role === "assistant" && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => isSpeaking ? stopSpeaking() : speakMessage(message.content)}
+                      >
+                        {isSpeaking ? (
+                          <VolumeX className="h-3 w-3" />
+                        ) : (
+                          <Volume2 className="h-3 w-3" />
+                        )}
+                      </Button>
+                    )}
+                    <span className="text-xs opacity-70">{formatTime(message.timestamp)}</span>
+                  </div>
                 </div>
                 {message.role === "user" && (
                   <Avatar className="mt-0.5">
@@ -207,14 +323,27 @@ export function AIChat() {
                 handleSendMessage();
               }
             }}
-            disabled={isLoading}
+            disabled={isLoading || isListening}
             className="flex-1"
           />
-          <Button 
-            onClick={handleSendMessage}
+          <Button
+            onClick={startListening}
             size="icon"
+            variant={isListening ? "destructive" : "outline"}
             className="h-10 w-10"
             disabled={isLoading}
+          >
+            {isListening ? (
+              <MicOff className="h-4 w-4" />
+            ) : (
+              <Mic className="h-4 w-4" />
+            )}
+          </Button>
+          <Button 
+            onClick={() => handleSendMessage()}
+            size="icon"
+            className="h-10 w-10"
+            disabled={isLoading || isListening}
           >
             <Send className="h-4 w-4" />
           </Button>
