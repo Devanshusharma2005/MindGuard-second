@@ -420,6 +420,96 @@
       "intensity": 0.1,
       "context": "what should i do to remain healthy",
       "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T21:32:41.330885",
+      "date": "2025-03-08",
+      "time": "21:32",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "name some yoga asanas",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T21:33:05.346618",
+      "date": "2025-03-08",
+      "time": "21:33",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "yes recommend yoga asans",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T21:34:21.692036",
+      "date": "2025-03-08",
+      "time": "21:34",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "name and descibe",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T21:34:22.549737",
+      "date": "2025-03-08",
+      "time": "21:34",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "name and descibe",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T21:34:36.877266",
+      "date": "2025-03-08",
+      "time": "21:34",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "describe mental health yoga asanas",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T22:47:07.654725",
+      "date": "2025-03-08",
+      "time": "22:47",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T22:47:54.474630",
+      "date": "2025-03-08",
+      "time": "22:47",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "i am experiencing issues like depression and stress",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T22:48:18.919990",
+      "date": "2025-03-08",
+      "time": "22:48",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "depression",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-08T22:48:24.875373",
+      "date": "2025-03-08",
+      "time": "22:48",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "depression",
+      "triggers": []
     }
   ],
   "insights": [

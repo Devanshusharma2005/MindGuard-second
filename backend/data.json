@@ -434,5 +434,54 @@
                 "Anxiety disorder indicators"
             ]
         }
+    },
+    {
+        "input": {
+            "user_id": "e045643d-37cf-44fe-86d4-eb329456b5ab",
+            "mood": 2,
+            "anxiety": "severe",
+            "sleep_quality": 2,
+            "energy_levels": 5,
+            "physical_symptoms": "severe",
+            "concentration": 2,
+            "self_care": "extensive",
+            "social_interactions": 2,
+            "intrusive_thoughts": "severe",
+            "optimism": 2,
+            "stress_factors": "exams",
+            "coping_strategies": "reduce screeen time",
+            "social_support": 2,
+            "self_harm": "severe",
+            "discuss_professional": "no"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "sad": 1,
+                    "discouraged": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.2,
+                "crisis_count": 5,
+                "risk_factors": [
+                    "Poor sleep quality",
+                    "Significant physical symptoms",
+                    "Poor concentration",
+                    "Social withdrawal",
+                    "Persistent intrusive thoughts",
+                    "Low optimism",
+                    "Limited social support",
+                    "Self-harm risk"
+                ]
+            },
+            "disorder_indicators": [
+                "Moderate anxiety-depression indicators",
+                "Anxiety disorder indicators",
+                "Critical risk indicators"
+            ]
+        }
     }
 ]
