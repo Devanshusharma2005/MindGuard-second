@@ -482,5 +482,105 @@
                 "Critical risk indicators"
             ]
         }
+    },
+    {
+        "input": {
+            "user_id": "b1acb0d2-752f-46e5-adb8-3b6a03263d9a",
+            "assessmentType": "voice",
+            "timestamp": "2025-03-08T22:00:11.897Z",
+            "mood": 7,
+            "anxiety": "severe",
+            "sleep_quality": 9,
+            "energy_levels": 5,
+            "physical_symptoms": "none",
+            "concentration": 5,
+            "self_care": "moderate",
+            "social_interactions": 9,
+            "intrusive_thoughts": "none",
+            "optimism": 5,
+            "stress_factors": "not able to deal with daily pressures properly",
+            "coping_strategies": "did some breathing exercises I don't have a medical routine not having a very good social interactions today",
+            "social_support": 9,
+            "self_harm": "none",
+            "discuss_professional": "anxiety",
+            "raw_responses": [
+                {
+                    "question": "How would you describe your mood today? Please explain how you're feeling.",
+                    "answer": "good"
+                },
+                {
+                    "question": "Could you describe your anxiety levels today? Are you feeling calm, slightly worried, or very anxious?",
+                    "answer": "feeling very anxious"
+                },
+                {
+                    "question": "Tell me about your stress levels. How are you coping with daily pressures?",
+                    "answer": "not able to deal with daily pressures properly"
+                },
+                {
+                    "question": "How did you sleep last night? Please describe the quality and duration of your sleep.",
+                    "answer": "didn't have a very good sleep"
+                },
+                {
+                    "question": "How are your energy levels today? Do you feel energetic, tired, or somewhere in between?",
+                    "answer": "feeling low"
+                },
+                {
+                    "question": "How would you describe your appetite today? Have there been any changes in your eating patterns?",
+                    "answer": "low appetite"
+                },
+                {
+                    "question": "How is your ability to focus and concentrate today? Are you finding it easy or difficult to stay on task?",
+                    "answer": "not able to concentrate properly"
+                },
+                {
+                    "question": "Tell me about your social interactions today. Have you been connecting with others?",
+                    "answer": "not having a very good social interactions today"
+                },
+                {
+                    "question": "What physical activities have you done today? How active have you been?",
+                    "answer": "did some breathing exercises"
+                },
+                {
+                    "question": "How would you describe your motivation levels today? What's driving you or holding you back?",
+                    "answer": "not feeling very motivated"
+                },
+                {
+                    "question": "Are you experiencing any physical symptoms? Please describe them in detail.",
+                    "answer": "headache"
+                },
+                {
+                    "question": "Have you been taking your prescribed medications? Please tell me about your medication routine.",
+                    "answer": "I don't have a medical routine"
+                },
+                {
+                    "question": "Have you used any substances in the last 24 hours? If comfortable, please provide details.",
+                    "answer": "no I didn't take used any substances in the last 24 hours"
+                },
+                {
+                    "question": "Have you had any thoughts of self-harm? Please be honest and know that help is available.",
+                    "answer": "no I didn't thought of any self harm"
+                },
+                {
+                    "question": "What specific things are causing you distress today? Please describe any concerns or worries.",
+                    "answer": "anxiety"
+                }
+            ]
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "content": 2,
+                    "stable": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 0.7,
+                "crisis_count": 0,
+                "risk_factors": []
+            },
+            "disorder_indicators": []
+        }
     }
 ]

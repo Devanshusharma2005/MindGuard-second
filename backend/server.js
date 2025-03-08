@@ -3,11 +3,21 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const session = require('express-session');
 const userRoutes = require('./routes/user');
 const healthTrackingRoutes = require('./routes/healthTracking');
 const questionnaireRoutes = require('./routes/api/questionnaire');
+const { router: voiceRoutes, setupWebSocket } = require('./routes/voice');
 
 const app = express();
+
+// Session middleware
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'mindguard-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
 
 // Middleware with specific CORS configuration
 app.use(cors({
@@ -20,6 +30,7 @@ app.use(express.json());
 app.use('/api/user', userRoutes);
 app.use('/health-tracking', healthTrackingRoutes);
 app.use('/api/questionnaire', questionnaireRoutes);
+app.use('/voice', voiceRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {
@@ -187,6 +198,9 @@ app.use((req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-}); 
+});
+
+// Setup WebSocket server
+setupWebSocket(server); 

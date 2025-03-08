@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HealthQuestionnaire } from "@/components/patient/health-questionnaire";
+import { VoiceQuestionnaire } from "@/components/patient/voice-questionnaire";
 import { HealthInsights } from "@/components/patient/health-insights";
 import { ProgressCharts } from "@/components/patient/progress-charts";
 import Recommendations from "@/components/patient/recommendations";
@@ -89,11 +90,22 @@ interface HealthData {
         url: string;
       };
     }>;
+    wellness: Array<{
+      title: string;
+      type: string;
+      duration: string;
+      description: string;
+      action: {
+        label: string;
+        url: string;
+      };
+    }>;
   };
 }
 
 export default function HealthTracking() {
   const [activeTab, setActiveTab] = useState("questionnaire");
+  const [assessmentType, setAssessmentType] = useState<"text" | "voice">("text");
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -176,14 +188,35 @@ export default function HealthTracking() {
             <CardHeader>
               <CardTitle>Daily Health Assessment</CardTitle>
               <CardDescription>
-                Answer a few questions to help us understand how you're feeling today
+                Choose your preferred way to complete the assessment
               </CardDescription>
+              <div className="flex gap-4 mt-4">
+                <Button
+                  variant={assessmentType === "text" ? "default" : "outline"}
+                  onClick={() => setAssessmentType("text")}
+                >
+                  Text Questionnaire
+                </Button>
+                <Button
+                  variant={assessmentType === "voice" ? "default" : "outline"}
+                  onClick={() => setAssessmentType("voice")}
+                >
+                  Voice Assessment
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <HealthQuestionnaire 
-                onSubmit={handleQuestionnaireSubmit}
-                isLoading={loading}
-              />
+              {assessmentType === "text" ? (
+                <HealthQuestionnaire 
+                  onSubmit={handleQuestionnaireSubmit}
+                  isLoading={loading}
+                />
+              ) : (
+                <VoiceQuestionnaire 
+                  onSubmit={handleQuestionnaireSubmit}
+                  isLoading={loading}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
