@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -8,7 +8,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mic, MicOff, Volume2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Update questions to be more conversational
+interface QuestionnaireResponse {
+  question: string;
+  answer: string;
+}
+
 const questions = [
   "How would you describe your mood today? Please explain how you're feeling.",
   "Could you describe your anxiety levels today? Are you feeling calm, slightly worried, or very anxious?",
@@ -27,37 +31,90 @@ const questions = [
   "What specific things are causing you distress today? Please describe any concerns or worries."
 ];
 
-interface VoiceQuestionnaireProps {
-  onSubmit: (data: any) => void;
-  isLoading: boolean;
-}
-
-export function VoiceQuestionnaire({ onSubmit, isLoading }: VoiceQuestionnaireProps) {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+export function VoiceQuestionnaire() {
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
+  const [responses, setResponses] = useState<QuestionnaireResponse[]>([]);
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [responses, setResponses] = useState<Array<{ question: string; answer: string }>>([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const [error, setError] = useState<string>("");
-  const [status, setStatus] = useState<'idle' | 'active' | 'completed'>('idle');
+  const [isComplete, setIsComplete] = useState(false);
+  const [isStarted, setIsStarted] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    // Load voices when component mounts
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+    }
+    return () => {
+      // Cleanup on unmount
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const speakMessage = (text: string): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        const voices = window.speechSynthesis.getVoices();
+        const englishVoice = voices.find(voice => 
+          voice.lang.includes('en') && voice.name.includes('Natural')
+        ) || voices.find(voice => voice.lang.includes('en')) || voices[0];
+        
+        if (englishVoice) {
+          utterance.voice = englishVoice;
+        }
+
+        utterance.lang = 'en-US';
+        utterance.rate = 1;
+        utterance.pitch = 1;
+
+        utterance.onstart = () => {
+          setIsSpeaking(true);
+        };
+
+        utterance.onend = () => {
+          setIsSpeaking(false);
+          resolve();
+        };
+
+        utterance.onerror = (event) => {
+          setIsSpeaking(false);
+          reject(event);
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } else {
+        reject(new Error('Speech synthesis not supported'));
+      }
+    });
+  };
 
   const startListening = () => {
     try {
-      setIsListening(true);
-      setError("");
-
-      const recognition = new (window as any).webkitSpeechRecognition();
+      recognitionRef.current = new (window as any).webkitSpeechRecognition();
+      const recognition = recognitionRef.current;
+      
       recognition.lang = "en-US";
       recognition.continuous = false;
       recognition.interimResults = false;
 
       recognition.onstart = () => {
-        console.log("Speech recognition started");
+        setIsListening(true);
+        setError("");
       };
 
       recognition.onresult = (event: any) => {
         const transcript = event.results[0][0].transcript;
-        setTranscript(transcript);
-        setIsListening(false);
         handleResponse(transcript);
       };
 
@@ -65,6 +122,12 @@ export function VoiceQuestionnaire({ onSubmit, isLoading }: VoiceQuestionnairePr
         console.error("Speech recognition error:", event.error);
         setError("Failed to recognize speech. Please try again.");
         setIsListening(false);
+        // Retry listening after error
+        timeoutRef.current = setTimeout(() => {
+          if (!isComplete && currentQuestionIndex >= 0) {
+            startListening();
+          }
+        }, 1000);
       };
 
       recognition.onend = () => {
@@ -80,266 +143,238 @@ export function VoiceQuestionnaire({ onSubmit, isLoading }: VoiceQuestionnairePr
   };
 
   const handleResponse = (response: string) => {
-    // Store the response with its question
-    const newResponse = {
-      question: questions[currentQuestionIndex],
-      answer: response
-    };
-    
-    const newResponses = [...responses, newResponse];
-    setResponses(newResponses);
-
-    // Move to next question or complete
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setTranscript("");
-    } else {
-      // Format data to match the health tracking backend expectations
-      const formattedData = {
-        user_id: localStorage.getItem("mindguard_user_id"),
-        assessmentType: "voice",
-        timestamp: new Date().toISOString(),
-        // Map responses to match the backend validation schema
-        mood: extractNumericValue(newResponses[0].answer, 5), // Default to 5 if can't extract
-        anxiety: mapAnxietyLevel(newResponses[1].answer),
-        sleep_quality: extractNumericValue(newResponses[3].answer, 5),
-        energy_levels: extractNumericValue(newResponses[4].answer, 5),
-        physical_symptoms: mapSymptomSeverity(newResponses[10].answer),
-        concentration: extractNumericValue(newResponses[6].answer, 5),
-        self_care: mapSelfCare(newResponses[8].answer), // Physical activity question
-        social_interactions: extractNumericValue(newResponses[7].answer, 5),
-        intrusive_thoughts: mapIntrusiveThoughts(newResponses[13].answer), // Self-harm question
-        optimism: extractNumericValue(newResponses[9].answer, 5), // Motivation question
-        stress_factors: newResponses[2].answer, // Stress question
-        coping_strategies: extractCopingStrategies(newResponses),
-        social_support: extractNumericValue(newResponses[7].answer, 5),
-        self_harm: mapSelfHarmLevel(newResponses[13].answer),
-        discuss_professional: newResponses[14].answer,
-        
-        // Include raw responses for the report generator
-        raw_responses: newResponses.map(r => ({
-          question: r.question,
-          answer: r.answer
-        }))
+    if (currentQuestionIndex >= 0 && currentQuestionIndex < questions.length) {
+      const newResponses = [...responses];
+      newResponses[currentQuestionIndex] = {
+        question: questions[currentQuestionIndex],
+        answer: response
       };
+      setResponses(newResponses);
 
-      setStatus('completed');
-      onSubmit(formattedData);
+      // Add a slightly longer delay to allow for more detailed responses
+      timeoutRef.current = setTimeout(() => {
+        if (currentQuestionIndex < questions.length - 1) {
+          setCurrentQuestionIndex(prev => prev + 1);
+        } else {
+          handleCompletion(newResponses);
+        }
+      }, 1500); // Increased delay to 1.5 seconds
     }
   };
 
-  // Helper functions to map voice responses to expected backend format
-  const extractNumericValue = (text: string, defaultValue: number): number => {
-    const numbers = {
-      'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-      'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10
-    };
-    
-    const words = text.toLowerCase().split(' ');
-    
-    // Try to find a direct number
-    const directNumber = parseInt(text);
-    if (!isNaN(directNumber) && directNumber >= 0 && directNumber <= 10) {
-      return directNumber;
+  const handleCompletion = async (finalResponses: QuestionnaireResponse[]) => {
+    setIsComplete(true);
+    setIsListening(false);
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
     }
 
-    // Look for number words
-    for (const word of words) {
-      if (numbers[word] !== undefined) {
-        return numbers[word];
+    try {
+      // Format responses for the backend
+      const formattedData = formatResponsesForBackend(finalResponses);
+      
+      // Send to backend
+      const response = await fetch("http://localhost:5000/health-tracking", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(formattedData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      // Speak completion message
+      await speakMessage("Thank you for completing the questionnaire. Your responses have been recorded.");
+      
+    } catch (error) {
+      console.error("Error saving responses:", error);
+      setError("Failed to save your responses. Please try again.");
     }
-
-    // Map descriptive terms to numbers
-    if (text.match(/excellent|great|very good|perfect/i)) return 9;
-    if (text.match(/good|well|fine/i)) return 7;
-    if (text.match(/okay|average|moderate/i)) return 5;
-    if (text.match(/poor|bad|not good/i)) return 3;
-    if (text.match(/terrible|awful|very bad/i)) return 1;
-
-    return defaultValue;
   };
 
-  const mapAnxietyLevel = (text: string): string => {
-    text = text.toLowerCase();
-    if (text.match(/severe|extreme|very anxious|panic|overwhelming/)) return 'severe';
-    if (text.match(/moderate|quite|somewhat|worried/)) return 'moderate';
-    if (text.match(/mild|slight|little|minimal/)) return 'mild';
-    if (text.match(/no|none|calm|relaxed|peaceful/)) return 'none';
-    return 'moderate'; // Default
+  const formatResponsesForBackend = (responses: QuestionnaireResponse[]) => {
+    // Helper function to extract sentiment score (1-10) from response
+    const getSentimentScore = (response: string): number => {
+      const text = response.toLowerCase();
+      // Positive indicators
+      if (text.includes('great') || text.includes('excellent') || text.includes('very good')) return 9;
+      if (text.includes('good') || text.includes('well') || text.includes('positive')) return 8;
+      if (text.includes('okay') || text.includes('fine') || text.includes('alright')) return 6;
+      // Negative indicators
+      if (text.includes('terrible') || text.includes('awful') || text.includes('very bad')) return 2;
+      if (text.includes('bad') || text.includes('poor') || text.includes('not good')) return 3;
+      if (text.includes('struggling') || text.includes('difficult')) return 4;
+      return 5; // neutral default
+    };
+
+    // Helper function to assess anxiety level
+    const getAnxietyLevel = (response: string): string => {
+      const text = response.toLowerCase();
+      if (text.includes('very anxious') || text.includes('extremely') || text.includes('severe')) return 'severe';
+      if (text.includes('quite') || text.includes('moderate') || text.includes('somewhat')) return 'moderate';
+      if (text.includes('slightly') || text.includes('mild') || text.includes('a little')) return 'mild';
+      if (text.includes('calm') || text.includes('relaxed') || text.includes('no anxiety')) return 'none';
+      return 'mild'; // default to mild if unclear
+    };
+
+    // Helper function to assess physical symptoms
+    const getPhysicalSymptomLevel = (response: string): string => {
+      const text = response.toLowerCase();
+      if (text.includes('no ') || text.includes('none')) return 'none';
+      if (text.includes('severe') || text.includes('intense') || text.includes('extreme')) return 'severe';
+      if (text.includes('moderate') || text.includes('significant')) return 'moderate';
+      return 'mild';
+    };
+
+    return {
+      mood: getSentimentScore(responses[0].answer),
+      anxiety: getAnxietyLevel(responses[1].answer),
+      sleep_quality: getSentimentScore(responses[3].answer),
+      energy_levels: getSentimentScore(responses[4].answer),
+      physical_symptoms: getPhysicalSymptomLevel(responses[10].answer),
+      concentration: getSentimentScore(responses[6].answer),
+      self_care: responses[8].answer.toLowerCase().includes('no') ? 'none' :
+                 responses[8].answer.toLowerCase().includes('little') ? 'minimal' :
+                 responses[8].answer.toLowerCase().includes('lot') ? 'extensive' : 'moderate',
+      social_interactions: getSentimentScore(responses[7].answer),
+      intrusive_thoughts: getPhysicalSymptomLevel(responses[14].answer),
+      optimism: getSentimentScore(responses[9].answer),
+      stress_factors: responses[14].answer,
+      coping_strategies: responses[2].answer,
+      social_support: getSentimentScore(responses[7].answer),
+      self_harm: responses[13].answer.toLowerCase().includes('no') ? 'none' :
+                 responses[13].answer.toLowerCase().includes('thought') ? 'passive' :
+                 responses[13].answer.toLowerCase().includes('plan') ? 'active' : 'severe',
+      discuss_professional: responses[14].answer,
+      // Additional fields for more detailed analysis
+      medication_adherence: responses[11].answer,
+      substance_use: responses[12].answer,
+      appetite_changes: responses[5].answer
+    };
   };
 
-  const mapSymptomSeverity = (text: string): string => {
-    text = text.toLowerCase();
-    if (text.match(/severe|extreme|intense|many|lot/)) return 'severe';
-    if (text.match(/moderate|some|several|noticeable/)) return 'moderate';
-    if (text.match(/mild|slight|few|minor/)) return 'mild';
-    if (text.match(/no|none|nothing|healthy/)) return 'none';
-    return 'none'; // Default
-  };
-
-  const mapSelfCare = (text: string): string => {
-    text = text.toLowerCase();
-    if (text.match(/lot|extensive|many|very active|regular/)) return 'extensive';
-    if (text.match(/moderate|some|average|few/)) return 'moderate';
-    if (text.match(/minimal|little|barely|not much/)) return 'minimal';
-    if (text.match(/no|none|nothing|haven't/)) return 'none';
-    return 'minimal'; // Default
-  };
-
-  const mapIntrusiveThoughts = (text: string): string => {
-    text = text.toLowerCase();
-    if (text.match(/severe|constant|overwhelming|many|lot/)) return 'severe';
-    if (text.match(/moderate|some|several|noticeable/)) return 'moderate';
-    if (text.match(/mild|slight|few|minor|sometimes/)) return 'mild';
-    if (text.match(/no|none|nothing/)) return 'none';
-    return 'none'; // Default
-  };
-
-  const mapSelfHarmLevel = (text: string): string => {
-    text = text.toLowerCase();
-    if (text.match(/severe|active|plan|want to|going to/)) return 'severe';
-    if (text.match(/yes|thoughts|thinking|considered/)) return 'active';
-    if (text.match(/sometimes|passive|mild|slight/)) return 'passive';
-    if (text.match(/no|none|never|not/)) return 'none';
-    return 'none'; // Default
-  };
-
-  const extractCopingStrategies = (responses: Array<{ question: string; answer: string }>): string => {
-    // Combine relevant responses about coping
-    const copingText = [
-      responses[8].answer, // Physical activities
-      responses[11].answer, // Medication
-      responses[7].answer  // Social interactions
-    ].join(' ');
-    
-    return copingText || 'No specific coping strategies mentioned';
-  };
-
-  const startAssessment = () => {
-    setStatus('active');
+  const startQuestionnaire = async () => {
+    setIsStarted(true);
     setCurrentQuestionIndex(0);
     setResponses([]);
-    setTranscript("");
+    setIsComplete(false);
     setError("");
+
+    // More detailed initial instruction
+    await speakMessage(
+      "I will now ask you several questions about your mental health and well-being. " +
+      "Please take your time to answer each question thoroughly and honestly. " +
+      "You can speak naturally and provide as much detail as you feel comfortable sharing. " +
+      "I'll listen carefully to your responses."
+    );
+    
+    await askCurrentQuestion();
   };
 
-  if (status === 'completed') {
-    return (
-      <Card className="p-6 text-center">
-        <h3 className="text-xl font-bold mb-4">Voice Assessment Completed</h3>
-        <p className="text-muted-foreground mb-4">
-          Thank you for completing the voice assessment. Your responses have been recorded and are being analyzed.
-        </p>
-        <div className="space-y-4">
-          <h4 className="font-medium">Your Responses:</h4>
-          {responses.map((response, i) => (
-            <div key={i} className="text-left p-4 bg-muted rounded-lg">
-              <p className="font-medium">{response.question}</p>
-              <p className="text-muted-foreground">{response.answer}</p>
-            </div>
-          ))}
-        </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setStatus('idle');
-            setResponses([]);
-            setTranscript("");
-          }}
-          className="mt-6"
-          disabled={isLoading}
-        >
-          Start New Assessment
-        </Button>
-      </Card>
-    );
-  }
+  const askCurrentQuestion = async () => {
+    if (currentQuestionIndex >= 0 && currentQuestionIndex < questions.length) {
+      try {
+        // Speak the current question
+        await speakMessage(questions[currentQuestionIndex]);
+        
+        // Start listening after speaking
+        timeoutRef.current = setTimeout(() => {
+          startListening();
+        }, 500);
+      } catch (error) {
+        console.error("Error speaking question:", error);
+        setError("Failed to speak question. Please try again.");
+      }
+    }
+  };
+
+  // Effect to handle question progression
+  useEffect(() => {
+    if (currentQuestionIndex >= 0 && !isComplete) {
+      askCurrentQuestion();
+    }
+  }, [currentQuestionIndex]);
 
   return (
-    <Card className="p-6">
-      {status === 'idle' ? (
-        <div className="text-center space-y-6">
-          <h3 className="text-2xl font-bold">Voice-Based Mental Health Assessment</h3>
-          <p className="text-muted-foreground">
-            This assessment will guide you through 15 questions about your mental health.
-            Please speak clearly and naturally when answering.
-          </p>
-          <div className="space-y-4">
-            <div className="flex flex-col gap-2 items-center justify-center p-4 border rounded-lg bg-muted/50">
-              <Volume2 className="h-8 w-8 text-primary" />
-              <p className="font-medium">Answer questions by speaking naturally</p>
+    <div className="space-y-4 p-4">
+      <Card className="p-6">
+        <div className="space-y-4">
+          {!isStarted ? (
+            <div className="text-center">
+              <h2 className="text-2xl font-bold mb-4">Voice Mental Health Assessment</h2>
+              <p className="mb-4 text-muted-foreground">
+                This assessment will ask you questions about your mental health.
+                Please speak your answers naturally after each question.
+              </p>
+              <Button onClick={startQuestionnaire} size="lg">
+                Start Assessment
+              </Button>
             </div>
-            <div className="flex flex-col gap-2 items-center justify-center p-4 border rounded-lg bg-muted/50">
-              <Mic className="h-8 w-8 text-primary" />
-              <p className="font-medium">15 questions to answer</p>
-            </div>
-          </div>
-          <Button 
-            onClick={startAssessment}
-            disabled={isLoading}
-            className="w-full max-w-sm"
-          >
-            Start Voice Assessment
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">
-                Question {currentQuestionIndex + 1} of {questions.length}
-              </h3>
-              <Progress 
-                value={(currentQuestionIndex / questions.length) * 100} 
-                className="w-1/3" 
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <p className="text-lg font-medium">{questions[currentQuestionIndex]}</p>
-            
-            {transcript && (
-              <div className="p-4 bg-muted rounded-lg">
-                <p className="font-medium">Your response:</p>
-                <p className="text-muted-foreground">{transcript}</p>
+          ) : isComplete ? (
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold">Assessment Complete</h3>
+              <div className="space-y-2">
+                {responses.map((response, index) => (
+                  <div key={index} className="border rounded-lg p-3">
+                    <p className="font-medium">{response.question}</p>
+                    <p className="text-muted-foreground">{response.answer}</p>
+                  </div>
+                ))}
               </div>
-            )}
-
-            <div className="flex justify-center gap-4">
-              {!isListening ? (
-                <Button
-                  onClick={startListening}
-                  disabled={isLoading}
-                  className={cn(
-                    "w-full max-w-sm",
-                    isListening && "bg-destructive hover:bg-destructive/90"
-                  )}
-                >
-                  <Mic className={cn("mr-2 h-4 w-4", isListening && "animate-pulse")} />
-                  Start Speaking
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => setIsListening(false)}
-                  variant="destructive"
-                  className="w-full max-w-sm"
-                >
-                  <MicOff className="mr-2 h-4 w-4" />
-                  Stop Recording
-                </Button>
-              )}
+              <Button onClick={startQuestionnaire} className="mt-4">
+                Start New Assessment
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold">
+                  Question {currentQuestionIndex + 1} of {questions.length}
+                </h3>
+                <div className="flex items-center gap-2">
+                  {isSpeaking && <Volume2 className="h-5 w-5 animate-pulse" />}
+                  {isListening && <Mic className="h-5 w-5 text-green-500 animate-pulse" />}
+                </div>
+              </div>
+
+              <p className="text-lg">{questions[currentQuestionIndex]}</p>
+
+              {error && (
+                <div className="flex items-center gap-2 text-red-500">
+                  <AlertCircle className="h-5 w-5" />
+                  <p>{error}</p>
+                </div>
+              )}
+
+              <div className="h-20 flex items-center justify-center">
+                {isListening ? (
+                  <div className="flex items-center gap-2">
+                    <MicOff className="h-6 w-6 text-red-500" />
+                    <span>Listening...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Mic className="h-6 w-6" />
+                    <span>Processing...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${((currentQuestionIndex + 1) / questions.length) * 100}%`
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </Card>
+      </Card>
+    </div>
   );
 }
