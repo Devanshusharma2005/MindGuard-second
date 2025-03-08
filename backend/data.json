@@ -392,5 +392,47 @@
                 "Critical risk indicators"
             ]
         }
+    },
+    {
+        "input": {
+            "user_id": "b1acb0d2-752f-46e5-adb8-3b6a03263d9a",
+            "mood": 10,
+            "anxiety": "severe",
+            "sleep_quality": 10,
+            "energy_levels": 5,
+            "physical_symptoms": "severe",
+            "concentration": 10,
+            "self_care": "extensive",
+            "social_interactions": 10,
+            "intrusive_thoughts": "severe",
+            "optimism": 10,
+            "stress_factors": "nothing",
+            "coping_strategies": "exercises and reduce screen time",
+            "social_support": 10,
+            "self_harm": "none",
+            "discuss_professional": "no"
+        },
+        "output": {
+            "summary": {
+                "emotions_count": {
+                    "joyful": 2,
+                    "energetic": 1,
+                    "optimistic": 1,
+                    "anxious": 2,
+                    "panicked": 1,
+                    "overwhelmed": 2
+                },
+                "average_confidence": 0.7,
+                "average_valence": 1,
+                "crisis_count": 2,
+                "risk_factors": [
+                    "Significant physical symptoms",
+                    "Persistent intrusive thoughts"
+                ]
+            },
+            "disorder_indicators": [
+                "Anxiety disorder indicators"
+            ]
+        }
     }
 ]

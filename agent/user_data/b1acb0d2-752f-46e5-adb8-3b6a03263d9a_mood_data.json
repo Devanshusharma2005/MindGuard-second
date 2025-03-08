@@ -1,0 +1,17 @@
+{
+  "user_id": "b1acb0d2-752f-46e5-adb8-3b6a03263d9a",
+  "entries": [
+    {
+      "timestamp": "2025-03-08T16:37:57.288604",
+      "date": "2025-03-08",
+      "time": "16:37",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    }
+  ],
+  "insights": [],
+  "last_report_date": null
+}

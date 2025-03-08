@@ -30,7 +30,7 @@ class EmotionAnalyzer:
     """
     
     def __init__(self, 
-                model_path: str = "j-hartmann/emotion-english-distilroberta-base",
+                model_path: str = "priyanshu-thapliyal/emotion-analysis",
                 offline_mode: bool = True,
                 cache_dir: Optional[str] = None):
         """
