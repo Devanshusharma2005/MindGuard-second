@@ -19,7 +19,7 @@ export default function DoctorLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/api/auth/doctor-login', {
+      const res = await fetch('http://localhost:5000/api/auth/doctor/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,7 +32,11 @@ export default function DoctorLoginPage() {
         throw new Error(data.msg || 'Login failed');
       }
 
+      // Store token and doctor info
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userType', 'doctor');
+      localStorage.setItem('doctor', JSON.stringify(data.doctor));
+      
       router.push('/doctor');
     } catch (err: any) {
       setError(err.message);

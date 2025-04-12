@@ -17,14 +17,18 @@ export default function DoctorSignupPage() {
     specialization: '',
     yearsOfExperience: '',
     hospital: '',
-    address: '',
-    city: '',
-    state: '',
-    country: '',
-    zipCode: '',
-    licenseFile: null as File | null,
-    degreeFile: null as File | null,
-    idProofFile: null as File | null,
+    address: {
+      street: '',
+      city: '',
+      state: '',
+      country: '',
+      zipCode: '',
+    },
+    documents: {
+      licenseFile: null as File | null,
+      degreeFile: null as File | null,
+      idProofFile: null as File | null,
+    },
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,21 +36,41 @@ export default function DoctorSignupPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, [field]: e.target.files[0] });
+      setFormData({ ...formData, documents: { ...formData.documents, [field]: e.target.files[0] } });
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      // Create a new FormData instance
       const formDataToSend = new FormData();
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value !== null) {
-          formDataToSend.append(key, value);
-        }
-      });
 
-      const res = await fetch('http://localhost:3000/api/auth/doctor-signup', {
+      // Add basic fields
+      formDataToSend.append('fullName', formData.fullName);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('phoneNumber', formData.phoneNumber);
+      formDataToSend.append('licenseNumber', formData.licenseNumber);
+      formDataToSend.append('specialization', formData.specialization);
+      formDataToSend.append('yearsOfExperience', formData.yearsOfExperience);
+      formDataToSend.append('hospital', formData.hospital);
+
+      // Add address as JSON string
+      formDataToSend.append('address', JSON.stringify(formData.address));
+
+      // Add document files if they exist
+      if (formData.documents.licenseFile) {
+        formDataToSend.append('documents[licenseFile]', formData.documents.licenseFile);
+      }
+      if (formData.documents.degreeFile) {
+        formDataToSend.append('documents[degreeFile]', formData.documents.degreeFile);
+      }
+      if (formData.documents.idProofFile) {
+        formDataToSend.append('documents[idProofFile]', formData.documents.idProofFile);
+      }
+
+      const res = await fetch('http://localhost:5000/api/auth/doctor/register', {
         method: 'POST',
         body: formDataToSend,
       });
@@ -56,8 +80,10 @@ export default function DoctorSignupPage() {
         throw new Error(data.msg || 'Registration failed');
       }
 
-      localStorage.setItem('token', data.token);
-      router.push('/doctor');
+      // Show success message and redirect to login
+      setError('');
+      alert('Registration successful! Please login to continue.');
+      router.push('/doctor-login');
     } catch (err: any) {
       setError(err.message);
     }
@@ -234,8 +260,8 @@ export default function DoctorSignupPage() {
                   required
                   className="w-full pl-10 pr-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
                   placeholder="Enter your address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  value={formData.address.street}
+                  onChange={(e) => setFormData({ ...formData, address: { ...formData.address, street: e.target.value } })}
                 />
               </div>
             </div>
@@ -247,8 +273,8 @@ export default function DoctorSignupPage() {
                 required
                 className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
                 placeholder="Enter your city"
-                value={formData.city}
-                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                value={formData.address.city}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, city: e.target.value } })}
               />
             </div>
 
@@ -259,8 +285,8 @@ export default function DoctorSignupPage() {
                 required
                 className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
                 placeholder="Enter your state"
-                value={formData.state}
-                onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                value={formData.address.state}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, state: e.target.value } })}
               />
             </div>
 
@@ -271,8 +297,8 @@ export default function DoctorSignupPage() {
                 required
                 className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
                 placeholder="Enter your country"
-                value={formData.country}
-                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                value={formData.address.country}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, country: e.target.value } })}
               />
             </div>
 
@@ -283,8 +309,8 @@ export default function DoctorSignupPage() {
                 required
                 className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
                 placeholder="Enter your ZIP code"
-                value={formData.zipCode}
-                onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
+                value={formData.address.zipCode}
+                onChange={(e) => setFormData({ ...formData, address: { ...formData.address, zipCode: e.target.value } })}
               />
             </div>
           </div>

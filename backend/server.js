@@ -8,6 +8,8 @@ const userRoutes = require('./routes/user');
 const healthTrackingRoutes = require('./routes/healthTracking');
 const questionnaireRoutes = require('./routes/api/questionnaire');
 const { router: voiceRoutes, setupWebSocket } = require('./routes/voice');
+const doctorAuthRoutes = require('./routes/doctorAuth');
+const adminAuthRoutes = require('./routes/adminAuth');
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.use('/api/user', userRoutes);
 app.use('/health-tracking', healthTrackingRoutes);
 app.use('/api/questionnaire', questionnaireRoutes);
 app.use('/voice', voiceRoutes);
+app.use('/api/auth/doctor', doctorAuthRoutes);
+app.use('/api/auth/admin', adminAuthRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {

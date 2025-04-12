@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/api/auth/admin-login', {
+      const res = await fetch('http://localhost:5000/api/auth/admin/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -32,7 +32,11 @@ export default function AdminLoginPage() {
         throw new Error(data.msg || 'Login failed');
       }
 
+      // Store token and admin info
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userType', 'admin');
+      localStorage.setItem('admin', JSON.stringify(data.admin));
+      
       router.push('/admin');
     } catch (err: any) {
       setError(err.message);
@@ -73,6 +77,14 @@ export default function AdminLoginPage() {
             {error}
           </motion.div>
         )}
+
+        <div className="mb-6 p-4 bg-muted rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            <strong>Default Admin Credentials:</strong><br />
+            Email: admin@mindguard.com<br />
+            Password: admin@123
+          </p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

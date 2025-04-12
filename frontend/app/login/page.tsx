@@ -15,31 +15,30 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
     try {
-      const res = await fetch('http://localhost:3000/api/auth/login', {
+      const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
 
       const data = await res.json();
-      console.log('Login response:', data);
 
       if (!res.ok) {
-        throw new Error(data.msg || 'Login failed');
+        if (data.msg === 'User not found') {
+          throw new Error('User not found. Please register first.');
+        } else {
+          throw new Error(data.msg || 'Login failed');
+        }
       }
 
       localStorage.setItem('userData', JSON.stringify(data.user));
       localStorage.setItem('token', data.token);
+      localStorage.setItem('userType', 'user');
 
-      if (data.user.role === 'doctor') {
-        router.push('/doctor');
-      } else if (data.user.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/patient'); 
-      }
-
+      router.push('/patient');
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message);
