@@ -146,7 +146,7 @@ export default function HealthTracking() {
   const fetchHealthHistory = async (userId: string) => {
     try {
       console.log("Fetching health history for user:", userId);
-      const response = await fetch(`http://localhost:5000/health-tracking/${userId}`);
+      const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
       console.log("Health history response status:", response.status);
       
       if (!response.ok) {
@@ -178,7 +178,7 @@ export default function HealthTracking() {
       const userId = localStorage.getItem("mindguard_user_id");
       console.log("Submitting questionnaire data:", { ...data, userId });
       
-      const response = await fetch("http://localhost:5000/health-tracking", {
+      const response = await fetch("http://localhost:5000/api/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -198,12 +198,11 @@ export default function HealthTracking() {
       }
 
       const result = await response.json();
-      console.log("Received questionnaire response:", result);
-      console.log("Progress data in response:", result.progress);
+      console.log("Questionnaire submission result:", result);
       
-      setHealthData(result);
-      setIsFirstTime(false);
-      setActiveTab("insights");
+      // Refresh health data after submission
+      await fetchHealthHistory(userId);
+      setActiveTab("insights"); // Switch to insights tab after submission
     } catch (err) {
       console.error("Error submitting questionnaire:", err);
       setError(err instanceof Error ? err.message : "Failed to submit questionnaire");
@@ -213,42 +212,55 @@ export default function HealthTracking() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Health Tracking</h1>
-          <p className="text-muted-foreground">
-            {isFirstTime 
-              ? "Welcome! Please complete your first mental health assessment"
-              : "Monitor your mental health progress and receive personalized insights"}
-          </p>
-        </div>
-        {error && (
-          <div className="text-sm text-red-500 bg-red-50 p-2 rounded">
-            {error}
-          </div>
-        )}
-      </div>
-      
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="questionnaire">Questionnaire</TabsTrigger>
-          <TabsTrigger value="insights" disabled={isFirstTime}>Insights</TabsTrigger>
-          <TabsTrigger value="progress" disabled={isFirstTime}>Progress</TabsTrigger>
-          <TabsTrigger value="recommendations" disabled={isFirstTime}>Recommendations</TabsTrigger>
+    <div className="container mx-auto py-6">
+      <h1 className="text-3xl font-bold mb-2">Health Tracking</h1>
+      <p className="text-muted-foreground mb-6">
+        {isFirstTime 
+          ? "Welcome! Please complete your first mental health assessment"
+          : "Monitor your mental health progress and receive personalized insights"}
+      </p>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger 
+            value="questionnaire"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Questionnaire
+          </TabsTrigger>
+          <TabsTrigger 
+            value="insights"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            disabled={!healthData}
+          >
+            Insights
+          </TabsTrigger>
+          <TabsTrigger 
+            value="progress"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            disabled={!healthData}
+          >
+            Progress
+          </TabsTrigger>
+          <TabsTrigger 
+            value="recommendations"
+            className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+            disabled={!healthData}
+          >
+            Recommendations
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value="questionnaire">
+
+        <TabsContent value="questionnaire" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>
-                {isFirstTime ? "Initial Health Assessment" : "Daily Health Assessment"}
-              </CardTitle>
+              <CardTitle>Initial Health Assessment</CardTitle>
               <CardDescription>
-                {isFirstTime 
-                  ? "Please complete this assessment to help us understand your mental health needs"
-                  : "Choose your preferred way to complete the assessment"}
+                Please complete this assessment to help us understand your mental health needs
               </CardDescription>
-              <div className="flex gap-4 mt-4">
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-4">
                 <Button
                   variant={assessmentType === "text" ? "default" : "outline"}
                   onClick={() => setAssessmentType("text")}
@@ -261,70 +273,36 @@ export default function HealthTracking() {
                 >
                   Voice Assessment
                 </Button>
-                {!isFirstTime && (
-                  <Button
-                    variant={assessmentType === "report" ? "default" : "outline"}
-                    onClick={() => setAssessmentType("report")}
-                  >
-                    Report Submission
-                  </Button>
-                )}
               </div>
-            </CardHeader>
-            <CardContent>
-              {assessmentType === "text" ? (
-                <HealthQuestionnaire 
-                  onSubmit={handleQuestionnaireSubmit}
-                  isLoading={loading}
-                />
-              ) : assessmentType === "voice" ? (
-                <VoiceQuestionnaire/>
-              ) : (
-                <ReportSubmission />
+              
+              {assessmentType === "text" && (
+                <HealthQuestionnaire onSubmit={handleQuestionnaireSubmit} isLoading={loading} />
+              )}
+              {assessmentType === "voice" && (
+                <VoiceQuestionnaire onSubmit={handleQuestionnaireSubmit} isLoading={loading} />
               )}
             </CardContent>
           </Card>
         </TabsContent>
+
         <TabsContent value="insights">
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Health Insights</CardTitle>
-              <CardDescription>
-                AI-generated analysis based on your responses and patterns
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <HealthInsights insights={healthData?.insights} />
-            </CardContent>
-          </Card>
+          {healthData && <HealthInsights insights={healthData.insights} />}
         </TabsContent>
+
         <TabsContent value="progress">
-          <Card>
-            <CardHeader>
-              <CardTitle>Progress Tracking</CardTitle>
-              <CardDescription>
-                Visualize your mental health journey over time
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ProgressCharts progressData={healthData?.progress} />
-            </CardContent>
-          </Card>
+          {healthData && <ProgressCharts progressData={healthData.progress} />}
         </TabsContent>
+
         <TabsContent value="recommendations">
-          <Card>
-            <CardHeader>
-              <CardTitle>Personalized Recommendations</CardTitle>
-              <CardDescription>
-                Tailored suggestions to improve your mental wellbeing
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Recommendations recommendations={healthData?.recommendations} />
-            </CardContent>
-          </Card>
+          {healthData && <Recommendations recommendations={healthData.recommendations} />}
         </TabsContent>
       </Tabs>
+
+      {error && (
+        <div className="mt-4 p-4 bg-destructive/10 text-destructive rounded-md">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
