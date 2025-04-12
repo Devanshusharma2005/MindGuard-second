@@ -123,14 +123,14 @@ class EmotionAnalyzer:
     
     def _initialize_analyzer(self) -> Callable:
         """Initialize the primary analyzer with fallbacks."""
-        # Try to use transformers if available and not in offline mode
+    # Try to use transformers if available and not in offline mode
         if TRANSFORMERS_AVAILABLE and not self.offline_mode:
             try:
                 # Try to load the model from Hugging Face
                 analyzer = pipeline(
                     "text-classification",
                     model=self.model_path,
-                    cache_dir=self.cache_dir
+                    # Remove cache_dir from pipeline creation
                 )
                 print(f"Successfully loaded Hugging Face emotion analyzer: {self.model_path}")
                 return analyzer
@@ -147,6 +147,7 @@ class EmotionAnalyzer:
                             "text-classification",
                             model=model,
                             tokenizer=tokenizer
+                            # Don't pass cache_dir here either
                         )
                         print(f"Successfully loaded cached emotion analyzer")
                         return analyzer

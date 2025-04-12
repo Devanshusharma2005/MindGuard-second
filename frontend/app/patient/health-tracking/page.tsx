@@ -278,19 +278,26 @@ export default function HealthTracking() {
                 >
                   Voice Assessment
                 </Button>
+                <Button
+                  variant={assessmentType === "report" ? "default" : "outline"}
+                  onClick={() => setAssessmentType("report")}
+                >
+                  Report Submission
+                </Button>
               </div>
               
-              {assessmentType === "text" && (
+              {assessmentType === "text" ? (
                 <HealthQuestionnaire 
                   onSubmit={handleQuestionnaireSubmit} 
                   isLoading={loading}
                   onComplete={handleQuestionnaireComplete}
                 />
-              )}
-              {assessmentType === "voice" && (
+              ) : assessmentType === "voice" ? (
                 <VoiceQuestionnaire 
                   onComplete={handleQuestionnaireComplete}
                 />
+              ) : (
+                <ReportSubmission />
               )}
             </CardContent>
           </Card>

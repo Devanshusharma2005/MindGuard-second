@@ -30,6 +30,146 @@
       "intensity": 0.1,
       "context": "definitely",
       "triggers": []
+    },
+    {
+      "timestamp": "2025-03-16T19:07:33.875047",
+      "date": "2025-03-16",
+      "time": "19:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.1,
+      "context": "hi",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-16T19:07:47.035281",
+      "date": "2025-03-16",
+      "time": "19:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-16T19:07:47.378246",
+      "date": "2025-03-16",
+      "time": "19:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-16T19:07:59.308131",
+      "date": "2025-03-16",
+      "time": "19:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-16T19:14:27.450061",
+      "date": "2025-03-16",
+      "time": "19:14",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "can you suggest some self-care activities?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-16T19:50:15.648942",
+      "date": "2025-03-16",
+      "time": "19:50",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "how can i improve my sleep quality?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T11:07:32.123929",
+      "date": "2025-03-18",
+      "time": "11:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T11:07:32.440475",
+      "date": "2025-03-18",
+      "time": "11:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T11:07:52.626767",
+      "date": "2025-03-18",
+      "time": "11:07",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "yess can u tell me the possible causes of depression ",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T11:59:52.259616",
+      "date": "2025-03-18",
+      "time": "11:59",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "hello",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T12:34:39.922894",
+      "date": "2025-03-18",
+      "time": "12:34",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "hello",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T12:43:42.435972",
+      "date": "2025-03-18",
+      "time": "12:43",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "hello",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T12:43:45.459758",
+      "date": "2025-03-18",
+      "time": "12:43",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "hello",
+      "triggers": []
+    },
+    {
+      "timestamp": "2025-03-18T13:37:10.171237",
+      "date": "2025-03-18",
+      "time": "13:37",
+      "mood": "neutral",
+      "valence": 0.0,
+      "intensity": 0.0,
+      "context": "what are some mindfulness exercises for anxiety?",
+      "triggers": []
     }
   ],
   "insights": [],

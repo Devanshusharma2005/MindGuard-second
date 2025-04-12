@@ -119,13 +119,16 @@ class MentalHealthChat:
         return user_id
 
     def _determine_provider(self):
-        """Determine which provider to use based on available API keys."""
         # Set priority order: OpenAI, Groq, Gemini
         if os.environ.get("OPENAI_API_KEY"):
             return "openai"
         elif os.environ.get("GROQ_API_KEY"):
             return "groq"
         elif os.environ.get("GOOGLE_API_KEY"):
+            # Check if the GEMINI_API_VERSION is set, and if not, set a default
+            if not os.environ.get("GEMINI_API_VERSION"):
+                os.environ["GEMINI_API_VERSION"] = "v1"  # Use v1 instead of v1beta
+                os.environ["GEMINI_MODEL_NAME"] = "gemini-1.5-pro"  # Updated model name
             return "gemini"
         else:
             print("Warning: No API keys found. The application may not work correctly.")
@@ -146,7 +149,7 @@ class MentalHealthChat:
     async def get_response(self, message: str) -> Dict:
         try:
             result = self.agent.workflow.invoke({
-                "user_input": message,
+                "user_input": f"{message} and give me answer in a short paragraph, If this prompt is not related to mental health, so please don't give me answer to the asked question and give response as Please ask the question related to mental health",
                 "history": [],
                 "response": "",
                 "needs_escalation": False,
@@ -164,10 +167,10 @@ class MentalHealthChat:
             })
 
             response = result.get("response", "I'm here to listen. Could you tell me more about that?")
-            words = response.split()
+            # words = response.split()
             
-            if len(words) > RESPONSE_GUIDELINES["max_words"]:
-                response = " ".join(words[:RESPONSE_GUIDELINES["max_words"]]) + "... Would you like me to elaborate?"
+            # if len(words) > RESPONSE_GUIDELINES["max_words"]:
+            #     response = " ".join(words[:RESPONSE_GUIDELINES["max_words"]]) + "... Would you like me to elaborate?"
 
             return {
                 "response": response,

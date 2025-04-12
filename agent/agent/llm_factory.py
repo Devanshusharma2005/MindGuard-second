@@ -102,7 +102,15 @@ class LLMFactory:
             elif provider.lower() == "gemini":
                 if not os.environ.get("GOOGLE_API_KEY"):
                     raise ValueError("Google API key not found but provider explicitly set to Gemini")
-                return ChatGemini(temperature=temperature, **kwargs)
+                # Use the correct model name for Gemini
+                model_name = os.environ.get("GEMINI_MODEL_NAME", "gemini-1.5-pro")
+                api_version = os.environ.get("GEMINI_API_VERSION", "v1")
+                return ChatGemini(
+                    temperature=temperature, 
+                    model_name=model_name,
+                    api_version=api_version,
+                    **kwargs
+                )
             elif provider.lower() == "groq":
                 if not os.environ.get("GROQ_API_KEY"):
                     raise ValueError("Groq API key not found but provider explicitly set to Groq")
