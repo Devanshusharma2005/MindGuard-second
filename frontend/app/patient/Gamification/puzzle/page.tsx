@@ -24,7 +24,7 @@ const Numpuzzle = () => {
 
   useEffect(() => {
     const initialTiles = Array.from({ length: totalTiles - 1 }, (_, i) => i + 1);
-    initialTiles.push(""); // Empty space
+    initialTiles.push(0); // Empty space
     const shuffledTiles = shuffleArray(initialTiles);
     setTiles(shuffledTiles);
     setPositions(getTilePositions(shuffledTiles));
@@ -45,7 +45,7 @@ const Numpuzzle = () => {
   // Add check for puzzle completion
   const checkCompletion = (newTiles: number[]) => {
     const isCompleted = newTiles.every((tile, index) => {
-      if (index === newTiles.length - 1) return tile === "";
+      if (index === newTiles.length - 1) return tile === 0;
       return tile === index + 1;
     });
 
@@ -55,14 +55,15 @@ const Numpuzzle = () => {
   };
 
   const getTilePositions = (tiles: number[]) => {
-    return tiles.reduce((acc, tile, index) => {
+    return tiles.reduce<Record<number, { x: number; y: number }>>((acc, tile, index) => {
       acc[tile] = { x: index % gridSize, y: Math.floor(index / gridSize) };
       return acc;
     }, {});
   };
+  
 
   const handleTileClick = (index: number) => {
-    const emptyIndex = tiles.indexOf("");
+    const emptyIndex = tiles.indexOf(0);
     const newTiles = [...tiles];
     
     if (isValidMove(index, emptyIndex)) {
@@ -93,7 +94,7 @@ const Numpuzzle = () => {
       <div className=" flex text-xl mb-4">Time: {formatTime(elapsedTime)}</div>
       <div className={`grid grid-cols-${gridSize} gap-2 relative`} style={{ width: "800px", height: "800px" }}>
         {tiles.map((tile, index) => (
-          tile !== "" && (
+          tile !== 0 && (
             <motion.div
               key={tile}
               className="absolute w-32 h-32 flex items-center justify-center bg-blue-500 text-white text-3xl font-bold rounded shadow-lg"
@@ -124,7 +125,7 @@ const Numpuzzle = () => {
               setStartTime(Date.now());
               setElapsedTime(0);
               const initialTiles = Array.from({ length: totalTiles - 1 }, (_, i) => i + 1);
-              initialTiles.push("");
+              initialTiles.push(0);
               const shuffledTiles = shuffleArray(initialTiles);
               setTiles(shuffledTiles);
               setPositions(getTilePositions(shuffledTiles));

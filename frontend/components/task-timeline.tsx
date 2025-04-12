@@ -5,7 +5,7 @@ import type { Task } from "@/types"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
-import { CheckCircle, Circle, Clock, TrendingUp, Brain, Heart, Droplets, Dumbbell, Trophy } from "lucide-react"
+import { CheckCircle, Circle, Clock, TrendingUp, Brain, Heart, Droplets, Dumbbell, Trophy, XCircle } from "lucide-react"
 
 interface TaskTimelineProps {
   tasks: Task[]
@@ -15,6 +15,27 @@ interface TaskTimelineProps {
 
 export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTimelineProps) {
   const [animatedProgress, setAnimatedProgress] = useState<Record<string, number>>({})
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false)
+  const [activeVideoTask, setActiveVideoTask] = useState<string | null>(null)
+  const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [videoError, setVideoError] = useState<string | null>(null)
+  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false)
+  const [showRewardsPopup, setShowRewardsPopup] = useState(false)
+  const [currentReward, setCurrentReward] = useState<string | null>(null)
+  const [isHydrationVideoPlaying, setIsHydrationVideoPlaying] = useState(false)
+  const [activeHydrationTask, setActiveHydrationTask] = useState<string | null>(null)
+  const [hydrationVideoRef, setHydrationVideoRef] = useState<HTMLVideoElement | null>(null)
+  const [isWalkingVideoPlaying, setIsWalkingVideoPlaying] = useState(false)
+  const [activeWalkingTask, setActiveWalkingTask] = useState<string | null>(null)
+  const [walkingVideoRef, setWalkingVideoRef] = useState<HTMLVideoElement | null>(null)
+  const [showVideoUpload, setShowVideoUpload] = useState<boolean>(false)
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
+  const [walkingPercentage, setWalkingPercentage] = useState<number | null>(null)
+  const [analysisMessage, setAnalysisMessage] = useState<string | null>(null)
+  const [analysisHistory, setAnalysisHistory] = useState<any[]>([])
+  const [showFailurePopup, setShowFailurePopup] = useState(false)
 
   // Initialize animated progress values
   useEffect(() => {
@@ -25,9 +46,52 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
     setAnimatedProgress(initialProgress)
   }, [tasks])
 
+  // Add this useEffect to handle both video and audio
+  useEffect(() => {
+    if (videoRef && audioRef && isVideoPlaying && activeVideoTask) {
+      const playMedia = async () => {
+        try {
+          console.log("Attempting to play video and audio");
+          // Reset both media to start
+          videoRef.currentTime = 0;
+          audioRef.currentTime = 0;
+          
+          // Try to play both media
+          const videoPromise = videoRef.play();
+          const audioPromise = audioRef.play();
+          
+          await Promise.all([videoPromise, audioPromise]);
+          console.log("Both video and audio playing successfully");
+        } catch (error) {
+          console.error("Error playing media:", error);
+          setVideoError("Failed to play meditation content");
+          setIsVideoPlaying(false);
+          setIsAudioPlaying(false);
+          setActiveVideoTask(null);
+        }
+      };
+      playMedia();
+    }
+  }, [videoRef, audioRef, isVideoPlaying, activeVideoTask]);
+
+  // Add debug logging for video events
+  useEffect(() => {
+    if (videoRef) {
+      videoRef.addEventListener('loadstart', () => console.log('Video loading started'));
+      videoRef.addEventListener('loadeddata', () => console.log('Video data loaded'));
+      videoRef.addEventListener('playing', () => console.log('Video is playing'));
+      videoRef.addEventListener('error', (e) => {
+        console.error('Video error:', videoRef.error);
+        setVideoError(videoRef.error?.message || 'Error loading video');
+      });
+    }
+  }, [videoRef]);
+
   // Get task icon based on category
   const getTaskIcon = (category: string) => {
     switch (category.toLowerCase()) {
+      case "walk":
+        return <Dumbbell className="h-5 w-5" />
       case "meditation":
         return <Brain className="h-5 w-5" />
       case "exercise":
@@ -48,6 +112,247 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
     const formattedHours = hours % 12 || 12
     return `${formattedHours}:${minutes.toString().padStart(2, "0")} ${period}`
   }
+
+  const handleVideoEnd = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    setIsVideoPlaying(false);
+    setIsAudioPlaying(false);
+    setActiveVideoTask(null);
+    
+    if (audioRef) {
+      audioRef.pause();
+      audioRef.currentTime = 0;
+    }
+    
+    // Show rewards popup for meditation
+    if (task && task.category.toLowerCase() === "meditation") {
+      setCurrentReward(task.reward);
+      setShowRewardsPopup(true);
+      setTimeout(() => {
+        onCompleteTask(taskId);
+        setShowRewardsPopup(false);
+        setCurrentReward(null);
+      }, 3000);
+    }
+  };
+
+  const fetchAnalysisHistory = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8001/analysis-history')
+      const data = await response.json()
+      if (data.history) {
+        setAnalysisHistory(data.history)
+      }
+    } catch (error) {
+      console.error('Error fetching analysis history:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchAnalysisHistory()
+  }, [])
+
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      try {
+        setIsLoading(true)
+        setVideoError(null)
+        
+        const formData = new FormData()
+        formData.append('video', file)
+        
+        const response = await fetch('http://127.0.0.1:8001/analyze', {
+          method: 'POST',
+          body: formData
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to upload video')
+        }
+
+        const data = await response.json()
+        console.log('Server response:', data)
+
+        if (data.success) {
+          setWalkingPercentage(data.walking_percentage)
+          setIsWalkingVideoPlaying(true)
+          setActiveWalkingTask(tasks[currentTaskIndex].id)
+
+          // Check walking percentage and show appropriate popup
+          if (data.walking_percentage >= 35) {
+            // Show success message and reward
+            setCurrentReward(tasks[currentTaskIndex].reward)
+            setShowRewardsPopup(true)
+            
+            // Complete task after showing reward
+            setTimeout(() => {
+              onCompleteTask(tasks[currentTaskIndex].id)
+              setShowRewardsPopup(false)
+              setCurrentReward(null)
+            }, 3000)
+          } else {
+            // Show failure popup
+            setShowFailurePopup(true)
+            // Hide failure popup after 3 seconds
+            setTimeout(() => {
+              setShowFailurePopup(false)
+            }, 3000)
+          }
+        } else {
+          throw new Error(data.error || 'Analysis failed')
+        }
+
+      } catch (error) {
+        console.error('Error:', error)
+        setVideoError(error instanceof Error ? error.message : 'Failed to process video')
+        setIsWalkingVideoPlaying(false)
+        setActiveWalkingTask(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  const handleStartTask = async (task: Task) => {
+    if (task.category.toLowerCase() === "walk") {
+      try {
+        setIsLoading(true);
+        console.log("Starting walking task...");
+        setVideoError(null);
+        // Instead of immediately playing video, show upload button
+        setShowVideoUpload(true);
+      } catch (error) {
+        console.error("Task start error:", error);
+        setVideoError("Failed to start walking task");
+        setShowVideoUpload(false);
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (task.category.toLowerCase() === "meditation") {
+      try {
+        setIsLoading(true);
+        console.log("Starting meditation task...");
+        
+        setVideoError(null);
+        setIsVideoPlaying(true);
+        setIsAudioPlaying(true);
+        setActiveVideoTask(task.id);
+        
+      } catch (error) {
+        console.error("Task start error:", error);
+        setVideoError("Failed to start meditation");
+        setIsVideoPlaying(false);
+        setIsAudioPlaying(false);
+        setActiveVideoTask(null);
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (task.category.toLowerCase() === "hydration") {
+      try {
+        setIsLoading(true);
+        console.log("Starting hydration task...");
+        
+        setVideoError(null);
+        setIsHydrationVideoPlaying(true);
+        setActiveHydrationTask(task.id);
+        
+      } catch (error) {
+        console.error("Task start error:", error);
+        setVideoError("Failed to start hydration task");
+        setIsHydrationVideoPlaying(false);
+        setActiveHydrationTask(null);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      onCompleteTask(task.id);
+    }
+  };
+
+  const handleHydrationVideoEnd = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    setIsHydrationVideoPlaying(false);
+    setActiveHydrationTask(null);
+    
+    // Show rewards popup for hydration
+    if (task && task.category.toLowerCase() === "hydration") {
+      setCurrentReward(task.reward);
+      setShowRewardsPopup(true);
+      setTimeout(() => {
+        onCompleteTask(taskId);
+        setShowRewardsPopup(false);
+        setCurrentReward(null);
+      }, 3000);
+    }
+  };
+
+  const handleWalkingVideoEnd = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    setIsWalkingVideoPlaying(false);
+    setActiveWalkingTask(null);
+    
+    if (task) {
+      setCurrentReward(task.reward);
+      setShowRewardsPopup(true);
+      setTimeout(() => {
+        onCompleteTask(taskId);
+        setShowRewardsPopup(false);
+        setCurrentReward(null);
+      }, 3000);
+    }
+  };
+
+  // Add useEffect for hydration video
+  useEffect(() => {
+    if (hydrationVideoRef && isHydrationVideoPlaying && activeHydrationTask) {
+      const playVideo = async () => {
+        try {
+          console.log("Attempting to play hydration video");
+          hydrationVideoRef.currentTime = 0;
+          await hydrationVideoRef.play();
+          console.log("Hydration video playing successfully");
+        } catch (error) {
+          console.error("Error playing hydration video:", error);
+          setVideoError("Failed to play hydration video");
+          setIsHydrationVideoPlaying(false);
+          setActiveHydrationTask(null);
+        }
+      };
+      playVideo();
+    }
+  }, [hydrationVideoRef, isHydrationVideoPlaying, activeHydrationTask]);
+
+  // Add this useEffect for walking video
+  // useEffect(() => {
+  //   if (walkingVideoRef && isWalkingVideoPlaying && activeWalkingTask) {
+  //     const playVideo = async () => {
+  //       try {
+  //         console.log("Attempting to play walking video");
+  //         walkingVideoRef.currentTime = 0;
+  //         await walkingVideoRef.play();
+  //         console.log("Walking video playing successfully");
+  //       } catch (error) {
+  //         console.error("Error playing walking video:", error);
+  //         
+  //         setIsWalkingVideoPlaying(false);
+  //         setActiveWalkingTask(null);
+  //       }
+  //     };
+  //     playVideo();
+  //   }
+  // }, [walkingVideoRef, isWalkingVideoPlaying, activeWalkingTask]);
+
+  // Add this useEffect for cleanup
+  useEffect(() => {
+    return () => {
+      // Cleanup video URLs when component unmounts
+      if (selectedVideo) {
+        URL.revokeObjectURL(URL.createObjectURL(selectedVideo))
+      }
+    }
+  }, [selectedVideo])
 
   return (
     <div className="relative max-w-3xl mx-auto">
@@ -124,6 +429,182 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
               {/* Task description */}
               <p className="text-sm text-muted-foreground">{task.description}</p>
 
+              {/* Video player for walking tasks */}
+              {task.category.toLowerCase() === "walk" && !isWalkingVideoPlaying && isCurrent && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  {showVideoUpload ? (
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        onClick={() => document.getElementById('videoUpload')?.click()}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? "Analyzing..." : "Upload Video"}
+                      </Button>
+                      <input
+                        id="videoUpload"
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={handleVideoUpload}
+                        disabled={isLoading}
+                      />
+                      
+                      {task.category.toLowerCase() === "walk" && isWalkingVideoPlaying && activeWalkingTask === task.id && (
+                        <div className="mt-4 relative rounded-lg overflow-hidden">
+                          {videoError && (
+                            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
+                              {videoError}
+                            </div>
+                          )}
+                          {(walkingPercentage ?? 0) < 35 && (
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium text-red-800">Task Failed!</h4>
+                                  <p className="text-sm text-red-600">
+                                    You failed the morning walk task. Please try again.
+                                  </p>
+                                </div>
+                                <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+                                  <XCircle className="h-6 w-6 text-red-500" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {( walkingPercentage ?? 0 ) >= 35 && (
+                            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <h4 className="font-medium text-green-800">Task Completed!</h4>
+                                  <p className="text-sm text-green-600">
+                                    Great job! You've completed your morning walk.
+                                  </p>
+                                </div>
+                                <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center">
+                                  <CheckCircle className="h-6 w-6 text-green-500" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {videoError && (
+                        <div className="text-red-500 text-sm mt-1 bg-red-50 border border-red-200 rounded px-4 py-2">
+                          {videoError}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                        <p>Upload a video to analyze your walking progress.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+               {/* Video player for meditation tasks */}
+               {task.category.toLowerCase() === "meditation" && !isVideoPlaying && isCurrent && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  <video
+                    className="w-full rounded-lg"
+                    src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/360/Big_Buck_Bunny_360_10s_1MB.mp4"
+                    poster="/meditation.png"
+                    playsInline
+                  />
+                </div>
+              )}
+
+              {task.category.toLowerCase() === "meditation" && isVideoPlaying && activeVideoTask === task.id && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  {videoError && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
+                      {videoError}
+                    </div>
+                  )}
+                  <audio
+                    ref={setAudioRef}
+                    src={`${window.location.origin}/relaxing-music.mp3`}
+                    preload="auto"
+                    loop={false}
+                    onError={(e) => {
+                      console.error("Audio error event:", e);
+                      setVideoError("Error playing audio");
+                    }}
+                  />
+                  <video
+                    ref={setVideoRef}
+                    className="w-full rounded-lg"
+                    src={`${window.location.origin}/meditation.mp4`}
+                    controls={false}
+                    playsInline
+                    muted={false}
+                    autoPlay
+                    preload="auto"
+                    onLoadStart={() => console.log("Meditation video load started")}
+                    onLoadedData={() => console.log("Meditation video data loaded")}
+                    onPlay={() => console.log("Meditation video play event")}
+                    onPlaying={() => console.log("Meditation video playing event")}
+                    onEnded={() => {
+                      console.log("Meditation video ended");
+                      handleVideoEnd(task.id);
+                    }}
+                    onError={(e) => {
+                      console.error("Meditation video error event:", e);
+                      setVideoError("Error playing meditation video");
+                    }}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </div>
+              )}
+
+              {/* Video player for hydration tasks */}
+              {task.category.toLowerCase() === "hydration" && !isHydrationVideoPlaying && isCurrent && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  <video
+                    className="w-full rounded-lg"
+                    src={`${window.location.origin}/hydration-preview.mp4`}
+                    poster="/hydrate.png"
+                    playsInline
+                  />
+                </div>
+              )}
+
+              {task.category.toLowerCase() === "hydration" && isHydrationVideoPlaying && activeHydrationTask === task.id && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  {videoError && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
+                      {videoError}
+                    </div>
+                  )}
+                  <video
+                    ref={setHydrationVideoRef}
+                    className="w-full rounded-lg"
+                    src={`${window.location.origin}/hydration.mp4`}
+                    controls={false}
+                    playsInline
+                    muted={false}
+                    autoPlay
+                    preload="auto"
+                    onLoadStart={() => console.log("Hydration video load started")}
+                    onLoadedData={() => console.log("Hydration video data loaded")}
+                    onPlay={() => console.log("Hydration video play event")}
+                    onPlaying={() => console.log("Hydration video playing event")}
+                    onEnded={() => {
+                      console.log("Hydration video ended");
+                      handleHydrationVideoEnd(task.id);
+                    }}
+                    onError={(e) => {
+                      console.error("Hydration video error event:", e);
+                      setVideoError("Error playing hydration video");
+                    }}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </div>
+              )}
+
+
               {/* Task progress */}
               <div className="mt-2">
                 <div className="flex items-center justify-between mb-1">
@@ -150,20 +631,70 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                 </div>
               </div>
 
-              {/* Action button */}
+              {/* Modified action button */}
               <Button
                 className={cn(
                   "mt-2 w-full",
                   isCompleted
                     ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
                     : isCurrent
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                      ? task.category.toLowerCase() === "walk"
+                        ? isLoading
+                          ? "Loading..."
+                          : isWalkingVideoPlaying && activeWalkingTask === task.id
+                            ? "Walking in Progress..."
+                            : showVideoUpload
+                              ? "bg-gray-400"
+                              : "Start Walking"
+                        : task.category.toLowerCase() === "meditation"
+                          ? isLoading
+                            ? "Loading..."
+                            : isVideoPlaying && activeVideoTask === task.id
+                              ? "Meditation in Progress..."
+                              : "Start Meditation"
+                          : task.category.toLowerCase() === "hydration"
+                            ? isLoading
+                              ? "Loading..."
+                              : isHydrationVideoPlaying && activeHydrationTask === task.id
+                                ? "Hydration in Progress..."
+                                : "Start Hydration"
+                            : "Complete Task"
                       : "bg-muted text-muted-foreground",
                 )}
-                disabled={isCompleted || isPending}
-                onClick={() => onCompleteTask(task.id)}
+                disabled={
+                  isCompleted || 
+                  isPending || 
+                  (isVideoPlaying && activeVideoTask === task.id) || 
+                  (isHydrationVideoPlaying && activeHydrationTask === task.id) ||
+                  (task.category.toLowerCase() === "walk" && showVideoUpload)
+                }
+                onClick={() => handleStartTask(task)}
               >
-                {isCompleted ? "Completed" : isCurrent ? "Complete Task" : "Locked"}
+                {isCompleted 
+                  ? "Completed" 
+                  : isCurrent 
+                    ? task.category.toLowerCase() === "walk"
+                      ? isLoading
+                        ? "Loading..."
+                        : isWalkingVideoPlaying && activeWalkingTask === task.id
+                          ? "Walking in Progress..."
+                          : showVideoUpload
+                            ? "Upload Video Active"
+                            : "Start Walking"
+                    : task.category.toLowerCase() === "meditation"
+                      ? isLoading
+                        ? "Loading..."
+                        : isVideoPlaying && activeVideoTask === task.id
+                          ? "Meditation in Progress..."
+                          : "Start Meditation"
+                    : task.category.toLowerCase() === "hydration"
+                      ? isLoading
+                        ? "Loading..."
+                        : isHydrationVideoPlaying && activeHydrationTask === task.id
+                          ? "Hydration in Progress..."
+                          : "Start Hydration"
+                      : "Complete Task"
+                    : "Locked"}
               </Button>
             </div>
 
@@ -224,6 +755,48 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
           <p className="text-sm text-muted-foreground">Complete all tasks to reach your wellness goal!</p>
         </div>
       </div>
+
+      {/* Rewards Popup */}
+      {showRewardsPopup && currentReward && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-yellow-100 rounded-full mx-auto flex items-center justify-center mb-4">
+                <Trophy className="h-8 w-8 text-yellow-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Congratulations!</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                {tasks.find(t => t.id === activeVideoTask)?.category === "meditation" && "You've completed your meditation session and earned:"}
+                {tasks.find(t => t.id === activeHydrationTask)?.category === "hydration" && "You've completed your hydration task and earned:"}
+                {tasks.find(t => t.id === activeWalkingTask)?.category === "walk" && "You've completed your walking task and earned:"}
+              </p>
+              <div className="bg-amber-100 text-amber-700 px-4 py-2 rounded-full font-medium">
+                {currentReward}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Failure Popup */}
+      {showFailurePopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 animate-in fade-in slide-in-from-bottom-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center mb-4">
+                <XCircle className="h-8 w-8 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2 text-red-600">Task Failed!</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                You did not meet the minimum walking requirement.
+              </p>
+              <div className="bg-red-100 text-red-700 px-4 py-2 rounded-full font-medium">
+                Please try again to complete the task
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

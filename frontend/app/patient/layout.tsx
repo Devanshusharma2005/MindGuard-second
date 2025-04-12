@@ -18,8 +18,8 @@ export default function PatientLayout({
       <div className="flex min-h-screen flex-col">
         <TopNav />
         <div className="flex flex-1">
-          <SideNav />
-          <main className="flex-1 p-6 md:p-8">{children}</main>
+          <SideNav isOpen={false} />
+          <main className="flex-1 p-6 md:p-8 bg-gray-100 dark:bg-gray-900">{children}</main>
         </div>
       </div>
       <Toaster />

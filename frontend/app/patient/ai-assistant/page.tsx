@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AIChat } from "@/components/patient/ai-chat";
-import { WellnessReminders } from "@/components/patient/wellness-reminders";
 import { CrisisResources } from "@/components/patient/crisis-resources";
 
 export default function AIAssistant() {
@@ -23,9 +22,8 @@ export default function AIAssistant() {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="chat">AI Chat</TabsTrigger>
-          <TabsTrigger value="reminders">Wellness Reminders</TabsTrigger>
           <TabsTrigger value="crisis">Crisis Resources</TabsTrigger>
         </TabsList>
         <TabsContent value="chat">
@@ -38,19 +36,6 @@ export default function AIAssistant() {
             </CardHeader>
             <CardContent>
               <AIChat />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="reminders">
-          <Card>
-            <CardHeader>
-              <CardTitle>Daily Wellness Reminders</CardTitle>
-              <CardDescription>
-                Customize your self-care tips and wellness notifications
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WellnessReminders />
             </CardContent>
           </Card>
         </TabsContent>

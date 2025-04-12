@@ -3,19 +3,17 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ThemeToggle } from "@/components/theme-toggle";
+import Image from "next/image";
 import {
   Activity,
   Calendar,
-  ClipboardList,
-  FileText,
   Home,
-  LogOut,
   MapPin,
   MessageSquare,
   Pill,
   Settings,
   Users,
+  HelpCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -68,12 +66,6 @@ export function Sidebar({ className }: SidebarProps) {
       href: "/doctor/patient-map",
       active: pathname === "/doctor/patient-map",
     },
-    // {
-    //   label: "Reports",
-    //   icon: FileText,
-    //   href: "/doctor/reports",
-    //   active: pathname === "/doctor/reports",
-    // },
     {
       label: "Settings",
       icon: Settings,
@@ -83,41 +75,170 @@ export function Sidebar({ className }: SidebarProps) {
   ];
 
   return (
-    <div className={cn("pb-12 h-screen flex flex-col", className)}>
+    <div className={cn("flex flex-col h-full bg-background border-r", className)}>
       <div className="space-y-4 py-4 flex flex-col h-full">
-        <div className="px-3 py-2 flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <ClipboardList className="h-6 w-6 text-primary" />
-            <h2 className="text-lg font-semibold tracking-tight">MindGuard</h2>
+        <div className="px-3 py-2 flex items-center justify-between border-b">
+          <Link href="/" className="flex items-center gap-2">
+            <Image 
+              src="/mindguard_logo.png" 
+              alt="MindGuard Logo" 
+              width={32} 
+              height={32} 
+              className="h-6 sm:h-8 w-auto"
+            />
+            <h2 className="text-xl sm:text-2xl font-semibold tracking-tight hidden sm:inline">MindGuard</h2>
           </Link>
-          <ThemeToggle />
         </div>
         <ScrollArea className="flex-1 px-3">
-          <div className="space-y-1">
-            {routes.map((route) => (
+          <div className="space-y-4">
+            {/* MAIN */}
+            <div className="space-y-1">
+              <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+                MAIN
+              </h2>
               <Button
-                key={route.href}
-                variant={route.active ? "secondary" : "ghost"}
+                variant={pathname === "/doctor" ? "secondary" : "ghost"}
                 size="sm"
-                className={cn("w-full justify-start", {
-                  "bg-secondary": route.active,
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor",
+                  "hover:bg-accent": pathname !== "/doctor",
                 })}
                 asChild
               >
-                <Link href={route.href}>
-                  <route.icon className="mr-2 h-4 w-4" />
-                  {route.label}
+                <Link href="/doctor">
+                  <Home className="mr-2 h-4 w-4" />
+                  Dashboard
                 </Link>
               </Button>
-            ))}
+            </div>
+
+            {/* PATIENT MANAGEMENT */}
+            <div className="space-y-1">
+              <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+                PATIENT MANAGEMENT
+              </h2>
+              <Button
+                variant={pathname === "/doctor/patients" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/patients",
+                  "hover:bg-accent": pathname !== "/doctor/patients",
+                })}
+                asChild
+              >
+                <Link href="/doctor/patients">
+                  <Users className="mr-2 h-4 w-4" />
+                  Patients
+                </Link>
+              </Button>
+              <Button
+                variant={pathname === "/doctor/appointments" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/appointments",
+                  "hover:bg-accent": pathname !== "/doctor/appointments",
+                })}
+                asChild
+              >
+                <Link href="/doctor/appointments">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Appointments
+                </Link>
+              </Button>
+              <Button
+                variant={pathname === "/doctor/prescriptions" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/prescriptions",
+                  "hover:bg-accent": pathname !== "/doctor/prescriptions",
+                })}
+                asChild
+              >
+                <Link href="/doctor/prescriptions">
+                  <Pill className="mr-2 h-4 w-4" />
+                  Prescriptions
+                </Link>
+              </Button>
+            </div>
+
+            {/* ANALYTICS & TRACKING */}
+            <div className="space-y-1">
+              <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+                ANALYTICS & TRACKING
+              </h2>
+              <Button
+                variant={pathname === "/doctor/analytics" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/analytics",
+                  "hover:bg-accent": pathname !== "/doctor/analytics",
+                })}
+                asChild
+              >
+                <Link href="/doctor/analytics">
+                  <Activity className="mr-2 h-4 w-4" />
+                  Analytics
+                </Link>
+              </Button>
+              <Button
+                variant={pathname === "/doctor/patient-map" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/patient-map",
+                  "hover:bg-accent": pathname !== "/doctor/patient-map",
+                })}
+                asChild
+              >
+                <Link href="/doctor/patient-map">
+                  <MapPin className="mr-2 h-4 w-4" />
+                  Patient Map
+                </Link>
+              </Button>
+            </div>
+
+            {/* COMMUNICATION */}
+            <div className="space-y-1">
+              <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+                COMMUNICATION
+              </h2>
+              <Button
+                variant={pathname === "/doctor/messages" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/messages",
+                  "hover:bg-accent": pathname !== "/doctor/messages",
+                })}
+                asChild
+              >
+                <Link href="/doctor/messages">
+                  <MessageSquare className="mr-2 h-4 w-4" />
+                  Messages
+                </Link>
+              </Button>
+            </div>
+
+            {/* SYSTEM */}
+            <div className="space-y-1">
+              <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+                SYSTEM
+              </h2>
+              <Button
+                variant={pathname === "/doctor/settings" ? "secondary" : "ghost"}
+                size="sm"
+                className={cn("w-full justify-start transition-colors", {
+                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/settings",
+                  "hover:bg-accent": pathname !== "/doctor/settings",
+                })}
+                asChild
+              >
+                <Link href="/doctor/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </Link>
+              </Button>
+            </div>
           </div>
         </ScrollArea>
-        <div className="px-3 mt-auto">
-          <Button variant="outline" size="sm" className="w-full justify-start">
-            <LogOut className="mr-2 h-4 w-4" />
-            Log out
-          </Button>
-        </div>
       </div>
     </div>
   );

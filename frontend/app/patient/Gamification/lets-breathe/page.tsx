@@ -152,12 +152,15 @@ export default function MindGuardGame() {
               >
                 {breathingSteps[step]}
               </motion.h2>
-              <p className="text-gray-500 mb-4">{breathingExplanations[breathingSteps[step]]}</p>
+              <p className="text-gray-500 mb-4">
+                {breathingExplanations[breathingSteps[step] as keyof typeof breathingExplanations]}
+              </p>
               <img 
-                src={breathingImages[breathingSteps[step]]} 
+                src={breathingImages[breathingSteps[step] as keyof typeof breathingImages]} 
                 alt={breathingSteps[step]} 
                 className="mb-4 w-48 h-48 object-contain mx-auto" 
               />
+
               {showNextStep && (
                 <Button 
                   onClick={() => { 

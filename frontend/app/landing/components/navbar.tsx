@@ -2,9 +2,9 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Brain } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/app/landing/components/mode-toggle";
 
@@ -29,9 +29,15 @@ export function Navbar() {
         : "bg-transparent py-5"
     )}>
       <div className="container flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-2">
-          <Brain className="h-8 w-8 text-primary" />
-          <span className="font-poppins font-bold text-xl">MindGuard</span>
+        <Link href="/" className="flex items-center space-x-1">
+          <Image 
+            src="/mindguard_logo.png" 
+            alt="MindGuard Logo" 
+            width={32} 
+            height={32} 
+            className="h-6 sm:h-8 w-auto"
+          />
+          <span className="font-poppins font-bold text-2xl sm:text-3xl hidden sm:inline">MindGuard</span>
         </Link>
         
         <nav className="hidden md:flex items-center space-x-8">

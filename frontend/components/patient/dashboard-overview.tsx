@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, MessageSquare, Sparkles } from "lucide-react";
+import { CalendarDays, MessageSquare, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import localData from '../../../backend/data.json';
+import Link from "next/link";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export function DashboardOverview() {
   const [username, setUsername] = useState<string>("");
@@ -35,7 +37,7 @@ export function DashboardOverview() {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/user/profile', {
+        const response = await fetch('http://localhost:3000/api/user/profile', {
           headers: {
             'x-auth-token': token,
             'Content-Type': 'application/json'
@@ -108,7 +110,7 @@ export function DashboardOverview() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/questionnaire/update', {
+      const response = await fetch('http://localhost:3000/api/questionnaire/update', {
         method: 'PUT',
         headers: {
           'x-auth-token': token,
@@ -168,7 +170,7 @@ export function DashboardOverview() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/questionnaire/update', {
+      const response = await fetch('http://localhost:3000/api/questionnaire/update', {
         method: 'PUT',
         headers: {
           'x-auth-token': token,
@@ -204,7 +206,7 @@ export function DashboardOverview() {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/questionnaire/submit', {
+      const response = await fetch('http://localhost:3000/api/questionnaire/submit', {
         method: 'POST',
         headers: {
           'x-auth-token': token,
@@ -240,23 +242,23 @@ export function DashboardOverview() {
     <div className="space-y-4">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Welcome back, {username}</h1>
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary">{username}</h1>
           <p className="text-muted-foreground">
             Here's an overview of your mental health journey
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-2">
-            <CalendarDays className="h-4 w-4" />
-            Book Consultation
+        <div className="flex flex-wrap items-center gap-2 mt-2 md:mt-0">
+          <Button variant="outline" className="gap-2 w-full sm:w-auto" asChild>
+            <Link href="/patient/consultations">
+              <CalendarDays className="h-4 w-4" />
+              Book Consultation
+            </Link>
           </Button>
-          <Button className="gap-2" onClick={handleDailyCheckIn}>
-            <Sparkles className="h-4 w-4" />
-            Daily Check-in
-          </Button>
-          <Button className="gap-2" onClick={submitTestData}>
-            <Sparkles className="h-4 w-4" />
-            Submit Test Data
+          <Button className="gap-2 w-full sm:w-auto" asChild>
+            <Link href="/patient/health-tracking">
+              <Sparkles className="h-4 w-4" />
+              Daily Check-in
+            </Link>
           </Button>
         </div>
       </div>
@@ -269,135 +271,109 @@ export function DashboardOverview() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Mood Stability</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.mood}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.mood} 
-                className="h-2" 
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Anxiety Level</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.anxiety}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.anxiety} 
-                className="h-2" 
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Sleep Quality</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.sleep}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.sleep} 
-                className="h-2" 
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Energy Level</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.energy}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.energy} 
-                className="h-2" 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Concentration</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.concentration}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.concentration} 
-                className="h-2" 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Social Interaction</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.socialInteraction}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.socialInteraction} 
-                className="h-2" 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">Optimism</p>
-                <span className="text-sm text-muted-foreground">
-                  {healthData.healthreports.optimism}%
-                </span>
-              </div>
-              <Progress 
-                value={healthData.healthreports.optimism} 
-                className="h-2" 
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-4 md:flex-row">
-            <Card className="flex-1">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">AI Insight</CardTitle>
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { 
+                name: "Mood Stability", 
+                value: healthData.healthreports.mood, 
+                color: "#4f46e5",
+                gradient: "from-indigo-500 to-indigo-600",
+                trend: healthData.healthreports.mood > 70 ? "up" : "down"
+              },
+              { 
+                name: "Anxiety Level", 
+                value: healthData.healthreports.anxiety, 
+                color: "#ef4444",
+                gradient: "from-red-500 to-red-600",
+                trend: healthData.healthreports.anxiety < 30 ? "up" : "down"
+              },
+              { 
+                name: "Sleep Quality", 
+                value: healthData.healthreports.sleep, 
+                color: "#0ea5e9",
+                gradient: "from-sky-500 to-sky-600",
+                trend: healthData.healthreports.sleep > 70 ? "up" : "down"
+              },
+              { 
+                name: "Energy Level", 
+                value: healthData.healthreports.energy, 
+                color: "#f59e0b",
+                gradient: "from-amber-500 to-amber-600",
+                trend: healthData.healthreports.energy > 70 ? "up" : "down"
+              },
+              { 
+                name: "Concentration", 
+                value: healthData.healthreports.concentration, 
+                color: "#10b981",
+                gradient: "from-emerald-500 to-emerald-600",
+                trend: healthData.healthreports.concentration > 70 ? "up" : "down"
+              },
+              { 
+                name: "Social Interaction", 
+                value: healthData.healthreports.socialInteraction, 
+                color: "#8b5cf6",
+                gradient: "from-violet-500 to-violet-600",
+                trend: healthData.healthreports.socialInteraction > 70 ? "up" : "down"
+              },
+              { 
+                name: "Optimism", 
+                value: healthData.healthreports.optimism, 
+                color: "#ec4899",
+                gradient: "from-pink-500 to-pink-600",
+                trend: healthData.healthreports.optimism > 70 ? "up" : "down"
+              }
+            ].map((metric, index) => (
+              <div key={index} className="flex flex-col items-center">
+                <div className="relative h-20 w-20 sm:h-24 sm:w-24 md:h-28 md:w-28 mb-2 md:mb-3">
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-lg sm:text-xl md:text-2xl font-bold">{Math.round(metric.value)}%</span>
+                  </div>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: metric.name, value: metric.value },
+                          { name: "Remaining", value: 100 - metric.value }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={25}
+                        outerRadius={35}
+                        paddingAngle={2}
+                        dataKey="value"
+                        startAngle={90}
+                        endAngle={-270}
+                      >
+                        <Cell fill={metric.color} />
+                        <Cell fill="#f3f4f6" />
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value) => [`${value}%`, metric.name]}
+                        contentStyle={{ 
+                          backgroundColor: "white", 
+                          border: "1px solid #e5e7eb",
+                          borderRadius: "0.5rem",
+                          boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Your anxiety patterns show improvement after morning meditation. Consider adding 5 more minutes to your routine.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="flex-1">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">Next Appointment</CardTitle>
-                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                <div className="text-center">
+                  <p className="text-xs sm:text-sm font-medium">{metric.name}</p>
+                  <div className="flex items-center justify-center gap-1 mt-0.5 md:mt-1">
+                    {metric.trend === "up" ? (
+                      <TrendingUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-green-500" />
+                    ) : (
+                      <TrendingDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-red-500" />
+                    )}
+                    <span className={`text-[10px] sm:text-xs ${metric.trend === "up" ? "text-green-500" : "text-red-500"}`}>
+                      {metric.trend === "up" ? "Improving" : "Needs attention"}
+                    </span>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm font-medium">Dr. Sarah Johnson</p>
-                <p className="text-sm text-muted-foreground">Tomorrow at 2:00 PM</p>
-              </CardContent>
-            </Card>
-            <Card className="flex-1">
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-medium">Community</CardTitle>
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  3 new responses to your post in "Anxiety Management" group
-                </p>
-              </CardContent>
-            </Card>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

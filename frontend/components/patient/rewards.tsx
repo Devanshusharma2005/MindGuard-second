@@ -10,6 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function Rewards() {
   const [activeTab, setActiveTab] = useState("badges");
+
+  const userRewards = {
+    totalPoints: 1850, // Example points, replace with actual data
+  };
   
   // Mock data for badges earned
   const earnedBadges = [

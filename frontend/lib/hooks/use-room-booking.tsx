@@ -1,11 +1,32 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 
-const RoomBookingContext = createContext(null);
+// Define the shape of your context value
+interface RoomBookingContextType {
+  bookings: Booking[];
+  addBooking: (room: string, start: string, time: string, email: string) => Promise<void>;
+}
 
-export const RoomBookingProvider = ({ children }) => {
-  const [bookings, setBookings] = useState([]);
+// Define the shape of a booking
+interface Booking {
+  id?: string;
+  room: string;
+  start: string;
+  time: string;
+  email: string;
+}
 
-  const addBooking = async (room, start, time, email) => {
+// Create the context with a properly typed initial value
+const RoomBookingContext = createContext<RoomBookingContextType | null>(null);
+
+// Define props interface for the provider
+interface RoomBookingProviderProps {
+  children: ReactNode;
+}
+
+export const RoomBookingProvider = ({ children }: RoomBookingProviderProps) => {
+  const [bookings, setBookings] = useState<Booking[]>([]);
+
+  const addBooking = async (room: string, start: string, time: string, email: string) => {
     // Call the API to add a booking
     const response = await fetch('/api/bookings', {
       method: 'POST',
@@ -30,6 +51,10 @@ export const RoomBookingProvider = ({ children }) => {
   );
 };
 
-export const useRoomBooking = () => {
-  return useContext(RoomBookingContext);
-}; 
+export const useRoomBooking = (): RoomBookingContextType => {
+  const context = useContext(RoomBookingContext);
+  if (!context) {
+    throw new Error('useRoomBooking must be used within a RoomBookingProvider');
+  }
+  return context;
+};

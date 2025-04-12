@@ -7,7 +7,7 @@ import Image from "next/image";
 
 export function Testimonials() {
   return (
-    <section id="testimonials" className="py-20 relative overflow-hidden">
+    <section id="testimonials" className="py-20 relative overflow-hidden hidden md:block">
       <div className="container px-4 md:px-6">
         <div className="text-center mb-12 md:mb-16">
           <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl font-poppins">

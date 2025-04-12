@@ -2,6 +2,18 @@ import type { Task } from "@/types"
 
 export const tasks: Task[] = [
   {
+    id: "task0",
+    title: "Morning Walk",
+    description: "Start your day with a 10-minute walk to boost your energy and clear your mind.",
+    category: "Walk",
+    startTime: "7:00",
+    endTime: "7:10",
+    duration: 10,
+    reward: "Treasure Chest",
+    completed: false,
+    progress: 0,
+  },
+  {
     id: "task1",
     title: "Morning Meditation",
     description: "Start your day with a 10-minute mindfulness meditation to center yourself.",

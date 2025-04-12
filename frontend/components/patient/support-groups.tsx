@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageSquare, Users, Clock } from "lucide-react";
+import { MessageSquare, Users, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 interface SupportGroupsProps {
   anonymousMode: boolean;
@@ -17,7 +19,6 @@ const supportGroups = [
     members: 42,
     facilitator: "Dr. Sarah Johnson",
     facilitatorAvatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "1h ago",
     discussions: 58,
     discordLink: "https://discord.gg/FA8QU2na",
     chatLink: "https://discord.com/channels/1347873213920575528/1347873449892249664",
@@ -29,7 +30,6 @@ const supportGroups = [
     members: 30,
     facilitator: "Dr. Michael Chen",
     facilitatorAvatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "3h ago",
     discussions: 40,
     discordLink: "https://discord.gg/rmmGBxvf",
     chatLink: "https://discord.com/channels/1347873213920575528/1347874019814146118",
@@ -41,7 +41,6 @@ const supportGroups = [
     members: 56,
     facilitator: "Dr. Emily Rodriguez",
     facilitatorAvatar: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "30m ago",
     discussions: 72,
     discordLink: "https://discord.gg/nKCmSJwW",
     chatLink: "https://discord.com/channels/1347873213920575528/1347875615411273819",
@@ -53,7 +52,6 @@ const supportGroups = [
     members: 22,
     facilitator: "Dr. Rachel Kim",
     facilitatorAvatar: "https://images.unsplash.com/photo-1549383028-df14d948a871?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "2h ago",
     discussions: 35,
     discordLink: "https://discord.gg/h2ADUpjm",
     chatLink: "https://discord.com/channels/1347873213920575528/1347875910090489919",
@@ -65,7 +63,6 @@ const supportGroups = [
     members: 47,
     facilitator: "Dr. Jason Lee",
     facilitatorAvatar: "https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "4h ago",
     discussions: 50,
     discordLink: "https://discord.gg/ezukJKWm",
     chatLink: "https://discord.com/channels/1347873213920575528/1347876429190139979",
@@ -77,7 +74,6 @@ const supportGroups = [
     members: 38,
     facilitator: "Dr. Amanda Wright",
     facilitatorAvatar: "https://images.unsplash.com/photo-1554151228-14d9def656e4?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "6h ago",
     discussions: 28,
     discordLink: "https://discord.gg/9cRZJ9GX",
     chatLink: "https://discord.com/channels/1347873213920575528/1347876863640604743",
@@ -89,7 +85,6 @@ const supportGroups = [
     members: 25,
     facilitator: "Dr. Sophia Patel",
     facilitatorAvatar: "https://images.unsplash.com/photo-1502767089025-6572583495a3?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "8h ago",
     discussions: 20,
     discordLink: "https://discord.gg/4thdqUzN",
     chatLink: "https://discord.com/channels/1347873213920575528/1347877112412901458",
@@ -101,7 +96,6 @@ const supportGroups = [
     members: 33,
     facilitator: "Dr. David Thompson",
     facilitatorAvatar: "https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "2h ago",
     discussions: 45,
     discordLink: "https://discord.gg/NTdCKCjx",
     chatLink: "https://discord.com/channels/1347873213920575528/1347878222607552512",
@@ -113,7 +107,6 @@ const supportGroups = [
     members: 64,
     facilitator: "Dr. Lisa Martinez",
     facilitatorAvatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=256&h=256&auto=format&fit=crop",
-    lastActivity: "5h ago",
     discussions: 82,
     discordLink: "https://discord.gg/nHyN3CHj",
     chatLink: "https://discord.com/channels/1347873213920575528/1347878452325388368",
@@ -121,10 +114,36 @@ const supportGroups = [
 ];
 
 export function SupportGroups({ anonymousMode }: SupportGroupsProps) {
+  const [showAll, setShowAll] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter groups based on search query
+  const filteredGroups = supportGroups.filter(group => 
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.facilitator.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Show only first 6 groups if not showing all
+  const visibleGroups = showAll ? filteredGroups : filteredGroups.slice(0, 6);
+
   return (
     <div className="space-y-6">
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Search groups by name, description, or facilitator..."
+          className="pl-8"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Groups Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {supportGroups.map((group) => (
+        {visibleGroups.map((group) => (
           <Card key={group.id}>
             <CardContent className="p-4 space-y-3">
               {/* Title and Facilitator */}
@@ -144,7 +163,7 @@ export function SupportGroups({ anonymousMode }: SupportGroupsProps) {
               {/* Description */}
               <p className="text-sm text-muted-foreground">{group.description}</p>
 
-              {/* Stats: Members, Discussions, Last Activity */}
+              {/* Stats: Members and Discussions */}
               <div className="flex items-center text-xs text-muted-foreground space-x-4">
                 <div className="flex items-center">
                   <Users className="mr-1 h-4 w-4" />
@@ -154,14 +173,10 @@ export function SupportGroups({ anonymousMode }: SupportGroupsProps) {
                   <MessageSquare className="mr-1 h-4 w-4" />
                   {group.discussions} Discussions
                 </div>
-                <div className="flex items-center">
-                  <Clock className="mr-1 h-4 w-4" />
-                  Last Active {group.lastActivity}
-                </div>
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -183,9 +198,24 @@ export function SupportGroups({ anonymousMode }: SupportGroupsProps) {
         ))}
       </div>
 
-      <div className="text-center">
-        <Button variant="outline">View All Groups</Button>
-      </div>
+      {/* No Results Message */}
+      {filteredGroups.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No groups found matching your search.</p>
+        </div>
+      )}
+
+      {/* View All/Show Less Button */}
+      {filteredGroups.length > 6 && (
+        <div className="text-center">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll ? "Show Less" : "View All Groups"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

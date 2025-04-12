@@ -83,7 +83,7 @@ export function HeroSection() {
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center hidden md:flex">
             <div className="relative w-full max-w-[500px] aspect-square">
               {/* Main illustration */}
               <div className="absolute inset-0 flex items-center justify-center">

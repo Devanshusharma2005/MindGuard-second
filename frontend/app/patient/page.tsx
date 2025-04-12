@@ -51,7 +51,7 @@ export default function PatientDashboard() {
       {/* Rest of your dashboard content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <DashboardOverview />
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 mt-5 md:grid-cols-2 lg:grid-cols-3">
           <WellnessScore />
           <MoodTracker />
           <UpcomingAppointments />

@@ -8,7 +8,7 @@ const QuestionnaireForm = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/questionnaire/submit', {
+      const response = await fetch('http://localhost:3000/api/questionnaire/submit', {
         method: 'POST',
         headers: {
           'x-auth-token': token,

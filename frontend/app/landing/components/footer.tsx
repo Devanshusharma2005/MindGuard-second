@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Brain } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 export function Footer() {
@@ -10,8 +10,14 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="md:col-span-1">
             <Link href="/" className="flex items-center space-x-2 mb-4">
-              <Brain className="h-6 w-6 text-primary" />
-              <span className="font-poppins font-bold text-lg">MindGuard</span>
+              <Image 
+                src="/mindguard_logo.png" 
+                alt="MindGuard Logo" 
+                width={32} 
+                height={32} 
+                className="h-6 sm:h-8 w-auto"
+              />
+              <span className="font-poppins font-bold text-2xl sm:text-3xl hidden sm:inline">MindGuard</span>
             </Link>
             <p className="text-muted-foreground text-sm mb-4">
               AI-Powered Mental Health Support: Accessible, Affordable, and Stigma-Free.
@@ -71,17 +77,17 @@ export function Footer() {
             <ul className="space-y-3">
               <li>
                 <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-                  <Link href="/doctor/register">Register as a Doctor</Link>
+                  <Link href="/doctor-signup">Register as a Doctor</Link>
                 </Button>
               </li>
               <li>
                 <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-                  <Link href="/doctor/login">Login as a Doctor</Link>
+                  <Link href="/doctor-login">Login as a Doctor</Link>
                 </Button>
               </li>
               <li>
                 <Button variant="outline" size="sm" className="w-full justify-start" asChild>
-                  <Link href="/admin/login">Login as Admin</Link>
+                  <Link href="/admin-login">Login as Admin</Link>
                 </Button>
               </li>
             </ul>

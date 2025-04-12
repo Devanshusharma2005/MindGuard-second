@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,9 +44,15 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
       "md:translate-x-0"
     )}>
       <div className="flex h-16 items-center justify-between px-10   border-b">
-        <Link href="/admin" className="flex items-center space-x-2">
-          <Brain className="h-6 w-6 text-primary" />
-          <span className="font-bold text-xl">MindGuard</span>
+        <Link href="/" className="flex items-center space-x-2">
+          <Image 
+            src="/mindguard_logo.png" 
+            alt="MindGuard Logo" 
+            width={32} 
+            height={32} 
+            className="h-6 sm:h-8 w-auto"
+          />
+          <span className="font-bold text-xl sm:text-2xl hidden sm:inline">MindGuard</span>
         </Link>
         <Button 
           variant="ghost" 

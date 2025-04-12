@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { EyeIcon, EyeOffIcon } from 'lucide-react';
+import { EyeIcon, EyeOffIcon, LogIn } from 'lucide-react';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -15,7 +16,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -31,13 +32,12 @@ export default function LoginPage() {
       localStorage.setItem('userData', JSON.stringify(data.user));
       localStorage.setItem('token', data.token);
 
-      // Redirect based on role
       if (data.user.role === 'doctor') {
         router.push('/doctor');
       } else if (data.user.role === 'admin') {
         router.push('/admin');
       } else {
-        router.push('/patient'); // Default page
+        router.push('/patient'); 
       }
 
     } catch (err: any) {
@@ -47,54 +47,69 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[hsl(217,32%,17%)] to-[hsl(222,47%,11%)] py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted py-12 px-4 sm:px-6 lg:px-8">
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="max-w-md w-full bg-[hsl(210,40%,96%)] bg-opacity-90 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-[hsl(214,32%,91%)]"
+        className="max-w-md w-full bg-card p-8 rounded-2xl shadow-2xl border border-border"
       >
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-[hsl(222,47%,11%)]">Welcome Back!</h2>
-          <p className="text-[hsl(221,83%,53%)] text-sm mt-2">Sign in to continue</p>
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image 
+              src="/mindguard_logo.png" 
+              alt="MindGuard Logo" 
+              width={64} 
+              height={64}
+              className="rounded-lg"
+            />
+          </div>
+          <h2 className="text-3xl font-bold text-foreground font-poppins">Welcome Back!</h2>
+          <p className="text-primary text-sm mt-2">Sign in to continue your journey</p>
         </div>
 
         {error && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 bg-[hsl(0,84.2%,60.2%)] text-white p-3 rounded-md"
+            className="mb-4 bg-destructive text-destructive-foreground p-3 rounded-lg flex items-center"
           >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             {error}
           </motion.div>
         )}
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-[hsl(222,47%,11%)] font-medium">Email</label>
-            <input
-              type="email"
-              required
-              className="w-full px-4 py-2 mt-1 border border-[hsl(214,32%,91%)] rounded-lg bg-white focus:ring-[hsl(221,83%,53%)] focus:border-[hsl(221,83%,53%)] text-[hsl(222,47%,11%)]"
-              placeholder="Enter your email"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            />
+            <label className="block text-foreground font-medium mb-2">Email</label>
+            <div className="relative">
+              <input
+                type="email"
+                required
+                className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
           </div>
+          
           <div>
-            <label className="block text-[hsl(222,47%,11%)] font-medium">Password</label>
+            <label className="block text-foreground font-medium mb-2">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
-                className="w-full px-4 py-2 mt-1 border border-[hsl(214,32%,91%)] rounded-lg bg-white focus:ring-[hsl(221,83%,53%)] focus:border-[hsl(221,83%,53%)] text-[hsl(222,47%,11%)]"
+                className="w-full px-4 py-3 border border-input rounded-lg bg-background focus:ring-2 focus:ring-ring focus:border-ring text-foreground transition-all duration-200"
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               />
               <button
                 type="button"
-                className="absolute inset-y-0 right-3 flex items-center text-gray-500 hover:text-gray-700"
+                className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors duration-200"
                 onClick={() => setShowPassword(!showPassword)}
               >
                 {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
@@ -102,18 +117,39 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                className="h-4 w-4 text-primary border-input rounded focus:ring-ring"
+              />
+              <label className="ml-2 block text-sm text-foreground">
+                Remember me
+              </label>
+            </div>
+            <Link href="/forgot-password" className="text-sm text-primary hover:text-primary/80 transition-colors duration-200">
+              Forgot password?
+            </Link>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             type="submit"
-            className="w-full bg-[hsl(221,83%,53%)] hover:bg-[hsl(217,91%,60%)] text-white font-bold py-2 rounded-lg transition-all duration-300 shadow-md"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2"
           >
-            Sign In
-          </button>
+            <LogIn size={20} />
+            <span>Sign In</span>
+          </motion.button>
         </form>
 
-        <div className="mt-4 text-center">
-          <Link href="/signup" className="text-[hsl(262,83%,58%)] hover:text-[hsl(224,76%,48%)] font-medium">
-            Don't have an account? Sign up
-          </Link>
+        <div className="mt-6 text-center">
+          <p className="text-sm text-foreground">
+            Don't have an account?{' '}
+            <Link href="/signup" className="text-primary hover:text-primary/80 font-medium transition-colors duration-200">
+              Sign up
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>

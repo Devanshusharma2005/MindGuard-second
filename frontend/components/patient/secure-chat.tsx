@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Paperclip, Send } from "lucide-react";
+import { Paperclip, Send, ChevronLeft } from "lucide-react";
 
 const conversations = [
   {
@@ -79,23 +79,49 @@ const messages = [
 export function SecureChat() {
   const [selectedConversation, setSelectedConversation] = useState(conversations[0]);
   const [newMessage, setNewMessage] = useState("");
+  const [showConversations, setShowConversations] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   return (
-    <div className="flex h-[600px] flex-col md:flex-row border rounded-md overflow-hidden">
-      <div className="w-full border-r md:w-1/3">
-        <div className="p-3 border-b">
+    <div className="flex h-[calc(100vh-200px)] md:h-[600px] flex-col md:flex-row border rounded-md overflow-hidden bg-background">
+      {/* Conversations List */}
+      <div className={`w-full border-r md:w-1/3 ${!showConversations && isMobile ? 'hidden' : 'block'}`}>
+        <div className="p-3 border-b flex items-center justify-between bg-muted/50">
           <p className="font-medium">Your Conversations</p>
+          {isMobile && !showConversations && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowConversations(true)}
+              className="md:hidden"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        <ScrollArea className="h-[calc(600px-57px)]">
+        <ScrollArea className="h-[calc(100%-57px)]">
           {conversations.map((conversation) => (
             <div
               key={conversation.id}
               className={`flex cursor-pointer items-center gap-3 border-b p-3 transition-colors hover:bg-accent/50 ${
                 selectedConversation.id === conversation.id ? "bg-accent" : ""
               }`}
-              onClick={() => setSelectedConversation(conversation)}
+              onClick={() => {
+                setSelectedConversation(conversation);
+                if (isMobile) setShowConversations(false);
+              }}
             >
-              <Avatar>
+              <Avatar className="h-10 w-10">
                 <AvatarImage src={conversation.avatar} />
                 <AvatarFallback>{conversation.doctor.split(' ').map(n => n[0]).join('')}</AvatarFallback>
               </Avatar>
@@ -116,9 +142,22 @@ export function SecureChat() {
           ))}
         </ScrollArea>
       </div>
-      <div className="flex flex-1 flex-col">
-        <div className="flex items-center gap-3 border-b p-3">
-          <Avatar>
+      
+      {/* Chat Area */}
+      <div className={`flex-1 flex flex-col ${showConversations && isMobile ? 'hidden' : 'block'}`}>
+        {/* Chat Header */}
+        <div className="flex items-center gap-3 border-b p-3 bg-muted/50">
+          {isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowConversations(true)}
+              className="md:hidden"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+          )}
+          <Avatar className="h-10 w-10">
             <AvatarImage src={selectedConversation.avatar} />
             <AvatarFallback>{selectedConversation.doctor.split(' ').map(n => n[0]).join('')}</AvatarFallback>
           </Avatar>
@@ -127,6 +166,8 @@ export function SecureChat() {
             <p className="text-xs text-muted-foreground">{selectedConversation.specialty}</p>
           </div>
         </div>
+
+        {/* Messages Area */}
         <ScrollArea className="flex-1 p-3">
           <div className="space-y-4">
             {messages.map((message) => (
@@ -135,20 +176,22 @@ export function SecureChat() {
                 className={`flex ${message.sender === "patient" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
+                  className={`max-w-[85%] md:max-w-[70%] rounded-lg p-3 ${
                     message.sender === "patient"
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted"
                   }`}
                 >
-                  <p className="text-sm">{message.content}</p>
+                  <p className="text-sm break-words">{message.content}</p>
                   <p className="mt-1 text-right text-xs opacity-70">{message.time}</p>
                 </div>
               </div>
             ))}
           </div>
         </ScrollArea>
-        <div className="border-t p-3">
+
+        {/* Message Input */}
+        <div className="p-3 border-t bg-background">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="icon" className="h-9 w-9">
               <Paperclip className="h-4 w-4" />

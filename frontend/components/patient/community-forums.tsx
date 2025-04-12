@@ -6,7 +6,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Search, ThumbsUp, Users, X, Send, Circle } from "lucide-react";
+import { MessageSquare, Search, ThumbsUp, Users, X, Send, Circle, Plus } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CommunityForumsProps {
   anonymousMode: boolean;
@@ -192,6 +208,21 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
   const [chatMessage, setChatMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentChat, setCurrentChat] = useState(inspiringPeople[0]);
+  const [newPostOpen, setNewPostOpen] = useState(false);
+  const [newPost, setNewPost] = useState({
+    title: "",
+    content: "",
+    forum: "",
+  });
+
+  const forums = [
+    "Anxiety Management Strategies",
+    "Depression Support",
+    "Mindfulness & Meditation",
+    "Sleep & Insomnia Support",
+    "Social Anxiety Support",
+    "Stress Management & Burnout"
+  ];
 
   const handleSendMessage = () => {
     if (chatMessage.trim()) {
@@ -200,12 +231,19 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
     }
   };
 
-  
-
   const handleOpenChat = (person: typeof inspiringPeople[0]) => {
     setCurrentChat(person);
-    setChatMessages([]); // Reset chat for new person
+    setChatMessages([]);
     setChatOpen(true);
+  };
+
+  const handleCreatePost = () => {
+    if (newPost.title.trim() && newPost.content.trim() && newPost.forum) {
+      // Here you would typically make an API call to create the post
+      console.log("Creating new post:", newPost);
+      setNewPostOpen(false);
+      setNewPost({ title: "", content: "", forum: "" });
+    }
   };
 
   const filteredPeople = inspiringPeople.filter(person =>
@@ -225,7 +263,72 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button>New Post</Button>
+        <Dialog open={newPostOpen} onOpenChange={setNewPostOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Post
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Create New Post</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label htmlFor="title" className="text-sm font-medium">
+                  Title
+                </label>
+                <Input
+                  id="title"
+                  placeholder="Enter post title"
+                  value={newPost.title}
+                  onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="forum" className="text-sm font-medium">
+                  Forum
+                </label>
+                <Select
+                  value={newPost.forum}
+                  onValueChange={(value) => setNewPost({ ...newPost, forum: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a forum" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {forums.map((forum) => (
+                      <SelectItem key={forum} value={forum}>
+                        {forum}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="content" className="text-sm font-medium">
+                  Content
+                </label>
+                <Textarea
+                  id="content"
+                  placeholder="Write your post content here..."
+                  value={newPost.content}
+                  onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+                  className="min-h-[200px]"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setNewPostOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreatePost}>
+                Post
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
@@ -282,42 +385,79 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
 
 
       {chatOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white p-4 rounded-lg shadow-lg w-96 flex flex-col">
-            <div className="flex justify-between items-center mb-2 border-b pb-2">
-              <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4 z-50">
+          <div className="bg-background rounded-lg shadow-lg w-full max-w-md flex flex-col h-[600px]">
+            <div className="flex justify-between items-center p-4 border-b">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10">
                   <AvatarImage src={currentChat.avatar} />
                   <AvatarFallback>{currentChat.name[0]}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <h3 className="text-lg font-medium">{currentChat.name}</h3>
-                  <span className={`text-sm flex items-center gap-1 ${currentChat.online ? 'text-green-500' : 'text-gray-500'}`}>
-                    <Circle className={`h-3 w-3 ${currentChat.online ? 'fill-green-500' : 'fill-gray-500'}`} /> 
+                  <h3 className="font-medium">{currentChat.name}</h3>
+                  <span className={`text-sm flex items-center gap-1 ${currentChat.online ? 'text-green-500' : 'text-muted-foreground'}`}>
+                    <Circle className={`h-2 w-2 ${currentChat.online ? 'fill-green-500' : 'fill-muted-foreground'}`} /> 
                     {currentChat.online ? 'Online' : 'Offline'}
                   </span>
                 </div>
               </div>
-              
-              <Button onClick={() => setChatOpen(false)}>✖</Button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2 border rounded-md bg-gray-100 flex flex-col gap-2 h-96">
-              {chatMessages.map((msg, index) => (
-                <p key={index} className={`p-2 rounded-lg max-w-[75%] ${index % 2 === 0 ? 'bg-green-500 text-white self-end' : 'bg-white border self-start'}`}>
-                  {msg}
-                </p>
-              ))}
-            </div>
-            <div className="mt-2 flex items-center gap-2">
-              <Input 
-                type="text" 
-                placeholder="Type a message..." 
-                value={chatMessage} 
-                onChange={(e) => setChatMessage(e.target.value)} 
-              />
-              <Button onClick={handleSendMessage}>
-                <Send className="h-5 w-5" />
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setChatOpen(false)}
+                className="h-8 w-8"
+              >
+                <X className="h-4 w-4" />
               </Button>
+            </div>
+            <ScrollArea className="flex-1 p-4">
+              <div className="space-y-4">
+                {chatMessages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${index % 2 === 0 ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 ${
+                        index % 2 === 0
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted'
+                      }`}
+                    >
+                      <p className="text-sm">{msg}</p>
+                      <p className="mt-1 text-right text-xs opacity-70">
+                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+            <div className="p-4 border-t">
+              <div className="flex items-center gap-2">
+                <Input 
+                  type="text" 
+                  placeholder="Type a message..." 
+                  value={chatMessage} 
+                  onChange={(e) => setChatMessage(e.target.value)}
+                  className="flex-1"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSendMessage();
+                    }
+                  }}
+                />
+                <Button 
+                  onClick={handleSendMessage}
+                  size="icon"
+                  className="h-9 w-9"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Messages are end-to-end encrypted for your privacy
+              </p>
             </div>
           </div>
         </div>

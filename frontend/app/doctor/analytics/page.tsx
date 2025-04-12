@@ -35,13 +35,14 @@ export default function AnalyticsPage() {
     { name: "EMDR", success: 70, partial: 20, noChange: 10 },
   ];
 
-  const regions = [
+  const regions: { id: string; name: string; patientCount: number; density: "low" | "medium" | "high"; }[] = [
     { id: "1", name: "Downtown", patientCount: 45, density: "high" },
     { id: "2", name: "North Side", patientCount: 32, density: "medium" },
     { id: "3", name: "West End", patientCount: 28, density: "medium" },
     { id: "4", name: "East Village", patientCount: 18, density: "low" },
     { id: "5", name: "South Park", patientCount: 22, density: "low" },
   ];
+  
 
   return (
     <div className="space-y-6">

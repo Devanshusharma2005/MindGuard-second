@@ -15,7 +15,7 @@ export function MoodCheckIn() {
   });
 
   // State for the selected mood and notes
-  const [selectedMood, setSelectedMood] = useState(null);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [streakDays, setStreakDays] = useState(6);
   const [checkInComplete, setCheckInComplete] = useState(false);
@@ -66,7 +66,7 @@ export function MoodCheckIn() {
   ];
 
   // Handle mood selection
-  const handleMoodSelect = (mood) => {
+  const handleMoodSelect = (mood: string) => {
     setSelectedMood(mood);
   };
 

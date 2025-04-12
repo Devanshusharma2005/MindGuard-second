@@ -1,8 +1,7 @@
 "use client";
 
-import { Bell, Search } from "lucide-react";
+import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface HeaderProps {
   user: {
@@ -45,13 +45,10 @@ export function Header({ user }: HeaderProps) {
   ];
 
   return (
-    <div className="border-b">
-      <div className="flex h-16 items-center px-4 gap-4">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search patients, appointments..." className="pl-8" />
-        </div>
-        <div className="ml-auto flex items-center gap-4">
+    <header className="sticky top-0 z-40 border-b bg-background">
+      <div className="flex h-16 items-center justify-end gap-4 px-4">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon" className="relative">
@@ -94,6 +91,6 @@ export function Header({ user }: HeaderProps) {
           </DropdownMenu>
         </div>
       </div>
-    </div>
+    </header>
   );
 }

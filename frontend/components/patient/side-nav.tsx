@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   BarChart3,
   Calendar,
@@ -59,50 +61,158 @@ const navItems = [
   },
 ];
 
-export function SideNav() {
+export function SideNav({ isOpen }: { isOpen: boolean }) {
   const pathname = usePathname();
 
   return (
-    <div className="hidden border-r bg-muted/40 md:block md:w-64 lg:w-72">
-      <div className="flex h-full flex-col gap-2 p-4">
-        <div className="flex-1 py-2">
-          <nav className="grid gap-1">
-            {navItems.map((item, index) => (
-              <Link
-                key={index}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-                  pathname === item.href
-                    ? "bg-accent text-accent-foreground"
-                    : "transparent"
-                )}
+    <div
+  className={cn(
+    "border-r bg-background transition-all duration-300",
+    isOpen ? "block absolute z-50 h-screen w-64 sm:w-72" : "hidden",
+    "md:block md:relative md:h-auto md:w-64 lg:w-72"
+  )}
+>
+      <ScrollArea className="h-[calc(100vh-4rem)] py-4">
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+            MAIN
+          </h2>
+          <div className="space-y-1">
+            <Link href="/patient">
+              <Button 
+                variant={pathname === '/patient' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
               >
-                <item.icon className="h-5 w-5" />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="border-t pt-4">
-          <nav className="grid gap-1">
-            <Link
-              href="#"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-            >
-              <Settings className="h-5 w-5" />
-              Settings
+                <Home className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
             </Link>
-            <Link
-              href="#"
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-            >
-              <HelpCircle className="h-5 w-5" />
-              Help & Support
-            </Link>
-          </nav>
+          </div>
         </div>
-      </div>
+        
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+            HEALTH & WELLNESS
+          </h2>
+          <div className="space-y-1">
+            <Link href="/patient/health-tracking">
+              <Button 
+                variant={pathname === '/patient/health-tracking' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Health Tracking
+              </Button>
+            </Link>
+            <Link href="/patient/consultations">
+              <Button 
+                variant={pathname === '/patient/consultations' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Calendar className="mr-2 h-4 w-4" />
+                Consultations
+              </Button>
+            </Link>
+            <Link href="/patient/music-therapy">
+              <Button 
+                variant={pathname === '/patient/music-therapy' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Music className="mr-2 h-4 w-4" />
+                Music Therapy
+              </Button>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+            SUPPORT & COMMUNITY
+          </h2>
+          <div className="space-y-1">
+            <Link href="/patient/ai-assistant">
+              <Button 
+                variant={pathname === '/patient/ai-assistant' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Bot className="mr-2 h-4 w-4" />
+                AI Assistant
+              </Button>
+            </Link>
+            <Link href="/patient/community">
+              <Button 
+                variant={pathname === '/patient/community' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Community
+              </Button>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+            ENGAGEMENT
+          </h2>
+          <div className="space-y-1">
+            <Link href="/patient/wellness-challenges">
+              <Button 
+                variant={pathname === '/patient/wellness-challenges' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Trophy className="mr-2 h-4 w-4" />
+                Wellness Challenges
+              </Button>
+            </Link>
+            <Link href="/patient/Gamification">
+              <Button 
+                variant={pathname === '/patient/Gamification' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Gamepad2 className="mr-2 h-4 w-4" />
+                Gamification
+              </Button>
+            </Link>
+          </div>
+        </div>
+        
+        <div className="px-3 py-2">
+          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
+            SYSTEM
+          </h2>
+          <div className="space-y-1">
+            <Link href="/patient/settings">
+              <Button 
+                variant={pathname === '/patient/settings' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
+              </Button>
+            </Link>
+            <Link href="/patient/help">
+              <Button 
+                variant={pathname === '/patient/help' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <HelpCircle className="mr-2 h-4 w-4" />
+                Help & Support
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </ScrollArea>
     </div>
   );
 }

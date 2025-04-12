@@ -9,6 +9,7 @@ import { Mic, MicOff, Volume2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuestionnaireResponse {
+  
   question: string;
   answer: string;
 }
@@ -192,7 +193,7 @@ export function VoiceQuestionnaire() {
       };
 
       // Send to backend
-      const response = await fetch("http://localhost:5000/health-tracking", {
+      const response = await fetch("http://localhost:3000/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

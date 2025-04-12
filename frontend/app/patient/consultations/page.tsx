@@ -11,7 +11,7 @@ import { RoomBookingProvider } from "@/lib/hooks/use-room-booking";
 
 export default function Consultations() {
   const [activeTab, setActiveTab] = useState("book");
-  
+
   useEffect(() => {
     // Load the Cal.com embed script
     const script = document.createElement("script");
@@ -48,7 +48,7 @@ export default function Consultations() {
           </div>
           <Button>Book New Consultation</Button>
         </div>
-        
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="book">Book Appointment</TabsTrigger>

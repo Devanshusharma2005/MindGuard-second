@@ -9,6 +9,7 @@ import { VoiceQuestionnaire } from "@/components/patient/voice-questionnaire";
 import { HealthInsights } from "@/components/patient/health-insights";
 import { ProgressCharts } from "@/components/patient/progress-charts";
 import Recommendations from "@/components/patient/recommendations";
+import { ReportSubmission } from "@/components/patient/report-submission";
 
 interface HealthData {
   insights: {
@@ -90,22 +91,42 @@ interface HealthData {
         url: string;
       };
     }>;
-    wellness: Array<{
-      title: string;
-      type: string;
-      duration: string;
-      description: string;
-      action: {
-        label: string;
-        url: string;
-      };
-    }>;
+    wellness: {
+      lifestyle: {
+        title: string;
+        type: string;
+        duration: string;
+        description: string;
+        steps: string[];
+      }[];
+      exercises: {
+        title: string;
+        type: string;
+        duration: string;
+        description: string;
+        routine: string[];
+      }[];
+      mindfulness: {
+        title: string;
+        type: string;
+        duration: string;
+        description: string;
+        techniques: string[];
+      }[];
+      natural_remedies: {
+        title: string;
+        type: string;
+        description: string;
+        remedies: string[];
+        disclaimer: string;
+      }[];
+    };
   };
 }
 
 export default function HealthTracking() {
   const [activeTab, setActiveTab] = useState("questionnaire");
-  const [assessmentType, setAssessmentType] = useState<"text" | "voice">("text");
+  const [assessmentType, setAssessmentType] = useState<"text" | "voice" | "report">("text");
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -119,7 +140,7 @@ export default function HealthTracking() {
 
   const fetchHealthHistory = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/health-tracking/${userId}`);
+      const response = await fetch(`http://localhost:3000/health-tracking/${userId}`);
       if (!response.ok) throw new Error("Failed to fetch health history");
       const data = await response.json();
       setHealthData(data);
@@ -135,7 +156,7 @@ export default function HealthTracking() {
     
     try {
       console.log("Submitting questionnaire data:", data);
-      const response = await fetch("http://localhost:5000/health-tracking", {
+      const response = await fetch("http://localhost:3000/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -203,6 +224,12 @@ export default function HealthTracking() {
                 >
                   Voice Assessment
                 </Button>
+                <Button
+                  variant={assessmentType === "report" ? "default" : "outline"}
+                  onClick={() => setAssessmentType("report")}
+                >
+                  Report Submission
+                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -211,11 +238,10 @@ export default function HealthTracking() {
                   onSubmit={handleQuestionnaireSubmit}
                   isLoading={loading}
                 />
+              ) : assessmentType === "voice" ? (
+                <VoiceQuestionnaire/>
               ) : (
-                <VoiceQuestionnaire 
-                  onSubmit={handleQuestionnaireSubmit}
-                  isLoading={loading}
-                />
+                <ReportSubmission />
               )}
             </CardContent>
           </Card>
