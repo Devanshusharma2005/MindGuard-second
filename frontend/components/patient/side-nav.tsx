@@ -16,6 +16,7 @@ import {
   HelpCircle,
   Home,
   Gamepad2,
+  History,
 } from "lucide-react";
 
 const navItems = [
@@ -28,6 +29,11 @@ const navItems = [
     name: "Health Tracking",
     href: "/patient/health-tracking",
     icon: BarChart3,
+  },
+  {
+    name: "History",
+    href: "/patient/history",
+    icon: History,
   },
   {
     name: "Consultations",
@@ -66,12 +72,12 @@ export function SideNav({ isOpen }: { isOpen: boolean }) {
 
   return (
     <div
-  className={cn(
-    "border-r bg-background transition-all duration-300",
-    isOpen ? "block absolute z-50 h-screen w-64 sm:w-72" : "hidden",
-    "md:block md:relative md:h-auto md:w-64 lg:w-72"
-  )}
->
+      className={cn(
+        "border-r bg-background transition-all duration-300",
+        isOpen ? "block absolute z-50 h-screen w-64 sm:w-72" : "hidden",
+        "md:block md:relative md:h-auto md:w-64 lg:w-72"
+      )}
+    >
       <ScrollArea className="h-[calc(100vh-4rem)] py-4">
         <div className="px-3 py-2">
           <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
@@ -104,6 +110,16 @@ export function SideNav({ isOpen }: { isOpen: boolean }) {
               >
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Health Tracking
+              </Button>
+            </Link>
+            <Link href="/patient/history">
+              <Button 
+                variant={pathname === '/patient/history' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <History className="mr-2 h-4 w-4" />
+                History
               </Button>
             </Link>
             <Link href="/patient/consultations">

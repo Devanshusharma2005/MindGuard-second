@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Trophy } from "lucide-react"
 import confetti from "canvas-confetti"
 
@@ -38,10 +38,12 @@ export function RewardPopup({ points, onClose }: RewardPopupProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-md">
-        <div className="flex flex-col items-center text-center p-4">
-          <div className="mb-4 text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500">
             Congratulations!
-          </div>
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center text-center p-4">
           <p className="mb-6">Your task is completed successfully.</p>
 
           <div className="relative mb-6 cursor-pointer" onClick={!isChestOpened ? openChest : undefined}>

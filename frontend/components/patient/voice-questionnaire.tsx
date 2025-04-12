@@ -5,13 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Mic, MicOff, Volume2, AlertCircle } from "lucide-react";
+import { Mic, MicOff, Volume2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 interface QuestionnaireResponse {
   
   question: string;
   answer: string;
+}
+
+interface AnalysisState {
+  status: 'idle' | 'analyzing' | 'complete' | 'error';
+  message: string;
 }
 
 const questions = [
@@ -32,7 +38,11 @@ const questions = [
   "What specific things are causing you distress today? Please describe any concerns or worries."
 ];
 
-export function VoiceQuestionnaire() {
+interface VoiceQuestionnaireProps {
+  onComplete?: () => void;  // Add this prop for tab switching
+}
+
+export function VoiceQuestionnaire({ onComplete }: VoiceQuestionnaireProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(-1);
   const [responses, setResponses] = useState<QuestionnaireResponse[]>([]);
   const [isListening, setIsListening] = useState(false);
@@ -43,6 +53,11 @@ export function VoiceQuestionnaire() {
   const recognitionRef = useRef<any>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [userId, setUserId] = useState<string>("");
+  const router = useRouter();
+  const [analysisState, setAnalysisState] = useState<AnalysisState>({
+    status: 'idle',
+    message: ''
+  });
 
   useEffect(() => {
     // Load voices when component mounts
@@ -75,16 +90,32 @@ export function VoiceQuestionnaire() {
   const speakMessage = (text: string): Promise<void> => {
     return new Promise((resolve, reject) => {
       if ('speechSynthesis' in window) {
+        // Cancel any ongoing speech
         window.speechSynthesis.cancel();
+
         const utterance = new SpeechSynthesisUtterance(text);
         
-        const voices = window.speechSynthesis.getVoices();
-        const englishVoice = voices.find(voice => 
-          voice.lang.includes('en') && voice.name.includes('Natural')
-        ) || voices.find(voice => voice.lang.includes('en')) || voices[0];
-        
-        if (englishVoice) {
-          utterance.voice = englishVoice;
+        // Wait for voices to be loaded
+        let voices = window.speechSynthesis.getVoices();
+        if (voices.length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => {
+            voices = window.speechSynthesis.getVoices();
+            const englishVoice = voices.find(voice => 
+              voice.lang.includes('en') && voice.name.includes('Natural')
+            ) || voices.find(voice => voice.lang.includes('en')) || voices[0];
+            
+            if (englishVoice) {
+              utterance.voice = englishVoice;
+            }
+          };
+        } else {
+          const englishVoice = voices.find(voice => 
+            voice.lang.includes('en') && voice.name.includes('Natural')
+          ) || voices.find(voice => voice.lang.includes('en')) || voices[0];
+          
+          if (englishVoice) {
+            utterance.voice = englishVoice;
+          }
         }
 
         utterance.lang = 'en-US';
@@ -92,22 +123,27 @@ export function VoiceQuestionnaire() {
         utterance.pitch = 1;
 
         utterance.onstart = () => {
+          console.log("Started speaking");
           setIsSpeaking(true);
         };
 
         utterance.onend = () => {
+          console.log("Finished speaking");
           setIsSpeaking(false);
           resolve();
         };
 
         utterance.onerror = (event) => {
+          console.error('Speech synthesis error:', event);
           setIsSpeaking(false);
-          reject(event);
+          // Don't reject, just resolve and continue
+          resolve();
         };
 
         window.speechSynthesis.speak(utterance);
       } else {
-        reject(new Error('Speech synthesis not supported'));
+        console.error('Speech synthesis not supported');
+        resolve(); // Resolve anyway to continue the flow
       }
     });
   };
@@ -176,29 +212,43 @@ export function VoiceQuestionnaire() {
   };
 
   const handleCompletion = async (finalResponses: QuestionnaireResponse[]) => {
-    setIsComplete(true);
-    setIsListening(false);
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-
     try {
-      // Format responses for the backend
+      setIsComplete(true);
+      setIsListening(false);
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+
+      setAnalysisState({
+        status: 'analyzing',
+        message: 'AI engine is analyzing your responses...'
+      });
+
+      const userId = localStorage.getItem('mindguard_user_id');
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+
+      if (!userId || !token) {
+        throw new Error('Authentication required');
+      }
+
       const formattedData = formatResponsesForBackend(finalResponses);
-      
-      // Add userId and assessment type to the request body
       const requestBody = {
         ...formattedData,
         user_id: userId,
         assessmentType: 'voice',
-        raw_responses: finalResponses
+        raw_responses: finalResponses.map(r => ({ question: r.question, answer: r.answer }))
       };
 
-      // Send to backend
-      const response = await fetch("http://localhost:5000/health-tracking", {
-        method: "POST",
+      setAnalysisState({
+        status: 'analyzing',
+        message: 'Processing responses and generating insights...'
+      });
+
+      const response = await fetch('http://localhost:5000/api/health-tracking', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
+          'x-auth-token': token
         },
         body: JSON.stringify(requestBody),
       });
@@ -210,12 +260,27 @@ export function VoiceQuestionnaire() {
       const data = await response.json();
       console.log("Response data:", data);
 
-      // Speak completion message
-      await speakMessage("Thank you for completing the questionnaire. Your responses have been recorded.");
+      setAnalysisState({
+        status: 'complete',
+        message: 'Analysis complete! Switching to insights...'
+      });
+
+      // Speak completion message and then switch to insights
+      await speakMessage("Thank you for completing the assessment. Your responses have been analyzed. I'll now show you your insights.");
       
+      // Short delay before switching to insights tab
+      setTimeout(() => {
+        if (onComplete) {
+          onComplete(); // This will trigger the tab switch in the parent component
+        }
+      }, 1500);
+
     } catch (error) {
       console.error("Error saving responses:", error);
-      setError("Failed to save your responses. Please try again.");
+      setAnalysisState({
+        status: 'error',
+        message: 'Failed to analyze responses. Please try again.'
+      });
     }
   };
 
@@ -336,6 +401,21 @@ export function VoiceQuestionnaire() {
               <Button onClick={startQuestionnaire} size="lg">
                 Start Assessment
               </Button>
+            </div>
+          ) : analysisState.status === 'analyzing' ? (
+            <div className="space-y-6 text-center py-8">
+              <h3 className="text-xl font-semibold">Analyzing Responses</h3>
+              <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-muted-foreground">{analysisState.message}</p>
+              </div>
+              <Progress value={analysisState.status === 'analyzing' ? 66 : 100} className="w-full" />
+            </div>
+          ) : analysisState.status === 'complete' ? (
+            <div className="space-y-6 text-center py-8">
+              <h3 className="text-xl font-semibold text-green-600">Analysis Complete!</h3>
+              <p className="text-muted-foreground">{analysisState.message}</p>
+              <Progress value={100} className="w-full" />
             </div>
           ) : isComplete ? (
             <div className="space-y-4">

@@ -178,7 +178,8 @@ export function AIChat() {
     setError("");
 
     try {
-      const response = await fetch("https://api1.garvishmarketing.com/chat", {
+      // First, get response from AI agent
+      const agentResponse = await fetch("http://127.0.0.1:8000/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -189,11 +190,11 @@ export function AIChat() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!agentResponse.ok) {
+        throw new Error(`Agent error! status: ${agentResponse.status}`);
       }
 
-      const data: ChatResponse = await response.json();
+      const data: ChatResponse = await agentResponse.json();
       
       const aiMessage: Message = {
         id: messages.length + 2,
@@ -202,12 +203,48 @@ export function AIChat() {
         timestamp: new Date().toISOString()
       };
 
+      // Then, save the conversation to backend history
+      const historyResponse = await fetch("http://localhost:5000/api/health-tracking/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId,
+          messages: [userMessage, aiMessage],
+          sessionId: crypto.randomUUID(),
+          metadata: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            browser: navigator.vendor
+          },
+          interactionType: 'chat',
+          emotionalState: data.emotional_state
+        }),
+      });
+
+      if (!historyResponse.ok) {
+        console.error("Failed to save chat history:", await historyResponse.text());
+      }
+
       setMessages(prev => [...prev, aiMessage]);
-      // Automatically read out the AI's response
-      speakMessage(data.response);
-    } catch (err) {
+      
+      if (data.emotional_state?.is_crisis) {
+        // Handle crisis situation
+        console.warn("Crisis detected:", data.emotional_state);
+      }
+    } catch (error) {
+      console.error("Error:", error);
       setError("Failed to get response. Please try again.");
-      console.error("Error:", err);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        role: "assistant",
+        content: "I apologize, but I'm having trouble connecting to the server. Please try again in a moment.",
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -219,7 +256,13 @@ export function AIChat() {
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Use explicit format to ensure consistency between server and client
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes.toString().padStart(2, '0');
+    return `${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
   return (

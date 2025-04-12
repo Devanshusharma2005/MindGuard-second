@@ -6,7 +6,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
-import { ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { useRouter } from "next/navigation";
 
 interface Question {
   id: number;
@@ -26,6 +28,12 @@ interface Question {
 interface HealthQuestionnaireProps {
   onSubmit: (data: any) => void;
   isLoading: boolean;
+  onComplete?: () => void;
+}
+
+interface AnalysisState {
+  status: 'idle' | 'analyzing' | 'complete' | 'error';
+  message: string;
 }
 
 const initialQuestions: Question[] = [
@@ -179,11 +187,16 @@ const initialQuestions: Question[] = [
   }
 ];
 
-export function HealthQuestionnaire({ onSubmit, isLoading }: HealthQuestionnaireProps) {
+export function HealthQuestionnaire({ onSubmit, isLoading, onComplete }: HealthQuestionnaireProps) {
+  const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [userId, setUserId] = useState<string>("");
+  const [analysisState, setAnalysisState] = useState<AnalysisState>({
+    status: 'idle',
+    message: ''
+  });
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("mindguard_user_id");
@@ -215,27 +228,77 @@ export function HealthQuestionnaire({ onSubmit, isLoading }: HealthQuestionnaire
   };
 
   const handleSubmit = async () => {
-    const questionnaireData = {
-      user_id: userId,
-      mood: questions[0].answer,
-      anxiety: questions[1].answer,
-      sleep_quality: questions[2].answer,
-      energy_levels: questions[3].answer,
-      physical_symptoms: questions[4].answer,
-      concentration: questions[5].answer,
-      self_care: questions[6].answer,
-      social_interactions: questions[7].answer,
-      intrusive_thoughts: questions[8].answer,
-      optimism: questions[9].answer,
-      stress_factors: questions[10].answer,
-      coping_strategies: questions[11].answer,
-      social_support: questions[12].answer,
-      self_harm: questions[13].answer,
-      discuss_professional: questions[14].answer
-    };
+    try {
+      setAnalysisState({
+        status: 'analyzing',
+        message: 'AI engine is analyzing your responses...'
+      });
 
-    onSubmit(questionnaireData);
-    setCompleted(true);
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+
+      if (!userId || !token) {
+        throw new Error('Authentication required');
+      }
+
+      const formattedData = {
+        user_id: userId,
+        mood: questions[0].answer as number,
+        anxiety: questions[1].answer as string,
+        sleep_quality: questions[2].answer as number,
+        energy_levels: questions[3].answer as number,
+        physical_symptoms: questions[4].answer as string,
+        concentration: questions[5].answer as number,
+        self_care: questions[6].answer as string,
+        social_interactions: questions[7].answer as number,
+        intrusive_thoughts: questions[8].answer as string,
+        optimism: questions[9].answer as number,
+        stress_factors: questions[10].answer as string,
+        coping_strategies: questions[11].answer as string,
+        social_support: questions[12].answer as number,
+        self_harm: questions[13].answer as string,
+        discuss_professional: questions[14].answer as string
+      };
+
+      setAnalysisState({
+        status: 'analyzing',
+        message: 'Processing responses and generating insights...'
+      });
+
+      const response = await fetch('http://localhost:5000/api/health-tracking', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify(formattedData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Response data:", data);
+
+      setAnalysisState({
+        status: 'complete',
+        message: 'Analysis complete! Switching to insights...'
+      });
+
+      // Short delay before switching to insights tab
+      setTimeout(() => {
+        if (onComplete) {
+          onComplete(); // This will trigger the tab switch in the parent component
+        }
+      }, 1500);
+
+    } catch (error) {
+      console.error("Error saving responses:", error);
+      setAnalysisState({
+        status: 'error',
+        message: 'Failed to analyze responses. Please try again.'
+      });
+    }
   };
 
   const handleNext = () => {
@@ -258,21 +321,39 @@ export function HealthQuestionnaire({ onSubmit, isLoading }: HealthQuestionnaire
     setCompleted(false);
   };
 
-  if (completed) {
+  if (analysisState.status === 'analyzing' || analysisState.status === 'complete') {
     return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="mb-4 rounded-full bg-primary/10 p-3">
-          <CheckCircle2 className="h-8 w-8 text-primary" />
-        </div>
-        <h3 className="mb-2 text-xl font-bold">Assessment Completed</h3>
-        <p className="mb-6 text-muted-foreground">
-          Thank you for completing your daily health assessment. Your responses have been recorded.
-        </p>
-        <div className="flex gap-4">
-          <Button variant="outline" onClick={handleReset} disabled={isLoading}>
-            Start New Assessment
-          </Button>
-        </div>
+      <div className="space-y-6">
+        {analysisState.status === 'analyzing' ? (
+          <div className="space-y-6 text-center py-8">
+            <h3 className="text-xl font-semibold">Analyzing Responses</h3>
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">{analysisState.message}</p>
+            </div>
+            <Progress value={analysisState.status === 'analyzing' ? 66 : 100} className="w-full" />
+          </div>
+        ) : analysisState.status === 'complete' ? (
+          <div className="space-y-6 text-center py-8">
+            <h3 className="text-xl font-semibold text-green-600">Analysis Complete!</h3>
+            <p className="text-muted-foreground">{analysisState.message}</p>
+            <Progress value={100} className="w-full" />
+          </div>
+        ) : (
+          <div className="space-y-4 text-center">
+            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+            <h3 className="text-xl font-semibold">Assessment Complete</h3>
+            <p className="text-muted-foreground">Thank you for completing the assessment.</p>
+            <div className="flex justify-center gap-4">
+              <Button onClick={handleSubmit} disabled={isLoading}>
+                Submit Responses
+              </Button>
+              <Button onClick={handleReset} variant="outline">
+                Start Over
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

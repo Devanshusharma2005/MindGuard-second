@@ -4,6 +4,8 @@ const { spawn } = require('child_process');
 const path = require('path');
 const HealthReport = require('../models/HealthReport');
 const fs = require('fs');
+const UserInteraction = require('../models/UserInteraction');
+const { v4: uuidv4 } = require('uuid');
 
 // Helper function to run Python emotion report generator
 const generateEmotionReport = async (responses) => {
@@ -196,35 +198,95 @@ function storeDataInJson(input, output, filePath = 'data.json') {
 // Submit questionnaire and get analysis
 router.post('/', async (req, res) => {
   try {
-    console.log('Received questionnaire data:', req.body);
+    console.log('Received health tracking data:', req.body);
     
     // Validate and normalize input data
     const validatedData = validateQuestionnaireData(req.body);
     const { user_id } = req.body;
 
+    // Store detailed questionnaire responses
+    const questionResponses = [
+      {
+        questionId: 'mood',
+        questionText: 'How would you rate your overall mood today?',
+        response: validatedData.mood
+      },
+      {
+        questionId: 'anxiety',
+        questionText: 'How would you describe your anxiety level?',
+        response: validatedData.anxiety
+      },
+      {
+        questionId: 'sleep_quality',
+        questionText: 'How would you rate your sleep quality?',
+        response: validatedData.sleep_quality
+      },
+      {
+        questionId: 'energy_levels',
+        questionText: 'How are your energy levels today?',
+        response: validatedData.energy_levels
+      },
+      {
+        questionId: 'physical_symptoms',
+        questionText: 'Are you experiencing any physical symptoms?',
+        response: validatedData.physical_symptoms
+      },
+      {
+        questionId: 'concentration',
+        questionText: 'How is your concentration today?',
+        response: validatedData.concentration
+      },
+      {
+        questionId: 'self_care',
+        questionText: 'How would you rate your self-care activities?',
+        response: validatedData.self_care
+      },
+      {
+        questionId: 'social_interactions',
+        questionText: 'How would you rate your social interactions?',
+        response: validatedData.social_interactions
+      },
+      {
+        questionId: 'intrusive_thoughts',
+        questionText: 'Are you experiencing any intrusive thoughts?',
+        response: validatedData.intrusive_thoughts
+      },
+      {
+        questionId: 'optimism',
+        questionText: 'How optimistic do you feel about the future?',
+        response: validatedData.optimism
+      },
+      {
+        questionId: 'stress_factors',
+        questionText: 'What are your current stress factors?',
+        response: validatedData.stress_factors
+      },
+      {
+        questionId: 'coping_strategies',
+        questionText: 'What coping strategies are you using?',
+        response: validatedData.coping_strategies
+      },
+      {
+        questionId: 'social_support',
+        questionText: 'How would you rate your social support system?',
+        response: validatedData.social_support
+      },
+      {
+        questionId: 'self_harm',
+        questionText: 'Any thoughts of self-harm?',
+        response: validatedData.self_harm
+      },
+      {
+        questionId: 'discuss_professional',
+        questionText: 'Would you like to discuss with a professional?',
+        response: validatedData.discuss_professional
+      }
+    ];
+
     let report;
     try {
-      // Prepare responses for Python agent
-      const responses = [
-        String(validatedData.mood),
-        validatedData.anxiety,
-        String(validatedData.sleep_quality),
-        String(validatedData.energy_levels),
-        validatedData.physical_symptoms,
-        String(validatedData.concentration),
-        validatedData.self_care,
-        String(validatedData.social_interactions),
-        validatedData.intrusive_thoughts,
-        String(validatedData.optimism),
-        validatedData.stress_factors,
-        validatedData.coping_strategies,
-        String(validatedData.social_support),
-        validatedData.self_harm,
-        validatedData.discuss_professional
-      ];
-
       // Generate emotion report
-      report = await generateEmotionReport(responses);
+      report = await generateEmotionReport(validatedData);
       console.log('Generated emotion report:', report);
     } catch (error) {
       console.error('Error generating emotion report:', error);
@@ -240,7 +302,7 @@ router.post('/', async (req, res) => {
       };
     }
 
-    // Store in MongoDB
+    // Create new health report
     const healthReport = new HealthReport({
       userId: user_id,
       questionnaireData: validatedData,
@@ -259,21 +321,39 @@ router.post('/', async (req, res) => {
         sleepData: [{
           date: new Date(),
           quality: validatedData.sleep_quality,
-          hours: 8 // Default value, can be updated when we add sleep duration to questionnaire
+          hours: 8
         }],
         activityData: [{
           date: new Date(),
           exercise: validatedData.self_care === 'extensive' ? 8 :
                    validatedData.self_care === 'moderate' ? 5 :
                    validatedData.self_care === 'minimal' ? 3 : 1,
-          meditation: 5, // Default value
+          meditation: 5,
           social: validatedData.social_interactions
         }]
       }
     });
 
-    await healthReport.save();
-    
+    // Store user interaction with detailed responses
+    const userInteraction = new UserInteraction({
+      userId: user_id,
+      sessionId: uuidv4(),
+      interactionType: 'questionnaire',
+      questionnaireResponses: questionResponses,
+      metadata: {
+        userAgent: req.headers['user-agent'],
+        platform: req.headers['sec-ch-ua-platform'],
+        browser: req.headers['sec-ch-ua']
+      },
+      endTime: new Date()
+    });
+
+    // Save both documents
+    await Promise.all([
+      healthReport.save(),
+      userInteraction.save()
+    ]);
+
     res.json({
       questionnaire: validatedData,
       report: report,
@@ -380,20 +460,20 @@ router.get('/:userId', async (req, res) => {
           social: report.questionnaireData.social_interactions
         })),
         summary: {
-          mood: { 
+        mood: { 
             change: calculatePercentageChange(reports, 'mood') 
-          },
-          anxiety: { 
+        },
+        anxiety: { 
             change: calculatePercentageChange(reports, 'anxiety') 
-          },
-          stress: { 
+        },
+        stress: { 
             change: calculatePercentageChange(reports, 'stress_factors') 
-          },
-          sleep: {
+        },
+        sleep: {
             durationChange: 0, // Will be implemented when sleep duration is added
             qualityChange: calculatePercentageChange(reports, 'sleep_quality')
-          },
-          activities: {
+        },
+        activities: {
             exerciseChange: calculatePercentageChange(reports, 'self_care'),
             meditationChange: 0, // Default until meditation tracking is added
             socialChange: calculatePercentageChange(reports, 'social_interactions')
@@ -440,6 +520,130 @@ router.get('/:userId', async (req, res) => {
     res.status(500).json({ 
       error: errorMessage,
       details: error.message
+    });
+  }
+});
+
+// Add new route to get user interaction history
+router.get('/history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { type, limit = 10, page = 1 } = req.query;
+
+    const query = { userId };
+    if (type) {
+      query.interactionType = type;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const interactions = await UserInteraction.find(query)
+      .sort({ startTime: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .exec();
+
+    const total = await UserInteraction.countDocuments(query);
+
+    res.json({
+      interactions,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / limit)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching user interaction history:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new route to store chat messages
+router.post('/chat/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { message, sessionId } = req.body;
+
+    let interaction = await UserInteraction.findOne({
+      userId,
+      sessionId,
+      interactionType: 'chat'
+    });
+
+    if (!interaction) {
+      interaction = new UserInteraction({
+        userId,
+        sessionId,
+        interactionType: 'chat',
+        chatHistory: [],
+        metadata: {
+          userAgent: req.headers['user-agent'],
+          platform: req.headers['sec-ch-ua-platform'],
+          browser: req.headers['sec-ch-ua']
+        }
+      });
+    }
+
+    interaction.chatHistory.push({
+      role: 'user',
+      content: message
+    });
+
+    await interaction.save();
+
+    res.json({ success: true, interaction });
+
+  } catch (error) {
+    console.error('Error storing chat message:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Save chat history
+router.post('/chat', async (req, res) => {
+  try {
+    const { userId, messages, sessionId, metadata, interactionType, emotionalState } = req.body;
+
+    // Validate messages format
+    if (!Array.isArray(messages)) {
+      throw new Error('Messages must be an array');
+    }
+
+    // Ensure each message has required fields
+    const validatedMessages = messages.map(msg => ({
+      id: msg.id,
+      role: msg.role,
+      content: msg.content,
+      timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+    }));
+
+    // Create a new user interaction
+    const userInteraction = new UserInteraction({
+      userId,
+      sessionId: sessionId || uuidv4(),
+      interactionType: interactionType || 'chat',
+      chatHistory: validatedMessages,
+      metadata: {
+        ...metadata,
+        timestamp: new Date(),
+        emotionalState
+      }
+    });
+
+    await userInteraction.save();
+
+    res.json({
+      success: true,
+      msg: 'Chat history saved successfully'
+    });
+  } catch (error) {
+    console.error('Error saving chat history:', error);
+    res.status(500).json({
+      success: false,
+      msg: 'Failed to save chat history',
+      error: error.message
     });
   }
 });

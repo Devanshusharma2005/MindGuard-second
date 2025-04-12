@@ -35,9 +35,12 @@ export default function PatientDashboard() {
   }, [router]);
 
   const handleLogout = () => {
-    // Clear all stored data
+    // Clear localStorage
     localStorage.removeItem('userData');
-    localStorage.removeItem('token');
+    localStorage.removeItem('userType');
+    
+    // Clear token cookie
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     
     // Redirect to login page
     router.push('/');

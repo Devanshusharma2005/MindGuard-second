@@ -35,8 +35,9 @@ export default function LoginPage() {
       }
 
       localStorage.setItem('userData', JSON.stringify(data.user));
-      localStorage.setItem('token', data.token);
       localStorage.setItem('userType', 'user');
+
+      document.cookie = `token=${data.token}; path=/`;
 
       router.push('/patient');
     } catch (err: any) {

@@ -211,6 +211,11 @@ export default function HealthTracking() {
     }
   };
 
+  const handleQuestionnaireComplete = () => {
+    // Switch to insights tab after questionnaire completion
+    setActiveTab("insights");
+  };
+
   return (
     <div className="container mx-auto py-6">
       <h1 className="text-3xl font-bold mb-2">Health Tracking</h1>
@@ -251,7 +256,7 @@ export default function HealthTracking() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="questionnaire" className="space-y-4">
+        <TabsContent value="questionnaire">
           <Card>
             <CardHeader>
               <CardTitle>Initial Health Assessment</CardTitle>
@@ -276,10 +281,16 @@ export default function HealthTracking() {
               </div>
               
               {assessmentType === "text" && (
-                <HealthQuestionnaire onSubmit={handleQuestionnaireSubmit} isLoading={loading} />
+                <HealthQuestionnaire 
+                  onSubmit={handleQuestionnaireSubmit} 
+                  isLoading={loading}
+                  onComplete={handleQuestionnaireComplete}
+                />
               )}
               {assessmentType === "voice" && (
-                <VoiceQuestionnaire onSubmit={handleQuestionnaireSubmit} isLoading={loading} />
+                <VoiceQuestionnaire 
+                  onComplete={handleQuestionnaireComplete}
+                />
               )}
             </CardContent>
           </Card>
