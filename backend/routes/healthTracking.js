@@ -204,6 +204,59 @@ router.post('/', async (req, res) => {
     const validatedData = validateQuestionnaireData(req.body);
     const { user_id } = req.body;
 
+    // Get previous reports for calculating changes
+    const previousReports = await HealthReport.find({ userId: user_id })
+      .sort({ timestamp: -1 })
+      .limit(2)
+      .exec();
+
+    // Calculate summary data
+    let summary = {
+      mood: { change: 0 },
+      anxiety: { change: 0 },
+      stress: { change: 0 },
+      sleep: {
+        durationChange: 0,
+        qualityChange: 0
+      },
+      activities: {
+        exerciseChange: 0,
+        meditationChange: 0,
+        socialChange: 0
+      }
+    };
+
+    if (previousReports.length > 0) {
+      const previous = previousReports[0]; // Most recent report
+      
+      summary = {
+        mood: { 
+          change: ((validatedData.mood - previous.questionnaireData.mood) / previous.questionnaireData.mood * 100).toFixed(1)
+        },
+        anxiety: { 
+          change: ((validatedData.anxiety === 'none' ? 0 : validatedData.anxiety === 'mild' ? 3 : validatedData.anxiety === 'moderate' ? 6 : 9) -
+            (previous.questionnaireData.anxiety === 'none' ? 0 : previous.questionnaireData.anxiety === 'mild' ? 3 : previous.questionnaireData.anxiety === 'moderate' ? 6 : 9)).toFixed(1)
+        },
+        stress: { 
+          change: (((10 - validatedData.mood) - (10 - previous.questionnaireData.mood)) / (10 - previous.questionnaireData.mood) * 100).toFixed(1)
+        },
+        sleep: {
+          durationChange: 0,
+          qualityChange: ((validatedData.sleep_quality - previous.questionnaireData.sleep_quality) / previous.questionnaireData.sleep_quality * 100).toFixed(1)
+        },
+        activities: {
+          exerciseChange: (((['moderate', 'extensive'].includes(validatedData.self_care) ? 7 : 3) - 
+            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 7 : 3)) / 
+            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 7 : 3) * 100).toFixed(1),
+          meditationChange: (((['moderate', 'extensive'].includes(validatedData.self_care) ? 6 : 2) - 
+            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 6 : 2)) / 
+            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 6 : 2) * 100).toFixed(1),
+          socialChange: ((validatedData.social_interactions - previous.questionnaireData.social_interactions) / 
+            previous.questionnaireData.social_interactions * 100).toFixed(1)
+        }
+      };
+    }
+
     // Store detailed questionnaire responses
     const questionResponses = [
       {
@@ -285,79 +338,147 @@ router.post('/', async (req, res) => {
 
     let report;
     try {
-      // Generate emotion report
-      report = await generateEmotionReport(validatedData);
+      // Generate emotion report with more context
+      const responses = [
+        String(validatedData.mood),
+        validatedData.anxiety,
+        String(validatedData.sleep_quality),
+        String(validatedData.energy_levels),
+        validatedData.physical_symptoms,
+        String(validatedData.concentration),
+        validatedData.self_care,
+        String(validatedData.social_interactions),
+        validatedData.intrusive_thoughts,
+        String(validatedData.optimism),
+        validatedData.stress_factors,
+        validatedData.coping_strategies,
+        String(validatedData.social_support),
+        validatedData.self_harm,
+        validatedData.discuss_professional
+      ];
+
+      report = await generateEmotionReport(responses);
       console.log('Generated emotion report:', report);
     } catch (error) {
       console.error('Error generating emotion report:', error);
+      // Create a more meaningful fallback report based on the actual data
       report = {
         summary: {
-          emotions_count: { 'neutral': 1 },
-          average_confidence: 0.5,
+          emotions_count: { 
+            'positive': validatedData.mood >= 7 ? 1 : 0,
+            'neutral': validatedData.mood >= 4 && validatedData.mood < 7 ? 1 : 0,
+            'negative': validatedData.mood < 4 ? 1 : 0
+          },
+          average_confidence: validatedData.concentration / 10,
           average_valence: validatedData.mood / 10,
-          crisis_count: 0,
-          risk_factors: []
+          crisis_count: validatedData.self_harm !== 'none' || validatedData.anxiety === 'severe' ? 1 : 0,
+          risk_factors: [
+            ...(validatedData.self_harm !== 'none' ? ['Self-harm thoughts present'] : []),
+            ...(validatedData.anxiety === 'severe' ? ['Severe anxiety'] : []),
+            ...(validatedData.mood < 4 ? ['Low mood'] : []),
+            ...(validatedData.intrusive_thoughts === 'severe' ? ['Severe intrusive thoughts'] : [])
+          ]
         },
-        disorder_indicators: []
+        disorder_indicators: [
+          ...(validatedData.anxiety !== 'none' ? [`${validatedData.anxiety} anxiety symptoms`] : []),
+          ...(validatedData.mood < 4 ? ['Depressive symptoms'] : []),
+          ...(validatedData.intrusive_thoughts !== 'none' ? [`${validatedData.intrusive_thoughts} intrusive thoughts`] : []),
+          ...(validatedData.sleep_quality < 4 ? ['Sleep disturbance'] : [])
+        ]
       };
     }
+
+    const now = new Date();
+    
+    // Create progress data
+    const progressData = {
+      moodData: [{
+        date: now,
+        mood: validatedData.mood,
+        anxiety: validatedData.anxiety === 'none' ? 0 : validatedData.anxiety === 'mild' ? 3 : validatedData.anxiety === 'moderate' ? 6 : 9,
+        stress: 10 - validatedData.mood
+      }],
+      sleepData: [{
+        date: now,
+        hours: 8,
+        quality: validatedData.sleep_quality
+      }],
+      activityData: [{
+        date: now,
+        exercise: ['moderate', 'extensive'].includes(validatedData.self_care) ? 7 : 3,
+        meditation: ['moderate', 'extensive'].includes(validatedData.self_care) ? 6 : 2,
+        social: validatedData.social_interactions
+      }]
+    };
 
     // Create new health report
     const healthReport = new HealthReport({
       userId: user_id,
       questionnaireData: validatedData,
-      voiceAssessment: req.body.assessmentType === 'voice',
-      raw_responses: req.body.raw_responses || [],
       emotionReport: report,
-      progressData: {
-        moodData: [{
-          date: new Date(),
-          mood: validatedData.mood,
-          anxiety: validatedData.anxiety === 'severe' ? 9 : 
-                  validatedData.anxiety === 'moderate' ? 6 :
-                  validatedData.anxiety === 'mild' ? 3 : 1,
-          stress: validatedData.stress_factors ? 7 : 3
-        }],
-        sleepData: [{
-          date: new Date(),
-          quality: validatedData.sleep_quality,
-          hours: 8
-        }],
-        activityData: [{
-          date: new Date(),
-          exercise: validatedData.self_care === 'extensive' ? 8 :
-                   validatedData.self_care === 'moderate' ? 5 :
-                   validatedData.self_care === 'minimal' ? 3 : 1,
-          meditation: 5,
-          social: validatedData.social_interactions
-        }]
-      }
+      progressData: progressData,
+      timestamp: now
     });
 
-    // Store user interaction with detailed responses
+    // Create new user interaction
     const userInteraction = new UserInteraction({
       userId: user_id,
       sessionId: uuidv4(),
       interactionType: 'questionnaire',
       questionnaireResponses: questionResponses,
+      startTime: now,
+      endTime: now,
       metadata: {
         userAgent: req.headers['user-agent'],
         platform: req.headers['sec-ch-ua-platform'],
-        browser: req.headers['sec-ch-ua']
-      },
-      endTime: new Date()
+        browser: req.headers['sec-ch-ua'],
+        emotionalState: {
+          mood: validatedData.mood,
+          anxiety: validatedData.anxiety,
+          stress: 10 - validatedData.mood
+        }
+      }
     });
 
     // Save both documents
-    await Promise.all([
+    const [savedReport, savedInteraction] = await Promise.all([
       healthReport.save(),
       userInteraction.save()
     ]);
 
+    // Format and send response
     res.json({
-      questionnaire: validatedData,
-      report: report,
-      healthReport: healthReport
+      insights: {
+        mainInsight: report.summary.emotions_count,
+        riskAnalysis: {
+          low: report.disorder_indicators.filter(i => i.toLowerCase().includes('mild')).length,
+          moderate: report.disorder_indicators.filter(i => i.toLowerCase().includes('moderate')).length,
+          high: report.disorder_indicators.filter(i => i.toLowerCase().includes('severe')).length
+        },
+        anxietyTrend: {
+          status: validatedData.anxiety === 'moderate' || validatedData.anxiety === 'severe' ? 'increasing' : 'stable',
+          percentage: report.summary.average_confidence * 100,
+          detail: `Based on your responses, your anxiety level appears to be ${validatedData.anxiety}`
+        },
+        stressResponse: {
+          status: validatedData.self_care === 'moderate' || validatedData.self_care === 'extensive' ? 'improving' : 'worsening',
+          percentage: Math.round((report.summary.average_valence || validatedData.mood / 10) * 100),
+          detail: `Your stress management through ${validatedData.self_care} self-care activities shows ${validatedData.self_care === 'moderate' || validatedData.self_care === 'extensive' ? 'improvement' : 'room for improvement'}`
+        },
+        moodStability: {
+          status: validatedData.mood >= 5 ? 'stable' : 'fluctuating',
+          detail: `Your mood rating of ${validatedData.mood}/10 indicates ${validatedData.mood >= 5 ? 'stable mood' : 'mood fluctuations'}`
+        },
+        patterns: report.disorder_indicators || [],
+        risk_factors: report.summary.risk_factors || []
+      },
+      progress: {
+        moodData: progressData.moodData,
+        sleepData: progressData.sleepData,
+        activityData: progressData.activityData,
+        summary
+      },
+      interactionId: savedInteraction._id
     });
 
   } catch (err) {
