@@ -133,13 +133,21 @@ export default function HealthTracking() {
   const [isFirstTime, setIsFirstTime] = useState(false);
 
   useEffect(() => {
-    // Check if it's first time from URL parameter
+    // Check URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     setIsFirstTime(urlParams.get('firstTime') === 'true');
-
+    
+    // Handle tab parameter
+    const tabParam = urlParams.get('tab');
+    
     const userId = localStorage.getItem("mindguard_user_id");
     if (userId) {
-      fetchHealthHistory(userId);
+      fetchHealthHistory(userId).then((hasData) => {
+        // If we have data and a tab parameter, switch to that tab
+        if (hasData && tabParam && ['questionnaire', 'insights', 'progress', 'recommendations'].includes(tabParam)) {
+          setActiveTab(tabParam);
+        }
+      });
     }
   }, []);
 
@@ -153,7 +161,7 @@ export default function HealthTracking() {
         if (response.status === 404) {
           console.log("No health data found for user");
           setIsFirstTime(true);
-          return;
+          return false;
         }
         throw new Error("Failed to fetch health history");
       }
@@ -164,9 +172,11 @@ export default function HealthTracking() {
       
       setHealthData(data);
       setIsFirstTime(false);
+      return true;
     } catch (err) {
       console.error("Error fetching health history:", err);
       setError("Failed to load health history");
+      return false;
     }
   };
 
@@ -225,7 +235,14 @@ export default function HealthTracking() {
           : "Monitor your mental health progress and receive personalized insights"}
       </p>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs 
+        value={activeTab} 
+        onValueChange={(value) => {
+          console.log(`Tab changing from ${activeTab} to ${value}`);
+          setActiveTab(value);
+        }} 
+        className="space-y-4"
+      >
         <TabsList className="grid w-full grid-cols-4 h-auto">
           <TabsTrigger 
             value="questionnaire"
@@ -284,6 +301,16 @@ export default function HealthTracking() {
                 >
                   Report Submission
                 </Button>
+              </div>
+              
+              <div className="text-sm text-muted-foreground mb-6">
+                {assessmentType === "text" ? (
+                  "Answer a series of questions about your mental health to receive personalized insights."
+                ) : assessmentType === "voice" ? (
+                  "Speak naturally to our AI assistant for a voice-based mental health assessment."
+                ) : (
+                  "Upload your medical reports in PDF format to have them analyzed for health insights."
+                )}
               </div>
               
               {assessmentType === "text" ? (

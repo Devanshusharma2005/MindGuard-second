@@ -17,6 +17,7 @@ import {
   Home,
   Gamepad2,
   History,
+  FileText
 } from "lucide-react";
 
 const navItems = [
@@ -29,6 +30,11 @@ const navItems = [
     name: "Health Tracking",
     href: "/patient/health-tracking",
     icon: BarChart3,
+  },
+  {
+    name: "Report Upload",
+    href: "/patient/report-upload",
+    icon: FileText,
   },
   {
     name: "History",
@@ -110,6 +116,16 @@ export function SideNav({ isOpen }: { isOpen: boolean }) {
               >
                 <BarChart3 className="mr-2 h-4 w-4" />
                 Health Tracking
+              </Button>
+            </Link>
+            <Link href="/patient/report-upload">
+              <Button 
+                variant={pathname === '/patient/report-upload' ? 'secondary' : 'ghost'} 
+                size="sm" 
+                className="w-full justify-start"
+              >
+                <FileText className="mr-2 h-4 w-4" />
+                Report Upload
               </Button>
             </Link>
             <Link href="/patient/history">

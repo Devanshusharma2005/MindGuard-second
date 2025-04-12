@@ -2,43 +2,33 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: { reportId: string } }
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const userId = searchParams.get('userId');
 
-    console.log('Received request with params:', {
-      userId: params.userId,
-      type,
-      page,
-      limit
-    });
-
-    // Validate parameters
-    if (!type || !['chat', 'questionnaire', 'report'].includes(type)) {
-      return NextResponse.json(
-        { error: 'Invalid type parameter. Must be either "chat", "questionnaire", or "report"' },
-        { status: 400 }
-      );
-    }
-
-    if (!params.userId) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'User ID is required' },
         { status: 400 }
       );
     }
 
+    if (!params.reportId) {
+      return NextResponse.json(
+        { error: 'Report ID is required' },
+        { status: 400 }
+      );
+    }
+
     // Forward the request to your backend server
     try {
-      const backendUrl = `http://127.0.0.1:5000/api/health-tracking/history/${params.userId}?type=${type}&page=${page}&limit=${limit}`;
-      console.log('Attempting to fetch from backend:', backendUrl);
+      const backendUrl = `http://127.0.0.1:5000/api/health-tracking/report/view/${params.reportId}?userId=${userId}`;
+      console.log('Attempting to fetch report from backend:', backendUrl);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
       const response = await fetch(backendUrl, {
         headers: {
@@ -60,18 +50,17 @@ export async function GET(
 
       if (!response.ok) {
         const errorData = await response.text();
-        const errorDetails = {
+        console.error('Backend error details:', {
           status: response.status,
           statusText: response.statusText,
           error: errorData,
           url: response.url
-        };
-        console.error('Backend error details:', errorDetails);
+        });
         
         // Return appropriate error based on status code
         if (response.status === 404) {
           return NextResponse.json(
-            { error: 'No history found for this user' },
+            { error: 'Report not found' },
             { status: 404 }
           );
         }
@@ -80,30 +69,42 @@ export async function GET(
         return NextResponse.json(
           { 
             error: 'Backend server error',
-            details: errorDetails
+            details: errorData
           },
           { status: response.status }
         );
       }
 
-      const data = await response.json();
-      console.log('Successfully received data from backend');
+      // Get the Content-Type from the response
+      const contentType = response.headers.get('content-type');
       
-      // Validate the response data
-      if (!data || (Array.isArray(data) && data.length === 0)) {
-        return NextResponse.json(
-          { items: [], total: 0, page, limit },
-          { status: 200 }
-        );
+      // Check if it's a PDF or other file type that should be streamed
+      if (contentType && (
+          contentType.includes('application/pdf') || 
+          contentType.includes('application/octet-stream') ||
+          contentType.includes('image/')
+        )) {
+        // For binary files, stream the response
+        const blob = await response.blob();
+        
+        // Create a new response with the blob and preserve headers
+        const newResponse = new NextResponse(blob, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Content-Disposition': response.headers.get('content-disposition') || 'inline',
+          }
+        });
+        
+        return newResponse;
       }
       
+      // For JSON responses (like metadata)
+      const data = await response.json();
       return NextResponse.json(data);
+      
     } catch (fetchError) {
-      console.error('Fetch error:', {
-        message: fetchError.message,
-        name: fetchError.name,
-        cause: fetchError.cause
-      });
+      console.error('Fetch error:', fetchError);
 
       // Handle specific fetch errors
       if (fetchError.name === 'AbortError') {
@@ -129,11 +130,7 @@ export async function GET(
       );
     }
   } catch (error) {
-    console.error('API route error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
-    });
+    console.error('API route error:', error);
     
     return NextResponse.json(
       { 

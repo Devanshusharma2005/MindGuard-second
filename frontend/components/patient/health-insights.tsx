@@ -35,7 +35,34 @@ interface HealthInsightsProps {
   insights?: InsightData;
 }
 
+// Function to get emotion summary from data
+const getEmotionSummary = (emotions: { [key: string]: number } | undefined | null) => {
+  if (!emotions || typeof emotions !== 'object') {
+    return 'No emotion data available';
+  }
+  
+  const sortedEmotions = Object.entries(emotions)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3);
+  
+  return sortedEmotions.length > 0
+    ? sortedEmotions.map(([emotion, count]) => 
+        `${emotion} (${count} instances)`
+      ).join(", ")
+    : 'No significant emotions detected';
+};
+
 export function HealthInsights({ insights }: HealthInsightsProps) {
+  const [emotionData, setEmotionData] = useState<string>('');
+  
+  useEffect(() => {
+    if (insights && insights.mainInsight) {
+      setEmotionData(getEmotionSummary(insights.mainInsight));
+    } else {
+      setEmotionData('No emotion data available');
+    }
+  }, [insights]);
+  
   if (!insights) {
     return (
       <div className="text-center text-muted-foreground">
@@ -44,20 +71,10 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
     );
   }
 
-  const getEmotionSummary = (emotions: { [key: string]: number }) => {
-    const sortedEmotions = Object.entries(emotions)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3);
-    
-    return sortedEmotions.map(([emotion, count]) => 
-      `${emotion} (${count} instances)`
-    ).join(", ");
-  };
-
   const riskData = [
-    { name: "Low", value: insights.riskAnalysis.low, color: "hsl(var(--chart-2))" },
-    { name: "Moderate", value: insights.riskAnalysis.moderate, color: "hsl(var(--chart-4))" },
-    { name: "High", value: insights.riskAnalysis.high, color: "hsl(var(--chart-1))" },
+    { name: "Low", value: insights.riskAnalysis?.low || 0, color: "hsl(var(--chart-2))" },
+    { name: "Moderate", value: insights.riskAnalysis?.moderate || 0, color: "hsl(var(--chart-4))" },
+    { name: "High", value: insights.riskAnalysis?.high || 0, color: "hsl(var(--chart-1))" },
   ];
 
   return (
@@ -72,7 +89,7 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              {getEmotionSummary(insights.mainInsight)}
+              {emotionData}
             </p>
           </CardContent>
         </Card>
@@ -89,19 +106,19 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
               <div className="flex justify-between">
                 <span>Low Risk:</span>
                 <Badge variant="outline" className="bg-green-50">
-                  {insights.riskAnalysis.low}
+                  {insights.riskAnalysis?.low || 0}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>Moderate Risk:</span>
                 <Badge variant="outline" className="bg-yellow-50">
-                  {insights.riskAnalysis.moderate}
+                  {insights.riskAnalysis?.moderate || 0}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>High Risk:</span>
                 <Badge variant="outline" className="bg-red-50">
-                  {insights.riskAnalysis.high}
+                  {insights.riskAnalysis?.high || 0}
                 </Badge>
               </div>
             </div>
@@ -120,23 +137,23 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
               <div className="flex justify-between items-center">
                 <span>Status:</span>
                 <Badge 
-                  variant={insights.anxietyTrend.status === "increasing" ? "destructive" : "outline"}
+                  variant={insights.anxietyTrend?.status === "increasing" ? "destructive" : "outline"}
                   className="flex items-center gap-1"
                 >
-                  {insights.anxietyTrend.status === "increasing" ? (
+                  {insights.anxietyTrend?.status === "increasing" ? (
                     <TrendingUp className="h-3 w-3" />
                   ) : (
                     <TrendingDown className="h-3 w-3" />
                   )}
-                  {insights.anxietyTrend.status}
+                  {insights.anxietyTrend?.status || "stable"}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>Change:</span>
-                <span>{insights.anxietyTrend.percentage}%</span>
+                <span>{insights.anxietyTrend?.percentage || 0}%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                {insights.anxietyTrend.detail}
+                {insights.anxietyTrend?.detail || "No details available"}
               </p>
             </div>
           </CardContent>
@@ -156,23 +173,23 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
               <div className="flex justify-between items-center">
                 <span>Status:</span>
                 <Badge 
-                  variant={insights.stressResponse.status === "improving" ? "outline" : "destructive"}
+                  variant={insights.stressResponse?.status === "improving" ? "outline" : "destructive"}
                   className="flex items-center gap-1"
                 >
-                  {insights.stressResponse.status === "improving" ? (
+                  {insights.stressResponse?.status === "improving" ? (
                     <TrendingDown className="h-3 w-3" />
                   ) : (
                     <TrendingUp className="h-3 w-3" />
                   )}
-                  {insights.stressResponse.status}
+                  {insights.stressResponse?.status || "stable"}
                 </Badge>
               </div>
               <div className="flex justify-between">
                 <span>Change:</span>
-                <span>{insights.stressResponse.percentage}%</span>
+                <span>{insights.stressResponse?.percentage || 0}%</span>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                {insights.stressResponse.detail}
+                {insights.stressResponse?.detail || "No details available"}
               </p>
             </div>
           </CardContent>
@@ -190,13 +207,13 @@ export function HealthInsights({ insights }: HealthInsightsProps) {
               <div className="flex justify-between items-center">
                 <span>Status:</span>
                 <Badge 
-                  variant={insights.moodStability.status === "stable" ? "outline" : "secondary"}
+                  variant={insights.moodStability?.status === "stable" ? "outline" : "secondary"}
                 >
-                  {insights.moodStability.status}
+                  {insights.moodStability?.status || "unknown"}
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
-                {insights.moodStability.detail}
+                {insights.moodStability?.detail || "No details available"}
               </p>
             </div>
           </CardContent>

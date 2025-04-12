@@ -40,9 +40,16 @@ interface QuestionResponse {
 interface UserInteraction {
   _id: string;
   sessionId: string;
-  interactionType: 'chat' | 'questionnaire';
+  interactionType: 'chat' | 'questionnaire' | 'report';
   chatHistory: ChatMessage[];
   questionnaireResponses: QuestionResponse[];
+  reportData?: {
+    title: string;
+    filename: string;
+    uploadDate: string;
+    fileType: string;
+    fileSize: number;
+  };
   startTime: string;
   endTime: string;
 }
@@ -54,13 +61,13 @@ interface PaginationInfo {
 }
 
 export default function HistoryPage() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'questionnaire'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'questionnaire' | 'report'>('chat');
   const [interactions, setInteractions] = useState<UserInteraction[]>([]);
   const [pagination, setPagination] = useState<PaginationInfo>({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchHistory = async (type: 'chat' | 'questionnaire', page: number = 1) => {
+  const fetchHistory = async (type: 'chat' | 'questionnaire' | 'report', page: number = 1) => {
     try {
       setLoading(true);
       const userId = localStorage.getItem('mindguard_user_id');
@@ -75,7 +82,7 @@ export default function HistoryPage() {
       }
 
       const response = await fetch(
-        `http://localhost:5000/api/health-tracking/history/${userId}?type=${type}&page=${page}&limit=10`,
+        `/api/health-tracking/history/${userId}?type=${type}&page=${page}&limit=10`,
         {
           headers: {
             'Content-Type': 'application/json',
@@ -142,6 +149,24 @@ export default function HistoryPage() {
     return 'bg-secondary text-secondary-foreground';
   };
 
+  const handleViewReport = async (reportId: string) => {
+    try {
+      const userId = localStorage.getItem('mindguard_user_id');
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+      
+      if (!userId || !token) {
+        alert('Authentication required to view report');
+        return;
+      }
+      
+      // Open in a new window/tab
+      window.open(`/api/health-tracking/report/view/${reportId}?userId=${userId}`, '_blank');
+    } catch (err) {
+      console.error('Error viewing report:', err);
+      alert('Failed to open report. Please try again later.');
+    }
+  };
+
   return (
     <div className="container mx-auto py-6">
       <h1 className="text-3xl font-bold mb-2">Interaction History</h1>
@@ -149,13 +174,16 @@ export default function HistoryPage() {
         View your chat conversations and questionnaire responses
       </p>
 
-      <Tabs value={activeTab} onValueChange={(value: 'chat' | 'questionnaire') => setActiveTab(value)} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto">
+      <Tabs value={activeTab} onValueChange={(value: 'chat' | 'questionnaire' | 'report') => setActiveTab(value)} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="chat" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Chat History
           </TabsTrigger>
           <TabsTrigger value="questionnaire" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Questionnaire History
+          </TabsTrigger>
+          <TabsTrigger value="report" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            Report History
           </TabsTrigger>
         </TabsList>
 
@@ -267,6 +295,51 @@ export default function HistoryPage() {
                           </TableBody>
                         </Table>
                       </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="report">
+          <Card>
+            <CardHeader>
+              <CardTitle>Report History</CardTitle>
+              <CardDescription>Your uploaded health reports and documents</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="text-center py-4">Loading report history...</div>
+              ) : error ? (
+                <div className="text-destructive text-center py-4">{error}</div>
+              ) : interactions.length === 0 ? (
+                <div className="text-center py-4">No report history found</div>
+              ) : (
+                <div className="space-y-4">
+                  {interactions.map((interaction) => (
+                    <Card key={interaction._id} className="bg-muted/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">{interaction.reportData?.title || 'Untitled Report'}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {interaction.reportData?.filename || 'No filename'} • 
+                            {interaction.reportData?.fileType || 'Unknown type'} • 
+                            {interaction.reportData?.fileSize ? `${(interaction.reportData.fileSize / 1024).toFixed(1)} KB` : 'Unknown size'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Uploaded on {formatDate(interaction.startTime)}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleViewReport(interaction._id)}
+                        >
+                          View
+                        </Button>
+                      </div>
                     </Card>
                   ))}
                 </div>

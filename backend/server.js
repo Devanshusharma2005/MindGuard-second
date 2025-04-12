@@ -24,7 +24,9 @@ app.use(session({
 // Middleware with specific CORS configuration
 app.use(cors({
   origin: 'http://localhost:3000', // Allow your frontend URL
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 app.use(express.json());
 

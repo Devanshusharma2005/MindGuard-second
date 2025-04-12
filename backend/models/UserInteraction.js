@@ -51,11 +51,22 @@ const userInteractionSchema = new mongoose.Schema({
   },
   interactionType: {
     type: String,
-    enum: ['chat', 'questionnaire'],
+    enum: ['chat', 'questionnaire', 'report'],
     required: true
   },
   chatHistory: [chatMessageSchema],
   questionnaireResponses: [questionResponseSchema],
+  reportData: {
+    title: String,
+    filename: String,
+    filePath: String,
+    fileType: String,
+    fileSize: Number,
+    uploadDate: {
+      type: Date,
+      default: Date.now
+    }
+  },
   startTime: {
     type: Date,
     default: Date.now

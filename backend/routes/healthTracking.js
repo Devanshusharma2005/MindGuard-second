@@ -1,11 +1,47 @@
 const express = require('express');
 const router = express.Router();
-const { spawn } = require('child_process');
-const path = require('path');
-const HealthReport = require('../models/HealthReport');
 const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
+const HealthReport = require('../models/HealthReport');
 const UserInteraction = require('../models/UserInteraction');
 const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    const uploadDir = path.join(__dirname, '../uploads');
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)){
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: function(req, file, cb) {
+    // Create a unique filename with original extension
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `report-${uniqueSuffix}${ext}`);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Accept only PDFs
+  if (file.mimetype === 'application/pdf') {
+    cb(null, true);
+  } else {
+    cb(new Error('Only PDF files are allowed'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB max file size
+  },
+  fileFilter: fileFilter
+});
 
 // Helper function to run Python emotion report generator
 const generateEmotionReport = async (responses) => {
@@ -499,9 +535,60 @@ router.get('/:userId', async (req, res) => {
       .exec();
 
     if (!reports || reports.length === 0) {
-      return res.status(404).json({ 
-        error: 'No health history found',
-        message: 'No health tracking data exists for this user yet.'
+      return res.status(200).json({ 
+        insights: {
+          mainInsight: { "neutral": 1 },
+          riskAnalysis: {
+            low: 0,
+            moderate: 0,
+            high: 0
+          },
+          anxietyTrend: {
+            status: "stable",
+            percentage: 0,
+            detail: "No previous data available to determine anxiety trend"
+          },
+          stressResponse: {
+            status: "stable",
+            percentage: 0,
+            detail: "No previous data available to determine stress response"
+          },
+          moodStability: {
+            status: "stable",
+            detail: "No previous data available to determine mood stability"
+          },
+          patterns: [],
+          risk_factors: []
+        },
+        progress: {
+          moodData: [],
+          sleepData: [],
+          activityData: [],
+          summary: {
+            mood: { change: 0 },
+            anxiety: { change: 0 },
+            stress: { change: 0 },
+            sleep: {
+              durationChange: 0,
+              qualityChange: 0
+            },
+            activities: {
+              exerciseChange: 0,
+              meditationChange: 0,
+              socialChange: 0
+            }
+          }
+        },
+        recommendations: {
+          articles: [],
+          videos: [],
+          wellness: {
+            lifestyle: [],
+            exercises: [],
+            mindfulness: [],
+            natural_remedies: []
+          }
+        }
       });
     }
 
@@ -535,28 +622,28 @@ router.get('/:userId', async (req, res) => {
     const formattedData = {
       healthreports: historicalData,
       insights: {
-        mainInsight: latestReport.emotionReport.summary.emotions_count,
+        mainInsight: latestReport.emotionReport?.summary?.emotions_count || { neutral: 1 },
         riskAnalysis: {
-          low: latestReport.emotionReport.disorder_indicators.filter(i => i.toLowerCase().includes('mild')).length,
-          moderate: latestReport.emotionReport.disorder_indicators.filter(i => i.toLowerCase().includes('moderate')).length,
-          high: latestReport.emotionReport.disorder_indicators.filter(i => i.toLowerCase().includes('severe')).length
+          low: latestReport.emotionReport?.disorder_indicators?.filter(i => i.toLowerCase().includes('mild')).length || 0,
+          moderate: latestReport.emotionReport?.disorder_indicators?.filter(i => i.toLowerCase().includes('moderate')).length || 0,
+          high: latestReport.emotionReport?.disorder_indicators?.filter(i => i.toLowerCase().includes('severe')).length || 0
         },
         anxietyTrend: {
           status: calculateTrend('anxiety'),
-          percentage: latestReport.emotionReport.summary.average_confidence * 100,
-          detail: `Based on your responses, your anxiety level appears to be ${latestReport.questionnaireData.anxiety}`
+          percentage: (latestReport.emotionReport?.summary?.average_confidence || 0.5) * 100,
+          detail: `Based on your responses, your anxiety level appears to be ${latestReport.questionnaireData?.anxiety || 'normal'}`
         },
         stressResponse: {
           status: calculateTrend('stress_factors'),
-          percentage: Math.round((latestReport.emotionReport.summary.average_valence || latestReport.questionnaireData.mood / 10) * 100),
-          detail: `Your stress management through ${latestReport.questionnaireData.self_care} self-care activities shows ${latestReport.questionnaireData.self_care === 'moderate' || latestReport.questionnaireData.self_care === 'extensive' ? 'improvement' : 'room for improvement'}`
+          percentage: Math.round(((latestReport.emotionReport?.summary?.average_valence || 0.5) * 100)),
+          detail: `Your stress management through ${latestReport.questionnaireData?.self_care || 'normal'} self-care activities shows ${latestReport.questionnaireData?.self_care === 'moderate' || latestReport.questionnaireData?.self_care === 'extensive' ? 'improvement' : 'room for improvement'}`
         },
         moodStability: {
           status: calculateTrend('mood'),
-          detail: `Your mood rating of ${latestReport.questionnaireData.mood}/10 indicates ${latestReport.questionnaireData.mood >= 5 ? 'stable mood' : 'mood fluctuations'}`
+          detail: `Your mood rating of ${latestReport.questionnaireData?.mood || 5}/10 indicates ${latestReport.questionnaireData?.mood >= 5 ? 'stable mood' : 'mood fluctuations'}`
         },
-        patterns: latestReport.emotionReport.disorder_indicators || [],
-        risk_factors: latestReport.emotionReport.summary.risk_factors || []
+        patterns: latestReport.emotionReport?.disorder_indicators || [],
+        risk_factors: latestReport.emotionReport?.summary?.risk_factors || []
       },
       progress: {
         moodData: reports.map(report => ({
@@ -681,6 +768,54 @@ router.get('/history/:userId', async (req, res) => {
   }
 });
 
+// Route for viewing a specific report
+router.get('/report/view/:reportId', async (req, res) => {
+  try {
+    const { reportId } = req.params;
+    const { userId } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    // Find the user interaction that contains the report
+    const interaction = await UserInteraction.findOne({
+      _id: reportId,
+      userId: userId,
+      interactionType: 'report'
+    });
+
+    if (!interaction) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    // If the interaction has a reportData field with a filePath
+    if (interaction.reportData && interaction.reportData.filePath) {
+      const filePath = interaction.reportData.filePath;
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Report file not found on server' });
+      }
+      
+      // Set appropriate headers
+      const filename = interaction.reportData.filename || 'report.pdf';
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } else {
+      // If there's no file path, just return the interaction data
+      res.json(interaction);
+    }
+  } catch (error) {
+    console.error('Error viewing report:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
+  }
+});
+
 // Add new route to store chat messages
 router.post('/chat/:userId', async (req, res) => {
   try {
@@ -765,6 +900,263 @@ router.post('/chat', async (req, res) => {
       success: false,
       msg: 'Failed to save chat history',
       error: error.message
+    });
+  }
+});
+
+// Test route for file uploads
+router.post('/test-upload', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        error: 'No file uploaded',
+        message: 'Please upload a file to test.' 
+      });
+    }
+    
+    console.log('Test file received:', req.file);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Test file upload successful',
+      fileDetails: {
+        name: req.file.originalname,
+        path: req.file.path,
+        size: req.file.size,
+        type: req.file.mimetype
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in test file upload:', error);
+    return res.status(500).json({
+      error: 'Server error',
+      message: 'An unexpected error occurred during test upload.'
+    });
+  }
+});
+
+// PDF Report Upload and Analysis
+router.post('/pdf-analysis', upload.single('file'), async (req, res) => {
+  try {
+    console.log('=== PDF ANALYSIS REQUEST RECEIVED ===');
+    console.log('RequestID:', new Date().getTime()); // For tracking in logs
+    
+    // Check if file is uploaded
+    if (!req.file) {
+      console.log('Error: No file uploaded');
+      return res.status(400).json({ 
+        error: 'No file uploaded',
+        message: 'Please upload a PDF file.'
+      });
+    }
+    
+    // Check if userId is provided
+    const { userId } = req.body;
+    if (!userId) {
+      console.log('Error: No userId provided');
+      return res.status(400).json({ 
+        error: 'User ID missing',
+        message: 'User ID is required for processing reports.'
+      });
+    }
+    
+    // Log file details
+    console.log('File received:', {
+      originalName: req.file.originalname,
+      size: `${(req.file.size / 1024 / 1024).toFixed(2)} MB`,
+      mimeType: req.file.mimetype,
+      path: req.file.path
+    });
+    console.log('Processing for user:', userId);
+    
+    // Get file path
+    const filePath = req.file.path;
+    const sessionId = uuidv4();
+    
+    // Here you would call the PDF analysis service
+    // For now, we'll simulate the analysis with a timeout
+    setTimeout(async () => {
+      try {
+        console.log('Starting PDF analysis processing for:', req.file.originalname);
+        
+        // Mock data for sample response
+        const pdfAnalysisData = {
+          timestamp: new Date(),
+          documentType: 'Medical Report',
+          extractedData: {
+            mood: 7,
+            anxiety: 'mild',
+            sleep_quality: 6,
+            energy_levels: 5,
+            physical_symptoms: 'mild',
+            concentration: 8,
+            self_care: 'moderate',
+            social_interactions: 6,
+            intrusive_thoughts: 'none',
+            optimism: 7,
+            stress_factors: 'Work deadlines and financial concerns',
+            coping_strategies: 'Daily meditation and journaling',
+            social_support: 8,
+            self_harm: 'none',
+            discuss_professional: 'Currently seeing a therapist bi-weekly'
+          },
+          findings: [
+            {
+              category: 'Mood',
+              value: 'Relatively stable with mild fluctuations',
+              recommendation: 'Continue current management strategies'
+            },
+            {
+              category: 'Anxiety',
+              value: 'Mild anxiety symptoms noted',
+              recommendation: 'Consider mindfulness practice and cognitive techniques'
+            },
+            {
+              category: 'Physical Health',
+              value: 'No significant concerns identified',
+              recommendation: 'Maintain regular exercise and healthy diet'
+            }
+          ]
+        };
+        
+        console.log('PDF analysis data generated:', pdfAnalysisData);
+        console.log('Creating HealthReport document...');
+        
+        // Save the analysis to the database
+        const newReport = new HealthReport({
+          userId,
+          reportType: 'pdf-upload',
+          reportPath: filePath,
+          questionnaireData: pdfAnalysisData.extractedData,
+          analysisResults: {
+            summary: {
+              mood: { value: pdfAnalysisData.extractedData.mood, change: 0 },
+              anxiety: { value: pdfAnalysisData.extractedData.anxiety, change: 0 },
+              sleep: { value: pdfAnalysisData.extractedData.sleep_quality, change: 0 }
+            },
+            insights: pdfAnalysisData.findings.map(finding => ({
+              area: finding.category,
+              insight: finding.value,
+              recommendation: finding.recommendation
+            })),
+            riskFactors: []
+          },
+          emotionReport: {
+            summary: {
+              emotions_count: { 
+                "positive": pdfAnalysisData.extractedData.mood >= 7 ? 1 : 0,
+                "neutral": pdfAnalysisData.extractedData.mood >= 4 && pdfAnalysisData.extractedData.mood < 7 ? 1 : 0,
+                "negative": pdfAnalysisData.extractedData.mood < 4 ? 1 : 0
+              },
+              average_confidence: pdfAnalysisData.extractedData.concentration / 10,
+              average_valence: pdfAnalysisData.extractedData.mood / 10,
+              crisis_count: pdfAnalysisData.extractedData.self_harm !== 'none' || pdfAnalysisData.extractedData.anxiety === 'severe' ? 1 : 0,
+              risk_factors: [
+                ...(pdfAnalysisData.extractedData.self_harm !== 'none' ? ['Self-harm thoughts present'] : []),
+                ...(pdfAnalysisData.extractedData.anxiety === 'severe' ? ['Severe anxiety'] : []),
+                ...(pdfAnalysisData.extractedData.mood < 4 ? ['Low mood'] : []),
+                ...(pdfAnalysisData.extractedData.intrusive_thoughts === 'severe' ? ['Severe intrusive thoughts'] : [])
+              ]
+            },
+            disorder_indicators: [
+              ...(pdfAnalysisData.extractedData.anxiety !== 'none' ? [`${pdfAnalysisData.extractedData.anxiety} anxiety symptoms`] : []),
+              ...(pdfAnalysisData.extractedData.mood < 4 ? ['Depressive symptoms'] : []),
+              ...(pdfAnalysisData.extractedData.intrusive_thoughts !== 'none' ? [`${pdfAnalysisData.extractedData.intrusive_thoughts} intrusive thoughts`] : []),
+              ...(pdfAnalysisData.extractedData.sleep_quality < 4 ? ['Sleep disturbance'] : [])
+            ]
+          },
+          progressData: {
+            moodData: [{
+              date: new Date(),
+              mood: pdfAnalysisData.extractedData.mood,
+              anxiety: pdfAnalysisData.extractedData.anxiety === 'none' ? 0 : 
+                      pdfAnalysisData.extractedData.anxiety === 'mild' ? 30 :
+                      pdfAnalysisData.extractedData.anxiety === 'moderate' ? 60 : 90,
+              stress: 10 - pdfAnalysisData.extractedData.mood
+            }],
+            sleepData: [{
+              date: new Date(),
+              hours: 8,
+              quality: pdfAnalysisData.extractedData.sleep_quality
+            }],
+            activityData: [{
+              date: new Date(),
+              exercise: ['moderate', 'extensive'].includes(pdfAnalysisData.extractedData.self_care) ? 7 : 3,
+              meditation: ['moderate', 'extensive'].includes(pdfAnalysisData.extractedData.self_care) ? 6 : 2,
+              social: pdfAnalysisData.extractedData.social_interactions
+            }]
+          },
+          timestamp: new Date()
+        });
+        
+        // Create a new user interaction for the report submission
+        const questionResponses = Object.entries(pdfAnalysisData.extractedData).map(([key, value]) => ({
+          questionId: key,
+          questionText: key.replace(/_/g, ' '),
+          response: value
+        }));
+        
+        const userInteraction = new UserInteraction({
+          userId,
+          sessionId,
+          interactionType: 'report',
+          questionnaireResponses: questionResponses,
+          reportData: {
+            title: pdfAnalysisData.documentType || 'Medical Report',
+            filename: req.file.originalname,
+            filePath: filePath,
+            fileType: req.file.mimetype,
+            fileSize: req.file.size,
+            uploadDate: new Date()
+          },
+          startTime: pdfAnalysisData.timestamp,
+          endTime: new Date(),
+          metadata: {
+            browser: req.headers['user-agent'],
+            platform: req.headers['sec-ch-ua-platform'] || 'unknown'
+          }
+        });
+        
+        // Save both documents
+        const [savedReport, savedInteraction] = await Promise.all([
+          newReport.save(),
+          userInteraction.save()
+        ]);
+        
+        console.log('PDF analysis saved for user:', userId);
+        console.log('Report document ID:', savedReport._id);
+        console.log('User interaction ID:', savedInteraction._id);
+        console.log('Emotion Report Data:', savedReport.emotionReport);
+        console.log('=== PDF ANALYSIS COMPLETE ===');
+        
+        // Remove the file after processing (optional)
+        // fs.unlinkSync(filePath);
+        
+      } catch (processError) {
+        console.error('Error processing uploaded PDF:', processError);
+        // Log the error but don't return - response already sent
+      }
+    }, 2000); // Simulate processing time
+    
+    // Return immediate success response to client
+    // The actual processing happens asynchronously
+    console.log('Responding to client with success message');
+    return res.status(200).json({
+      success: true,
+      message: 'File uploaded and being processed',
+      fileDetails: {
+        name: req.file.originalname,
+        size: req.file.size,
+        type: req.file.mimetype
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error in PDF analysis endpoint:', error);
+    return res.status(500).json({
+      error: 'Server error',
+      message: 'An unexpected error occurred while processing your file.'
     });
   }
 });

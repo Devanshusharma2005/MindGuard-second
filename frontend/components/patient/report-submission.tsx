@@ -1,16 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { useRouter } from "next/navigation";
+import { Progress } from "@/components/ui/progress";
 
 export function ReportSubmission() {
+  const { toast } = useToast();
+  const router = useRouter();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  // Get user ID on component mount
+  useEffect(() => {
+    try {
+      // First try to get the mindguard_user_id (main ID format)
+      let id = localStorage.getItem('mindguard_user_id');
+      
+      // If not found, try the 'userData' object
+      if (!id) {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          try {
+            const parsedData = JSON.parse(userData);
+            id = parsedData.id || parsedData._id;
+          } catch (err) {
+            console.error('Error parsing user data:', err);
+            setError('User authentication error. Please log in again.');
+          }
+        }
+      }
+      
+      if (id) {
+        setUserId(id);
+      } else {
+        // If no ID found, generate and store a new one
+        const newId = crypto.randomUUID();
+        localStorage.setItem('mindguard_user_id', newId);
+        setUserId(newId);
+      }
+    } catch (e) {
+      console.error('Error accessing localStorage:', e);
+      setError('Error accessing user data. Please refresh and try again.');
+    }
+  }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -31,25 +73,93 @@ export function ReportSubmission() {
       return;
     }
 
+    if (!userId) {
+      setError('User ID not found. Please log in again.');
+      return;
+    }
+
     setIsUploading(true);
     setError("");
+    setProgress(10);
+    console.log('Starting PDF upload and analysis for user:', userId);
 
     try {
       const formData = new FormData();
       formData.append("file", selectedFile);
+      formData.append("userId", userId);
 
-      const response = await fetch("http://localhost:3000/health-tracking/upload-report", {
-        method: "POST",
+      console.log('File details:', {
+        name: selectedFile.name,
+        size: `${(selectedFile.size / 1024 / 1024).toFixed(2)} MB`,
+        type: selectedFile.type
+      });
+      setProgress(30);
+      
+      // Use the full API endpoint URL that matches your backend
+      console.log('Sending request to:', 'http://localhost:5000/api/health-tracking/pdf-analysis');
+      const response = await fetch('http://localhost:5000/api/health-tracking/pdf-analysis', {
+        method: 'POST',
         body: formData,
       });
 
+      setProgress(60);
+      setAnalyzing(true);
+      console.log('Upload completed, analyzing PDF...');
+
       if (!response.ok) {
-        throw new Error("Failed to upload report");
+        let errorMessage = 'Failed to analyze the report';
+        
+        try {
+          const errorData = await response.json();
+          console.error('Error from server:', errorData);
+          errorMessage = errorData.error || errorData.message || errorMessage;
+        } catch (jsonError) {
+          console.error('Failed to parse error response:', jsonError, 'Status:', response.status, response.statusText);
+          errorMessage = `Server error (${response.status}): ${response.statusText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
+      setProgress(90);
+
+      const data = await response.json();
+      console.log('=== PDF ANALYSIS COMPLETE ===');
+      console.log('PDF analysis response:', data);
+      
+      // Fetch updated health data to show in console
+      const healthDataResponse = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+      if (healthDataResponse.ok) {
+        const healthData = await healthDataResponse.json();
+        console.log('=== UPDATED HEALTH DATA ===');
+        console.log('Updated health data:', healthData);
+        console.log('Insights:', healthData.insights);
+        console.log('Progress data:', healthData.progress);
+      }
+      
+      // Fetch interaction history to confirm the report was saved
+      const historyResponse = await fetch(`http://localhost:5000/api/health-tracking/history/${userId}?type=report&limit=1`);
+      if (historyResponse.ok) {
+        const historyData = await historyResponse.json();
+        console.log('=== REPORT SAVED IN HISTORY ===');
+        console.log('Report interaction record:', historyData.interactions[0]);
+      }
+      
+      setProgress(100);
       setSuccess(true);
       setSelectedFile(null);
+      
+      toast({
+        title: "Report uploaded successfully",
+        description: "Your medical report has been analyzed. Taking you to the insights tab to view results.",
+      });
+
+      // Navigate to insights tab after short delay
+      setTimeout(() => {
+        router.push('/patient/health-tracking?tab=insights');
+      }, 1500);
     } catch (err) {
+      console.error('Upload error:', err);
       setError("Failed to upload report. Please try again.");
     } finally {
       setIsUploading(false);
@@ -64,14 +174,13 @@ export function ReportSubmission() {
             <CheckCircle2 className="h-12 w-12 text-green-500" />
             <h3 className="text-lg font-semibold">Report Submitted Successfully!</h3>
             <p className="text-sm text-muted-foreground text-center">
-              Your medical report has been successfully uploaded and will be reviewed by your healthcare provider.
+              Your medical report has been successfully analyzed and insights are available.
             </p>
             <Button
-              variant="outline"
-              onClick={() => setSuccess(false)}
+              onClick={() => router.push('/patient/health-tracking?tab=insights')}
               className="mt-4"
             >
-              Submit Another Report
+              View Insights
             </Button>
           </div>
         </CardContent>
@@ -125,12 +234,36 @@ export function ReportSubmission() {
             </div>
           )}
 
+          {(isUploading || analyzing) && (
+            <div className="space-y-2 mb-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  {analyzing ? 'Analyzing report...' : 'Uploading...'}
+                </span>
+                <span className="text-sm font-medium">{progress}%</span>
+              </div>
+              <Progress value={progress} />
+              <p className="text-xs text-muted-foreground">
+                {analyzing 
+                  ? 'Our AI is analyzing your medical report to extract health insights.' 
+                  : 'Uploading your file to our secure server.'}
+              </p>
+            </div>
+          )}
+
           <Button
             className="w-full"
             onClick={handleSubmit}
             disabled={!selectedFile || isUploading}
           >
-            {isUploading ? "Uploading..." : "Submit Report"}
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {analyzing ? "Analyzing" : "Uploading..."}
+              </>
+            ) : (
+              "Submit Report"
+            )}
           </Button>
         </div>
       </CardContent>

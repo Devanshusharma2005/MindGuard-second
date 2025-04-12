@@ -6,6 +6,14 @@ const healthReportSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  reportType: {
+    type: String,
+    enum: ['questionnaire', 'voice', 'pdf-upload'],
+    default: 'questionnaire'
+  },
+  reportPath: {
+    type: String, // For storing file paths
+  },
   questionnaireData: {
     mood: Number,
     anxiety: String,
