@@ -186,14 +186,16 @@ export function VoiceQuestionnaire() {
       // Format responses for the backend
       const formattedData = formatResponsesForBackend(finalResponses);
       
-      // Add userId to the request body
+      // Add userId and assessment type to the request body
       const requestBody = {
         ...formattedData,
-        user_id: userId
+        user_id: userId,
+        assessmentType: 'voice',
+        raw_responses: finalResponses
       };
 
       // Send to backend
-      const response = await fetch("http://localhost:3000/health-tracking", {
+      const response = await fetch("http://localhost:5000/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -204,6 +206,9 @@ export function VoiceQuestionnaire() {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log("Response data:", data);
 
       // Speak completion message
       await speakMessage("Thank you for completing the questionnaire. Your responses have been recorded.");

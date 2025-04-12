@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 import { AlertTriangle, Brain, Heart, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
-import localData from '../../../backend/data.json';
 
 interface InsightData {
   mainInsight: Record<string, number>;
@@ -36,68 +35,7 @@ interface HealthInsightsProps {
   insights?: InsightData;
 }
 
-export function HealthInsights({ insights: propsInsights }: HealthInsightsProps) {
-  const [localInsights, setLocalInsights] = useState<InsightData | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const processLocalData = () => {
-      try {
-        if (localData && localData.length > 0) {
-          const latestEntry = localData[localData.length - 1];
-          
-          // Process the data into the required format
-          const processedInsights: InsightData = {
-            mainInsight: Object.fromEntries(
-              Object.entries(latestEntry.output.summary.emotions_count)
-                .filter(([_, value]) => value !== undefined)
-            ),
-            riskAnalysis: {
-              low: latestEntry.output.disorder_indicators.filter(i => i.toLowerCase().includes('mild')).length,
-              moderate: latestEntry.output.disorder_indicators.filter(i => i.toLowerCase().includes('moderate')).length,
-              high: latestEntry.output.disorder_indicators.filter(i => i.toLowerCase().includes('severe')).length
-            },
-            anxietyTrend: {
-              status: latestEntry.input.anxiety === 'moderate' || latestEntry.input.anxiety === 'severe' ? 'increasing' : 'stable',
-              percentage: latestEntry.output.summary.average_confidence * 100,
-              detail: `Based on your responses, your anxiety level appears to be ${latestEntry.input.anxiety}`
-            },
-            stressResponse: {
-              status: latestEntry.input.self_care === 'moderate' || latestEntry.input.self_care === 'extensive' ? 'improving' : 'worsening',
-              percentage: Math.round((latestEntry.output.summary.average_valence || latestEntry.input.mood / 10) * 100),
-              detail: `Your stress management through ${latestEntry.input.self_care} self-care activities shows ${latestEntry.input.self_care === 'moderate' || latestEntry.input.self_care === 'extensive' ? 'improvement' : 'room for improvement'}`
-            },
-            moodStability: {
-              status: latestEntry.input.mood >= 5 ? 'stable' : 'fluctuating',
-              detail: `Your mood rating of ${latestEntry.input.mood}/10 indicates ${latestEntry.input.mood >= 5 ? 'stable mood' : 'mood fluctuations'}`
-            },
-            patterns: latestEntry.output.disorder_indicators || [],
-            risk_factors: latestEntry.output.summary.risk_factors
-          };
-
-          setLocalInsights(processedInsights);
-        }
-      } catch (error) {
-        console.error('Error processing local data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    processLocalData();
-  }, []);
-
-  // Use either props insights or local insights
-  const insights = propsInsights || localInsights;
-
-  if (isLoading) {
-    return (
-      <div className="text-center text-muted-foreground">
-        Loading insights...
-      </div>
-    );
-  }
-
+export function HealthInsights({ insights }: HealthInsightsProps) {
   if (!insights) {
     return (
       <div className="text-center text-muted-foreground">

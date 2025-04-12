@@ -7,37 +7,65 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, MessageSquare, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
 import { useRouter } from "next/navigation";
-import localData from '../../../backend/data.json';
 import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export function DashboardOverview() {
+  const router = useRouter();
   const [username, setUsername] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(true);
   const [healthData, setHealthData] = useState({
     healthreports: {
       mood: 0,
       anxiety: 0,
-      sleep: 0,
-      energy: 0,
+      sleep_quality: 0,
+      energy_levels: 0,
       concentration: 0,
-      socialInteraction: 0,
+      social_interactions: 0,
       optimism: 0
+    },
+    insights: {
+      mainInsight: {},
+      riskAnalysis: {
+        low: 0,
+        moderate: 0,
+        high: 0
+      },
+      anxietyTrend: {
+        status: '',
+        percentage: 0,
+        detail: ''
+      },
+      stressResponse: {
+        status: '',
+        percentage: 0,
+        detail: ''
+      },
+      moodStability: {
+        status: '',
+        detail: ''
+      }
     }
   });
 
+  // Debug health data changes
+  useEffect(() => {
+    console.log('Current health data:', healthData);
+  }, [healthData]);
+
+  // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem('token');
         if (!token) {
-          console.error('No token found');
           setUsername('Guest');
           return;
         }
 
-        const response = await fetch('http://localhost:3000/api/user/profile', {
+        const response = await fetch('http://localhost:5000/api/user/profile', {
           headers: {
             'x-auth-token': token,
             'Content-Type': 'application/json'
@@ -49,7 +77,11 @@ export function DashboardOverview() {
         }
 
         const data = await response.json();
-        setUsername(data.username || 'User');
+        if (data && data.username) {
+          setUsername(data.username);
+        } else {
+          setUsername('Guest');
+        }
       } catch (error) {
         console.error('Error fetching user data:', error);
         setUsername('Guest');
@@ -59,48 +91,95 @@ export function DashboardOverview() {
     fetchUserData();
   }, []);
 
+  // Fetch health data
   useEffect(() => {
     const fetchHealthData = async () => {
-      setIsLoading(true);
       try {
-        // Get the latest entry from local data
-        const latestEntry = localData[localData.length - 1];
+        const userId = localStorage.getItem('mindguard_user_id');
+        if (!userId) {
+          setHasCompletedAssessment(false);
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+        if (!response.ok) {
+          if (response.status === 404) {
+            setHasCompletedAssessment(false);
+            setIsLoading(false);
+            router.push('/patient/health-tracking?firstTime=true');
+            return;
+          }
+          throw new Error('Failed to fetch health data');
+        }
+
+        const data = await response.json();
+        console.log('Received health data:', data);
         
-        if (latestEntry) {
-          // Convert the input values to the format expected by the UI
-          const convertedData = {
+        if (data && data.healthreports) {
+          // Transform the data to match the expected format
+          const transformedData = {
             healthreports: {
-              mood: (latestEntry.input.mood / 10) * 100,
-              anxiety: latestEntry.input.anxiety === "none" ? 0 : 
-                      latestEntry.input.anxiety === "moderate" ? 50 : 
-                      latestEntry.input.anxiety === "severe" ? 100 : 0,
-              sleep: (latestEntry.input.sleep_quality / 10) * 100,
-              energy: (latestEntry.input.energy_levels / 10) * 100,
-              concentration: (latestEntry.input.concentration / 10) * 100,
-              socialInteraction: (latestEntry.input.social_interactions / 10) * 100,
-              optimism: (latestEntry.input.optimism / 10) * 100
+              mood: data.healthreports[0]?.mood * 10 || 0,
+              anxiety: data.healthreports[0]?.anxiety || 0,
+              sleep_quality: data.healthreports[0]?.sleep_quality * 10 || 0,
+              energy_levels: data.healthreports[0]?.energy_levels * 10 || 0,
+              concentration: data.healthreports[0]?.concentration * 10 || 0,
+              social_interactions: data.healthreports[0]?.social_interactions * 10 || 0,
+              optimism: data.healthreports[0]?.optimism * 10 || 0
+            },
+            insights: data.insights || {
+              mainInsight: {},
+              riskAnalysis: {
+                low: 0,
+                moderate: 0,
+                high: 0
+              },
+              anxietyTrend: {
+                status: 'stable',
+                percentage: 0,
+                detail: 'No trend data available yet'
+              },
+              stressResponse: {
+                status: 'stable',
+                percentage: 0,
+                detail: 'No stress data available yet'
+              },
+              moodStability: {
+                status: 'stable',
+                detail: 'No mood data available yet'
+              }
             }
           };
-
-          setHealthData(convertedData);
-          localStorage.setItem('healthData', JSON.stringify(convertedData));
+          
+          setHealthData(transformedData);
+          setHasCompletedAssessment(true);
+        } else {
+          setHasCompletedAssessment(false);
         }
       } catch (error) {
-        console.error('Error loading local health data:', error);
-        const cachedData = localStorage.getItem('healthData');
-        if (cachedData) {
-          setHealthData(JSON.parse(cachedData));
-        }
+        console.error('Error loading health data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load health data');
+        setHasCompletedAssessment(false);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchHealthData();
-  }, []);
+  }, [router]);
 
-  // Add this after fetching data
-  console.log('Current health data:', healthData.healthreports);
+  if (isLoading) {
+    return <div className="flex items-center justify-center p-8">Loading health data...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500 p-4">{error}</div>;
+  }
+
+  if (!hasCompletedAssessment) {
+    return null;
+  }
 
   const submitQuestionnaireData = async (data: any) => {
     try {
@@ -128,12 +207,13 @@ export function DashboardOverview() {
         healthreports: {
           mood: updatedData.mood/10 * 100 || 0,
           anxiety: updatedData.anxiety/10 * 100 || 0,
-          sleep: updatedData.sleep/10 * 100 || 0,
-          energy: updatedData.energy/10 * 100 || 0,
+          sleep_quality: updatedData.sleep_quality/10 * 100 || 0,
+          energy_levels: updatedData.energy_levels/10 * 100 || 0,
           concentration: updatedData.concentration/10 * 100 || 0,
-          socialInteraction: updatedData.socialInteraction/10 * 100 || 0,
+          social_interactions: updatedData.social_interactions/10 * 100 || 0,
           optimism: updatedData.optimism/10 * 100 || 0
-        }
+        },
+        insights: healthData.insights
       });
     } catch (error) {
       console.error('Error updating questionnaire data:', error);
@@ -144,10 +224,10 @@ export function DashboardOverview() {
     const newData = {
       mood: 75,
       anxiety: 30,
-      sleep: 80,
-      energy: 65,
+      sleep_quality: 80,
+      energy_levels: 65,
       concentration: 70,
-      socialInteraction: 60,
+      social_interactions: 60,
       optimism: 85
     };
     submitQuestionnaireData(newData);
@@ -158,10 +238,10 @@ export function DashboardOverview() {
       healthreports: {
         mood: 75,
         anxiety: 60,
-        sleep: 80,
-        energy: 70,
+        sleep_quality: 80,
+        energy_levels: 70,
         concentration: 65,
-        socialInteraction: 55,
+        social_interactions: 55,
         optimism: 85
       }
     };
@@ -186,12 +266,13 @@ export function DashboardOverview() {
         healthreports: {
           mood: updatedData.mood/10 * 100 || 0,
           anxiety: updatedData.anxiety/10 * 100 || 0,
-          sleep: updatedData.sleep/10 * 100 || 0,
-          energy: updatedData.energy/10 * 100 || 0,
+          sleep_quality: updatedData.sleep_quality/10 * 100 || 0,
+          energy_levels: updatedData.energy_levels/10 * 100 || 0,
           concentration: updatedData.concentration/10 * 100 || 0,
-          socialInteraction: updatedData.socialInteraction/10 * 100 || 0,
+          social_interactions: updatedData.social_interactions/10 * 100 || 0,
           optimism: updatedData.optimism/10 * 100 || 0
-        }
+        },
+        insights: healthData.insights
       });
     } catch (error) {
       console.error('Error submitting test data:', error);
@@ -222,21 +303,13 @@ export function DashboardOverview() {
       console.log('Submitted test data:', data);
       
       setHealthData({
-        healthreports: data.healthreports
+        healthreports: data.healthreports,
+        insights: data.insights
       });
     } catch (error) {
       console.error('Error submitting test data:', error);
     }
   };
-
-  // Add this before the return statement
-  useEffect(() => {
-    console.log('Rendered health data:', healthData.healthreports);
-  }, [healthData]);
-
-  if (isLoading) {
-    return <div>Loading health data...</div>;
-  }
 
   return (
     <div className="space-y-4">
@@ -289,17 +362,17 @@ export function DashboardOverview() {
               },
               { 
                 name: "Sleep Quality", 
-                value: healthData.healthreports.sleep, 
+                value: healthData.healthreports.sleep_quality, 
                 color: "#0ea5e9",
                 gradient: "from-sky-500 to-sky-600",
-                trend: healthData.healthreports.sleep > 70 ? "up" : "down"
+                trend: healthData.healthreports.sleep_quality > 70 ? "up" : "down"
               },
               { 
                 name: "Energy Level", 
-                value: healthData.healthreports.energy, 
+                value: healthData.healthreports.energy_levels, 
                 color: "#f59e0b",
                 gradient: "from-amber-500 to-amber-600",
-                trend: healthData.healthreports.energy > 70 ? "up" : "down"
+                trend: healthData.healthreports.energy_levels > 70 ? "up" : "down"
               },
               { 
                 name: "Concentration", 
@@ -310,10 +383,10 @@ export function DashboardOverview() {
               },
               { 
                 name: "Social Interaction", 
-                value: healthData.healthreports.socialInteraction, 
+                value: healthData.healthreports.social_interactions, 
                 color: "#8b5cf6",
                 gradient: "from-violet-500 to-violet-600",
-                trend: healthData.healthreports.socialInteraction > 70 ? "up" : "down"
+                trend: healthData.healthreports.social_interactions > 70 ? "up" : "down"
               },
               { 
                 name: "Optimism", 

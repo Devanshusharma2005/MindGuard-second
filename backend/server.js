@@ -30,7 +30,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/user', userRoutes);
-app.use('/health-tracking', healthTrackingRoutes);
+app.use('/api/health-tracking', healthTrackingRoutes);
 app.use('/api/questionnaire', questionnaireRoutes);
 app.use('/voice', voiceRoutes);
 app.use('/api/auth/doctor', doctorAuthRoutes);

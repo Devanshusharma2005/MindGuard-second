@@ -130,8 +130,13 @@ export default function HealthTracking() {
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [isFirstTime, setIsFirstTime] = useState(false);
 
   useEffect(() => {
+    // Check if it's first time from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    setIsFirstTime(urlParams.get('firstTime') === 'true');
+
     const userId = localStorage.getItem("mindguard_user_id");
     if (userId) {
       fetchHealthHistory(userId);
@@ -140,10 +145,25 @@ export default function HealthTracking() {
 
   const fetchHealthHistory = async (userId: string) => {
     try {
-      const response = await fetch(`http://localhost:3000/health-tracking/${userId}`);
-      if (!response.ok) throw new Error("Failed to fetch health history");
+      console.log("Fetching health history for user:", userId);
+      const response = await fetch(`http://localhost:5000/health-tracking/${userId}`);
+      console.log("Health history response status:", response.status);
+      
+      if (!response.ok) {
+        if (response.status === 404) {
+          console.log("No health data found for user");
+          setIsFirstTime(true);
+          return;
+        }
+        throw new Error("Failed to fetch health history");
+      }
+      
       const data = await response.json();
+      console.log("Received health data:", data);
+      console.log("Progress data:", data.progress);
+      
       setHealthData(data);
+      setIsFirstTime(false);
     } catch (err) {
       console.error("Error fetching health history:", err);
       setError("Failed to load health history");
@@ -155,14 +175,22 @@ export default function HealthTracking() {
     setError("");
     
     try {
-      console.log("Submitting questionnaire data:", data);
-      const response = await fetch("http://localhost:3000/health-tracking", {
+      const userId = localStorage.getItem("mindguard_user_id");
+      console.log("Submitting questionnaire data:", { ...data, userId });
+      
+      const response = await fetch("http://localhost:5000/health-tracking", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          userId,
+          assessmentType: 'text'
+        }),
       });
+
+      console.log("Questionnaire submission response status:", response.status);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -170,8 +198,11 @@ export default function HealthTracking() {
       }
 
       const result = await response.json();
-      console.log("Received response:", result);
+      console.log("Received questionnaire response:", result);
+      console.log("Progress data in response:", result.progress);
+      
       setHealthData(result);
+      setIsFirstTime(false);
       setActiveTab("insights");
     } catch (err) {
       console.error("Error submitting questionnaire:", err);
@@ -187,7 +218,9 @@ export default function HealthTracking() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Health Tracking</h1>
           <p className="text-muted-foreground">
-            Monitor your mental health progress and receive personalized insights
+            {isFirstTime 
+              ? "Welcome! Please complete your first mental health assessment"
+              : "Monitor your mental health progress and receive personalized insights"}
           </p>
         </div>
         {error && (
@@ -200,16 +233,20 @@ export default function HealthTracking() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="questionnaire">Questionnaire</TabsTrigger>
-          <TabsTrigger value="insights">Insights</TabsTrigger>
-          <TabsTrigger value="progress">Progress</TabsTrigger>
-          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+          <TabsTrigger value="insights" disabled={isFirstTime}>Insights</TabsTrigger>
+          <TabsTrigger value="progress" disabled={isFirstTime}>Progress</TabsTrigger>
+          <TabsTrigger value="recommendations" disabled={isFirstTime}>Recommendations</TabsTrigger>
         </TabsList>
         <TabsContent value="questionnaire">
           <Card>
             <CardHeader>
-              <CardTitle>Daily Health Assessment</CardTitle>
+              <CardTitle>
+                {isFirstTime ? "Initial Health Assessment" : "Daily Health Assessment"}
+              </CardTitle>
               <CardDescription>
-                Choose your preferred way to complete the assessment
+                {isFirstTime 
+                  ? "Please complete this assessment to help us understand your mental health needs"
+                  : "Choose your preferred way to complete the assessment"}
               </CardDescription>
               <div className="flex gap-4 mt-4">
                 <Button
@@ -224,12 +261,14 @@ export default function HealthTracking() {
                 >
                   Voice Assessment
                 </Button>
-                <Button
-                  variant={assessmentType === "report" ? "default" : "outline"}
-                  onClick={() => setAssessmentType("report")}
-                >
-                  Report Submission
-                </Button>
+                {!isFirstTime && (
+                  <Button
+                    variant={assessmentType === "report" ? "default" : "outline"}
+                    onClick={() => setAssessmentType("report")}
+                  >
+                    Report Submission
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent>

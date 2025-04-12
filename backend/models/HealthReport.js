@@ -23,6 +23,14 @@ const healthReportSchema = new mongoose.Schema({
     self_harm: String,
     discuss_professional: String
   },
+  voiceAssessment: {
+    type: Boolean,
+    default: false
+  },
+  raw_responses: [{
+    question: String,
+    answer: String
+  }],
   emotionReport: {
     summary: {
       emotions_count: Map,

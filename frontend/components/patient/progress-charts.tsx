@@ -42,10 +42,10 @@ interface ProgressChartsProps {
 }
 
 export function ProgressCharts({ progressData }: ProgressChartsProps) {
-  if (!progressData) {
+  if (!progressData || !progressData.moodData || !progressData.sleepData || !progressData.activityData) {
     return (
-      <div className="text-center text-muted-foreground">
-        Complete the questionnaire to view your progress
+      <div className="text-center text-muted-foreground p-8">
+        No progress data available. Complete the questionnaire to view your progress.
       </div>
     );
   }
@@ -55,9 +55,25 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
     return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
   };
 
-  const formatChange = (value: number) => {
+  const formatChange = (value: number | undefined) => {
+    if (value === undefined) return '0%';
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
     return numValue > 0 ? `+${numValue}%` : `${numValue}%`;
+  };
+
+  const summary = progressData.summary || {
+    mood: { change: 0 },
+    anxiety: { change: 0 },
+    stress: { change: 0 },
+    sleep: {
+      durationChange: 0,
+      qualityChange: 0
+    },
+    activities: {
+      exerciseChange: 0,
+      meditationChange: 0,
+      socialChange: 0
+    }
   };
 
   return (
@@ -117,20 +133,20 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
             <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Mood Change</div>
-                <div className={progressData.summary.mood.change >= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(progressData.summary.mood.change)}
+                <div className={summary.mood.change >= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(summary.mood.change)}
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Anxiety Change</div>
-                <div className={progressData.summary.anxiety.change <= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(progressData.summary.anxiety.change)}
+                <div className={summary.anxiety.change <= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(summary.anxiety.change)}
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Stress Change</div>
-                <div className={progressData.summary.stress.change <= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(progressData.summary.stress.change)}
+                <div className={summary.stress.change <= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(summary.stress.change)}
                 </div>
               </div>
             </div>
@@ -183,14 +199,14 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
             <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Duration Change</div>
-                <div className={progressData.summary.sleep.durationChange >= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(progressData.summary.sleep.durationChange)}
+                <div className={summary.sleep.durationChange >= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(summary.sleep.durationChange)}
                 </div>
               </div>
               <div>
                 <div className="text-muted-foreground">Quality Change</div>
-                <div className={progressData.summary.sleep.qualityChange >= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(progressData.summary.sleep.qualityChange)}
+                <div className={summary.sleep.qualityChange >= 0 ? "text-green-600" : "text-red-600"}>
+                  {formatChange(summary.sleep.qualityChange)}
                 </div>
               </div>
             </div>
@@ -252,20 +268,20 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
           <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
             <div>
               <div className="text-muted-foreground">Exercise Change</div>
-              <div className={progressData.summary.activities.exerciseChange >= 0 ? "text-green-600" : "text-red-600"}>
-                {formatChange(progressData.summary.activities.exerciseChange)}
+              <div className={summary.activities.exerciseChange >= 0 ? "text-green-600" : "text-red-600"}>
+                {formatChange(summary.activities.exerciseChange)}
               </div>
             </div>
             <div>
               <div className="text-muted-foreground">Meditation Change</div>
-              <div className={progressData.summary.activities.meditationChange >= 0 ? "text-green-600" : "text-red-600"}>
-                {formatChange(progressData.summary.activities.meditationChange)}
+              <div className={summary.activities.meditationChange >= 0 ? "text-green-600" : "text-red-600"}>
+                {formatChange(summary.activities.meditationChange)}
               </div>
             </div>
             <div>
               <div className="text-muted-foreground">Social Change</div>
-              <div className={progressData.summary.activities.socialChange >= 0 ? "text-green-600" : "text-red-600"}>
-                {formatChange(progressData.summary.activities.socialChange)}
+              <div className={summary.activities.socialChange >= 0 ? "text-green-600" : "text-red-600"}>
+                {formatChange(summary.activities.socialChange)}
               </div>
             </div>
           </div>

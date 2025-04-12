@@ -240,132 +240,49 @@ router.post('/', async (req, res) => {
       };
     }
 
-    const now = new Date();
-    
-    // Create progress data
-    const progressData = {
-      moodData: [{
-        date: now,
-        mood: validatedData.mood,
-        anxiety: validatedData.anxiety === 'none' ? 0 : validatedData.anxiety === 'mild' ? 3 : validatedData.anxiety === 'moderate' ? 6 : 9,
-        stress: 10 - validatedData.mood
-      }],
-      sleepData: [{
-        date: now,
-        hours: 8,
-        quality: validatedData.sleep_quality
-      }],
-      activityData: [{
-        date: now,
-        exercise: ['moderate', 'extensive'].includes(validatedData.self_care) ? 7 : 3,
-        meditation: ['moderate', 'extensive'].includes(validatedData.self_care) ? 6 : 2,
-        social: validatedData.social_interactions
-      }]
-    };
-
-    // Prepare data for storage
+    // Store in MongoDB
     const healthReport = new HealthReport({
       userId: user_id,
       questionnaireData: validatedData,
+      voiceAssessment: req.body.assessmentType === 'voice',
+      raw_responses: req.body.raw_responses || [],
       emotionReport: report,
-      progressData: progressData,
-      timestamp: now
+      progressData: {
+        moodData: [{
+          date: new Date(),
+          mood: validatedData.mood,
+          anxiety: validatedData.anxiety === 'severe' ? 9 : 
+                  validatedData.anxiety === 'moderate' ? 6 :
+                  validatedData.anxiety === 'mild' ? 3 : 1,
+          stress: validatedData.stress_factors ? 7 : 3
+        }],
+        sleepData: [{
+          date: new Date(),
+          quality: validatedData.sleep_quality,
+          hours: 8 // Default value, can be updated when we add sleep duration to questionnaire
+        }],
+        activityData: [{
+          date: new Date(),
+          exercise: validatedData.self_care === 'extensive' ? 8 :
+                   validatedData.self_care === 'moderate' ? 5 :
+                   validatedData.self_care === 'minimal' ? 3 : 1,
+          meditation: 5, // Default value
+          social: validatedData.social_interactions
+        }]
+      }
     });
 
-    // Save to database
     await healthReport.save();
-    console.log('Saved health report to database');
-
-    // Store the report in JSON
-    storeDataInJson(validatedData, report);
-
-    // Get previous reports for calculating changes
-    const previousReports = await HealthReport.find({ userId: user_id })
-      .sort({ timestamp: -1 })
-      .limit(2)
-      .exec();
-
-    let summary = {
-      mood: { change: 0 },
-      anxiety: { change: 0 },
-      stress: { change: 0 },
-      sleep: {
-        durationChange: 0,
-        qualityChange: 0
-      },
-      activities: {
-        exerciseChange: 0,
-        meditationChange: 0,
-        socialChange: 0
-      }
-    };
-
-    if (previousReports.length > 1) {
-      const previous = previousReports[1]; // Second most recent report
-      
-      summary = {
-        mood: { 
-          change: ((validatedData.mood - previous.questionnaireData.mood) / previous.questionnaireData.mood * 100).toFixed(1)
-        },
-        anxiety: { 
-          change: ((validatedData.anxiety === 'none' ? 0 : validatedData.anxiety === 'mild' ? 3 : validatedData.anxiety === 'moderate' ? 6 : 9) -
-            (previous.questionnaireData.anxiety === 'none' ? 0 : previous.questionnaireData.anxiety === 'mild' ? 3 : previous.questionnaireData.anxiety === 'moderate' ? 6 : 9)).toFixed(1)
-        },
-        stress: { 
-          change: (((10 - validatedData.mood) - (10 - previous.questionnaireData.mood)) / (10 - previous.questionnaireData.mood) * 100).toFixed(1)
-        },
-        sleep: {
-          durationChange: 0, // We don't track actual duration
-          qualityChange: ((validatedData.sleep_quality - previous.questionnaireData.sleep_quality) / previous.questionnaireData.sleep_quality * 100).toFixed(1)
-        },
-        activities: {
-          exerciseChange: (((['moderate', 'extensive'].includes(validatedData.self_care) ? 7 : 3) - 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 7 : 3)) / 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 7 : 3) * 100).toFixed(1),
-          meditationChange: (((['moderate', 'extensive'].includes(validatedData.self_care) ? 6 : 2) - 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 6 : 2)) / 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 6 : 2) * 100).toFixed(1),
-          socialChange: ((validatedData.social_interactions - previous.questionnaireData.social_interactions) / 
-            previous.questionnaireData.social_interactions * 100).toFixed(1)
-        }
-      };
-    }
-
-    // Format response for frontend
+    
     res.json({
-      insights: {
-        mainInsight: report.summary.emotions_count,
-        riskAnalysis: {
-          low: report.disorder_indicators.filter(i => i.toLowerCase().includes('mild')).length,
-          moderate: report.disorder_indicators.filter(i => i.toLowerCase().includes('moderate')).length,
-          high: report.disorder_indicators.filter(i => i.toLowerCase().includes('severe')).length
-        },
-        anxietyTrend: {
-          status: validatedData.anxiety === 'moderate' || validatedData.anxiety === 'severe' ? 'increasing' : 'stable',
-          percentage: report.summary.average_confidence * 100,
-          detail: `Based on your responses, your anxiety level appears to be ${validatedData.anxiety}`
-        },
-        stressResponse: {
-          status: validatedData.self_care === 'moderate' || validatedData.self_care === 'extensive' ? 'improving' : 'worsening',
-          percentage: Math.round((report.summary.average_valence || validatedData.mood / 10) * 100),
-          detail: `Your stress management through ${validatedData.self_care} self-care activities shows ${validatedData.self_care === 'moderate' || validatedData.self_care === 'extensive' ? 'improvement' : 'room for improvement'}`
-        },
-        moodStability: {
-          status: validatedData.mood >= 5 ? 'stable' : 'fluctuating',
-          detail: `Your mood rating of ${validatedData.mood}/10 indicates ${validatedData.mood >= 5 ? 'stable mood' : 'mood fluctuations'}`
-        },
-        patterns: report.disorder_indicators || []
-      },
-      progress: {
-        moodData: progressData.moodData,
-        sleepData: progressData.sleepData,
-        activityData: progressData.activityData,
-        summary
-      }
+      questionnaire: validatedData,
+      report: report,
+      healthReport: healthReport
     });
-  } catch (error) {
-    console.error('Error processing health tracking:', error);
-    res.status(400).json({ error: error.message });
+
+  } catch (err) {
+    console.error('Error processing health data:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -376,94 +293,154 @@ router.get('/:userId', async (req, res) => {
     
     // Get all reports for the user, sorted by timestamp
     const reports = await HealthReport.find({ userId: req.params.userId })
-      .sort({ timestamp: 1 })
+      .sort({ timestamp: -1 })
+      .limit(30) // Limit to last 30 reports for performance
       .exec();
 
     if (!reports || reports.length === 0) {
-      return res.status(404).json({ error: 'No health history found' });
+      return res.status(404).json({ 
+        error: 'No health history found',
+        message: 'No health tracking data exists for this user yet.'
+      });
     }
 
-    // Aggregate all progress data
-    const progressData = {
-      moodData: reports.flatMap(report => 
-        report.progressData?.moodData?.map(data => ({
-          ...data,
-          date: data.date.toISOString()
-        })) || []
-      ),
-      sleepData: reports.flatMap(report => 
-        report.progressData?.sleepData?.map(data => ({
-          ...data,
-          date: data.date.toISOString()
-        })) || []
-      ),
-      activityData: reports.flatMap(report => 
-        report.progressData?.activityData?.map(data => ({
-          ...data,
-          date: data.date.toISOString()
-        })) || []
-      )
+    // Get the latest report for current insights
+    const latestReport = reports[0];
+
+    // Format historical data
+    const historicalData = reports.map(report => ({
+      timestamp: report.timestamp,
+      mood: report.questionnaireData.mood,
+      anxiety: report.questionnaireData.anxiety === 'none' ? 0 :
+              report.questionnaireData.anxiety === 'mild' ? 30 :
+              report.questionnaireData.anxiety === 'moderate' ? 60 : 90,
+      sleep_quality: report.questionnaireData.sleep_quality,
+      energy_levels: report.questionnaireData.energy_levels,
+      concentration: report.questionnaireData.concentration,
+      social_interactions: report.questionnaireData.social_interactions,
+      optimism: report.questionnaireData.optimism
+    }));
+
+    // Calculate trends from historical data
+    const calculateTrend = (metric) => {
+      if (reports.length < 2) return 'stable';
+      const recent = reports.slice(0, Math.min(7, reports.length));
+      const values = recent.map(r => r.questionnaireData[metric]);
+      const trend = values[0] - values[values.length - 1];
+      return trend > 0 ? 'improving' : trend < 0 ? 'worsening' : 'stable';
     };
 
-    // Calculate changes if there are at least 2 reports
-    let summary = {
-      mood: { change: 0 },
-      anxiety: { change: 0 },
-      stress: { change: 0 },
-      sleep: {
-        durationChange: 0,
-        qualityChange: 0
+    // Format the response data
+    const formattedData = {
+      healthreports: historicalData,
+      insights: {
+        mainInsight: latestReport.emotionReport.summary.emotions_count,
+        riskAnalysis: {
+          low: latestReport.emotionReport.disorder_indicators.filter(i => i.toLowerCase().includes('mild')).length,
+          moderate: latestReport.emotionReport.disorder_indicators.filter(i => i.toLowerCase().includes('moderate')).length,
+          high: latestReport.emotionReport.disorder_indicators.filter(i => i.toLowerCase().includes('severe')).length
+        },
+        anxietyTrend: {
+          status: calculateTrend('anxiety'),
+          percentage: latestReport.emotionReport.summary.average_confidence * 100,
+          detail: `Based on your responses, your anxiety level appears to be ${latestReport.questionnaireData.anxiety}`
+        },
+        stressResponse: {
+          status: calculateTrend('stress_factors'),
+          percentage: Math.round((latestReport.emotionReport.summary.average_valence || latestReport.questionnaireData.mood / 10) * 100),
+          detail: `Your stress management through ${latestReport.questionnaireData.self_care} self-care activities shows ${latestReport.questionnaireData.self_care === 'moderate' || latestReport.questionnaireData.self_care === 'extensive' ? 'improvement' : 'room for improvement'}`
+        },
+        moodStability: {
+          status: calculateTrend('mood'),
+          detail: `Your mood rating of ${latestReport.questionnaireData.mood}/10 indicates ${latestReport.questionnaireData.mood >= 5 ? 'stable mood' : 'mood fluctuations'}`
+        },
+        patterns: latestReport.emotionReport.disorder_indicators || [],
+        risk_factors: latestReport.emotionReport.summary.risk_factors || []
       },
-      activities: {
-        exerciseChange: 0,
-        meditationChange: 0,
-        socialChange: 0
+      progress: {
+        moodData: reports.map(report => ({
+          date: report.timestamp.toISOString(),
+          mood: report.questionnaireData.mood,
+          anxiety: report.questionnaireData.anxiety === 'none' ? 0 :
+                  report.questionnaireData.anxiety === 'mild' ? 30 :
+                  report.questionnaireData.anxiety === 'moderate' ? 60 : 90,
+          stress: report.questionnaireData.stress_factors ? 7 : 3
+        })),
+        sleepData: reports.map(report => ({
+          date: report.timestamp.toISOString(),
+          hours: 8, // Default value until sleep duration is added
+          quality: report.questionnaireData.sleep_quality
+        })),
+        activityData: reports.map(report => ({
+          date: report.timestamp.toISOString(),
+          exercise: report.questionnaireData.self_care === 'extensive' ? 8 :
+                   report.questionnaireData.self_care === 'moderate' ? 5 :
+                   report.questionnaireData.self_care === 'minimal' ? 3 : 1,
+          meditation: 5, // Default value
+          social: report.questionnaireData.social_interactions
+        })),
+        summary: {
+          mood: { 
+            change: calculatePercentageChange(reports, 'mood') 
+          },
+          anxiety: { 
+            change: calculatePercentageChange(reports, 'anxiety') 
+          },
+          stress: { 
+            change: calculatePercentageChange(reports, 'stress_factors') 
+          },
+          sleep: {
+            durationChange: 0, // Will be implemented when sleep duration is added
+            qualityChange: calculatePercentageChange(reports, 'sleep_quality')
+          },
+          activities: {
+            exerciseChange: calculatePercentageChange(reports, 'self_care'),
+            meditationChange: 0, // Default until meditation tracking is added
+            socialChange: calculatePercentageChange(reports, 'social_interactions')
+          }
+        }
       }
     };
 
-    if (reports.length >= 2) {
-      const latest = reports[reports.length - 1];
-      const previous = reports[reports.length - 2];
-
-      summary = {
-        mood: { 
-          change: ((latest.questionnaireData.mood - previous.questionnaireData.mood) / previous.questionnaireData.mood * 100).toFixed(1)
-        },
-        anxiety: { 
-          change: ((latest.questionnaireData.anxiety === 'none' ? 0 : latest.questionnaireData.anxiety === 'mild' ? 3 : latest.questionnaireData.anxiety === 'moderate' ? 6 : 9) -
-            (previous.questionnaireData.anxiety === 'none' ? 0 : previous.questionnaireData.anxiety === 'mild' ? 3 : previous.questionnaireData.anxiety === 'moderate' ? 6 : 9)).toFixed(1)
-        },
-        stress: { 
-          change: (((10 - latest.questionnaireData.mood) - (10 - previous.questionnaireData.mood)) / (10 - previous.questionnaireData.mood) * 100).toFixed(1)
-        },
-        sleep: {
-          durationChange: 0,
-          qualityChange: ((latest.questionnaireData.sleep_quality - previous.questionnaireData.sleep_quality) / previous.questionnaireData.sleep_quality * 100).toFixed(1)
-        },
-        activities: {
-          exerciseChange: (((['moderate', 'extensive'].includes(latest.questionnaireData.self_care) ? 7 : 3) - 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 7 : 3)) / 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 7 : 3) * 100).toFixed(1),
-          meditationChange: (((['moderate', 'extensive'].includes(latest.questionnaireData.self_care) ? 6 : 2) - 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 6 : 2)) / 
-            (['moderate', 'extensive'].includes(previous.questionnaireData.self_care) ? 6 : 2) * 100).toFixed(1),
-          socialChange: ((latest.questionnaireData.social_interactions - previous.questionnaireData.social_interactions) / 
-            previous.questionnaireData.social_interactions * 100).toFixed(1)
-        }
-      };
+    // Helper function to calculate percentage change
+    function calculatePercentageChange(reports, metric) {
+      if (reports.length < 2) return 0;
+      const recent = reports.slice(0, Math.min(7, reports.length));
+      const oldestValue = recent[recent.length - 1].questionnaireData[metric];
+      const newestValue = recent[0].questionnaireData[metric];
+      
+      // Handle categorical values
+      if (typeof newestValue === 'string') {
+        const valueMap = {
+          'none': 0,
+          'mild': 30,
+          'moderate': 60,
+          'severe': 90,
+          'minimal': 30,
+          'extensive': 90
+        };
+        const oldVal = valueMap[oldestValue] || 0;
+        const newVal = valueMap[newestValue] || 0;
+        return Math.round(((newVal - oldVal) / oldVal) * 100);
+      }
+      
+      // Handle numeric values
+      return Math.round(((newestValue - oldestValue) / oldestValue) * 100);
     }
 
-    // Return both the latest emotion report and progress data
-    res.json({
-      emotionReport: reports[reports.length - 1].emotionReport,
-      progress: {
-        ...progressData,
-        summary
-      }
-    });
+    res.json(formattedData);
   } catch (error) {
     console.error('Error fetching health history:', error);
-    res.status(500).json({ error: error.message });
+    const errorMessage = error.name === 'CastError' ? 
+      'Invalid user ID format' : 
+      error.name === 'MongoError' ? 
+        'Database connection error' : 
+        'Error fetching health history';
+    
+    res.status(500).json({ 
+      error: errorMessage,
+      details: error.message
+    });
   }
 });
 
