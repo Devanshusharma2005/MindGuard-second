@@ -974,175 +974,10 @@ router.post('/pdf-analysis', upload.single('file'), async (req, res) => {
     const filePath = req.file.path;
     const sessionId = uuidv4();
     
-    // Here you would call the PDF analysis service
-    // For now, we'll simulate the analysis with a timeout
-    setTimeout(async () => {
-      try {
-        console.log('Starting PDF analysis processing for:', req.file.originalname);
-        
-        // Mock data for sample response
-        const pdfAnalysisData = {
-          timestamp: new Date(),
-          documentType: 'Medical Report',
-          extractedData: {
-            mood: 7,
-            anxiety: 'mild',
-            sleep_quality: 6,
-            energy_levels: 5,
-            physical_symptoms: 'mild',
-            concentration: 8,
-            self_care: 'moderate',
-            social_interactions: 6,
-            intrusive_thoughts: 'none',
-            optimism: 7,
-            stress_factors: 'Work deadlines and financial concerns',
-            coping_strategies: 'Daily meditation and journaling',
-            social_support: 8,
-            self_harm: 'none',
-            discuss_professional: 'Currently seeing a therapist bi-weekly'
-          },
-          findings: [
-            {
-              category: 'Mood',
-              value: 'Relatively stable with mild fluctuations',
-              recommendation: 'Continue current management strategies'
-            },
-            {
-              category: 'Anxiety',
-              value: 'Mild anxiety symptoms noted',
-              recommendation: 'Consider mindfulness practice and cognitive techniques'
-            },
-            {
-              category: 'Physical Health',
-              value: 'No significant concerns identified',
-              recommendation: 'Maintain regular exercise and healthy diet'
-            }
-          ]
-        };
-        
-        console.log('PDF analysis data generated:', pdfAnalysisData);
-        console.log('Creating HealthReport document...');
-        
-        // Save the analysis to the database
-        const newReport = new HealthReport({
-          userId,
-          reportType: 'pdf-upload',
-          reportPath: filePath,
-          questionnaireData: pdfAnalysisData.extractedData,
-          analysisResults: {
-            summary: {
-              mood: { value: pdfAnalysisData.extractedData.mood, change: 0 },
-              anxiety: { value: pdfAnalysisData.extractedData.anxiety, change: 0 },
-              sleep: { value: pdfAnalysisData.extractedData.sleep_quality, change: 0 }
-            },
-            insights: pdfAnalysisData.findings.map(finding => ({
-              area: finding.category,
-              insight: finding.value,
-              recommendation: finding.recommendation
-            })),
-            riskFactors: []
-          },
-          emotionReport: {
-            summary: {
-              emotions_count: { 
-                "positive": pdfAnalysisData.extractedData.mood >= 7 ? 1 : 0,
-                "neutral": pdfAnalysisData.extractedData.mood >= 4 && pdfAnalysisData.extractedData.mood < 7 ? 1 : 0,
-                "negative": pdfAnalysisData.extractedData.mood < 4 ? 1 : 0
-              },
-              average_confidence: pdfAnalysisData.extractedData.concentration / 10,
-              average_valence: pdfAnalysisData.extractedData.mood / 10,
-              crisis_count: pdfAnalysisData.extractedData.self_harm !== 'none' || pdfAnalysisData.extractedData.anxiety === 'severe' ? 1 : 0,
-              risk_factors: [
-                ...(pdfAnalysisData.extractedData.self_harm !== 'none' ? ['Self-harm thoughts present'] : []),
-                ...(pdfAnalysisData.extractedData.anxiety === 'severe' ? ['Severe anxiety'] : []),
-                ...(pdfAnalysisData.extractedData.mood < 4 ? ['Low mood'] : []),
-                ...(pdfAnalysisData.extractedData.intrusive_thoughts === 'severe' ? ['Severe intrusive thoughts'] : [])
-              ]
-            },
-            disorder_indicators: [
-              ...(pdfAnalysisData.extractedData.anxiety !== 'none' ? [`${pdfAnalysisData.extractedData.anxiety} anxiety symptoms`] : []),
-              ...(pdfAnalysisData.extractedData.mood < 4 ? ['Depressive symptoms'] : []),
-              ...(pdfAnalysisData.extractedData.intrusive_thoughts !== 'none' ? [`${pdfAnalysisData.extractedData.intrusive_thoughts} intrusive thoughts`] : []),
-              ...(pdfAnalysisData.extractedData.sleep_quality < 4 ? ['Sleep disturbance'] : [])
-            ]
-          },
-          progressData: {
-            moodData: [{
-              date: new Date(),
-              mood: pdfAnalysisData.extractedData.mood,
-              anxiety: pdfAnalysisData.extractedData.anxiety === 'none' ? 0 : 
-                      pdfAnalysisData.extractedData.anxiety === 'mild' ? 30 :
-                      pdfAnalysisData.extractedData.anxiety === 'moderate' ? 60 : 90,
-              stress: 10 - pdfAnalysisData.extractedData.mood
-            }],
-            sleepData: [{
-              date: new Date(),
-              hours: 8,
-              quality: pdfAnalysisData.extractedData.sleep_quality
-            }],
-            activityData: [{
-              date: new Date(),
-              exercise: ['moderate', 'extensive'].includes(pdfAnalysisData.extractedData.self_care) ? 7 : 3,
-              meditation: ['moderate', 'extensive'].includes(pdfAnalysisData.extractedData.self_care) ? 6 : 2,
-              social: pdfAnalysisData.extractedData.social_interactions
-            }]
-          },
-          timestamp: new Date()
-        });
-        
-        // Create a new user interaction for the report submission
-        const questionResponses = Object.entries(pdfAnalysisData.extractedData).map(([key, value]) => ({
-          questionId: key,
-          questionText: key.replace(/_/g, ' '),
-          response: value
-        }));
-        
-        const userInteraction = new UserInteraction({
-          userId,
-          sessionId,
-          interactionType: 'report',
-          questionnaireResponses: questionResponses,
-          reportData: {
-            title: pdfAnalysisData.documentType || 'Medical Report',
-            filename: req.file.originalname,
-            filePath: filePath,
-            fileType: req.file.mimetype,
-            fileSize: req.file.size,
-            uploadDate: new Date()
-          },
-          startTime: pdfAnalysisData.timestamp,
-          endTime: new Date(),
-          metadata: {
-            browser: req.headers['user-agent'],
-            platform: req.headers['sec-ch-ua-platform'] || 'unknown'
-          }
-        });
-        
-        // Save both documents
-        const [savedReport, savedInteraction] = await Promise.all([
-          newReport.save(),
-          userInteraction.save()
-        ]);
-        
-        console.log('PDF analysis saved for user:', userId);
-        console.log('Report document ID:', savedReport._id);
-        console.log('User interaction ID:', savedInteraction._id);
-        console.log('Emotion Report Data:', savedReport.emotionReport);
-        console.log('=== PDF ANALYSIS COMPLETE ===');
-        
-        // Remove the file after processing (optional)
-        // fs.unlinkSync(filePath);
-        
-      } catch (processError) {
-        console.error('Error processing uploaded PDF:', processError);
-        // Log the error but don't return - response already sent
-      }
-    }, 2000); // Simulate processing time
-    
     // Return immediate success response to client
     // The actual processing happens asynchronously
     console.log('Responding to client with success message');
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: 'File uploaded and being processed',
       fileDetails: {
@@ -1151,6 +986,302 @@ router.post('/pdf-analysis', upload.single('file'), async (req, res) => {
         type: req.file.mimetype
       }
     });
+    
+    // Process the PDF in the background
+    setTimeout(async () => {
+      try {
+        console.log('Starting PDF analysis processing for:', req.file.originalname);
+        
+        // Define the output paths
+        const tempDir = path.join(__dirname, '../temp');
+        if (!fs.existsSync(tempDir)){
+          fs.mkdirSync(tempDir, { recursive: true });
+        }
+        
+        const outputJsonPath = path.join(tempDir, `${Date.now()}_analysis.json`);
+        console.log('Output will be saved to:', outputJsonPath);
+        
+        // Find the PDF analyzer script
+        let pythonScriptPath = path.join(__dirname, '../../agent/report_analysis/pdf_questionnaire_analyzer.py');
+        
+        // Check if the script exists at the expected path
+        if (!fs.existsSync(pythonScriptPath)) {
+          console.log('PDF analyzer not found at primary path, trying alternative paths...');
+          
+          // Try alternate paths
+          const alternatePaths = [
+            path.join(__dirname, '../../../agent/report_analysis/pdf_questionnaire_analyzer.py'),
+            path.join(process.cwd(), 'agent/report_analysis/pdf_questionnaire_analyzer.py')
+          ];
+          
+          for (const altPath of alternatePaths) {
+            if (fs.existsSync(altPath)) {
+              pythonScriptPath = altPath;
+              console.log('Found PDF analyzer at alternate path:', pythonScriptPath);
+              break;
+            }
+          }
+          
+          // If script is still not found, reject with error
+          if (!fs.existsSync(pythonScriptPath)) {
+            console.error('PDF analyzer script not found at any expected path');
+            return;
+          }
+        }
+        
+        console.log('Running PDF analyzer with command:');
+        const command = `python "${pythonScriptPath}" "${filePath}" --output "${outputJsonPath}"`;
+        console.log(command);
+        
+        // Run the Python script as a child process
+        const pythonProcess = spawn('python', [
+          pythonScriptPath,
+          filePath,  // Input file as positional argument
+          '--output', outputJsonPath  // Output path as named argument
+        ]);
+        
+        let scriptOutput = '';
+        let scriptError = '';
+        
+        pythonProcess.stdout.on('data', (data) => {
+          const chunk = data.toString();
+          scriptOutput += chunk;
+          console.log(`Python stdout: ${chunk}`);
+        });
+        
+        pythonProcess.stderr.on('data', (data) => {
+          const chunk = data.toString();
+          scriptError += chunk;
+          console.error(`Python stderr: ${chunk}`);
+        });
+        
+        // Handle Python process completion
+        pythonProcess.on('close', async (code) => {
+          console.log(`Python process exited with code ${code}`);
+          
+          if (code !== 0) {
+            console.error('Error analyzing PDF:', scriptError);
+            return;
+          }
+          
+          try {
+            // Verify the output file exists
+            if (!fs.existsSync(outputJsonPath)) {
+              console.error(`Output file not found at: ${outputJsonPath}`);
+              
+              // Check default location as fallback
+              const defaultOutputPath = path.join(path.dirname(pythonScriptPath), "pdf_health_result.json");
+              console.log('Checking default output path:', defaultOutputPath);
+              
+              if (fs.existsSync(defaultOutputPath)) {
+                console.log('Found analysis at default path, copying to expected location');
+                fs.copyFileSync(defaultOutputPath, outputJsonPath);
+              } else {
+                console.error('No output file found at any location!');
+                return;
+              }
+            }
+            
+            // Read the analysis data
+            console.log('Reading analysis data from:', outputJsonPath);
+            const jsonData = fs.readFileSync(outputJsonPath, 'utf8');
+            let pdfAnalysisData;
+            
+            try {
+              pdfAnalysisData = JSON.parse(jsonData);
+              console.log('Successfully parsed JSON data');
+            } catch (parseError) {
+              console.error('Error parsing JSON:', parseError);
+              console.error('Raw content:', jsonData.substring(0, 500) + '...');
+              return;
+            }
+            
+            // Extract questionnaire data
+            let extractedData = {};
+            
+            if (Array.isArray(pdfAnalysisData)) {
+              console.log('Analysis data is an array, using the most recent entry');
+              pdfAnalysisData = pdfAnalysisData[pdfAnalysisData.length - 1];
+            }
+            
+            // Check different possible structure formats
+            if (pdfAnalysisData.questionnaireData) {
+              extractedData = pdfAnalysisData.questionnaireData;
+            } else if (pdfAnalysisData.answers) {
+              extractedData = pdfAnalysisData.answers;
+            } else {
+              // Assume the data is directly in the object
+              const nonQuestionnaireFields = ['error', 'timestamp', 'source', 'userId', 'emotionReport'];
+              extractedData = Object.fromEntries(
+                Object.entries(pdfAnalysisData).filter(([key]) => !nonQuestionnaireFields.includes(key))
+              );
+            }
+            
+            console.log('Extracted questionnaire data:', extractedData);
+            
+            // Create the HealthReport document
+            console.log('Creating HealthReport document...');
+            const newReport = new HealthReport({
+              userId,
+              reportType: 'pdf-upload',
+              reportPath: filePath,
+              questionnaireData: extractedData,
+              analysisResults: {
+                summary: {
+                  mood: { value: extractedData.mood || 5, change: 0 },
+                  anxiety: { value: extractedData.anxiety || 'mild', change: 0 },
+                  sleep: { value: extractedData.sleep_quality || 5, change: 0 }
+                },
+                insights: (pdfAnalysisData.insights || []).map(insight => ({
+                  area: insight.category || 'Health',
+                  insight: insight.value || 'Analysis complete',
+                  recommendation: insight.recommendation || 'Follow your doctor\'s advice'
+                })),
+                riskFactors: pdfAnalysisData.emotion_report?.summary?.risk_factors || []
+              },
+              emotionReport: pdfAnalysisData.emotionReport || pdfAnalysisData.emotion_report || {
+                summary: {
+                  emotions_count: { 
+                    "positive": extractedData.mood >= 7 ? 1 : 0,
+                    "neutral": extractedData.mood >= 4 && extractedData.mood < 7 ? 1 : 0,
+                    "negative": extractedData.mood < 4 ? 1 : 0
+                  },
+                  average_confidence: extractedData.concentration / 10 || 0.5,
+                  average_valence: extractedData.mood / 10 || 0.5,
+                  crisis_count: extractedData.self_harm !== 'none' || extractedData.anxiety === 'severe' ? 1 : 0,
+                  risk_factors: []
+                },
+                disorder_indicators: []
+              },
+              progressData: {
+                moodData: [{
+                  date: new Date(),
+                  mood: extractedData.mood || 5,
+                  anxiety: extractedData.anxiety === 'none' ? 0 : 
+                          extractedData.anxiety === 'mild' ? 30 :
+                          extractedData.anxiety === 'moderate' ? 60 : 90,
+                  stress: 10 - (extractedData.mood || 5)
+                }],
+                sleepData: [{
+                  date: new Date(),
+                  hours: 8,
+                  quality: extractedData.sleep_quality || 5
+                }],
+                activityData: [{
+                  date: new Date(),
+                  exercise: ['moderate', 'extensive'].includes(extractedData.self_care) ? 7 : 3,
+                  meditation: ['moderate', 'extensive'].includes(extractedData.self_care) ? 6 : 2,
+                  social: extractedData.social_interactions || 5
+                }]
+              },
+              timestamp: new Date()
+            });
+            
+            // Create user interaction document
+            console.log('Creating UserInteraction document...');
+            const questionResponses = Object.entries(extractedData).map(([key, value]) => ({
+              questionId: key,
+              questionText: key.replace(/_/g, ' '),
+              response: value
+            }));
+            
+            const userInteraction = new UserInteraction({
+              userId,
+              sessionId,
+              interactionType: 'report',
+              questionnaireResponses: questionResponses,
+              reportData: {
+                title: pdfAnalysisData.document_type || 'Medical Report',
+                filename: req.file.originalname,
+                filePath: filePath,
+                fileType: req.file.mimetype,
+                fileSize: req.file.size,
+                uploadDate: new Date(),
+                analysisResults: {
+                  summary: {
+                    mood: { value: extractedData.mood || 5, change: 0 },
+                    anxiety: { value: extractedData.anxiety || 'mild', change: 0 },
+                    sleep: { value: extractedData.sleep_quality || 5, change: 0 }
+                  },
+                  insights: (pdfAnalysisData.insights || []).map(insight => ({
+                    area: insight.category || 'Health',
+                    insight: insight.value || 'Analysis complete',
+                    recommendation: insight.recommendation || 'Follow your doctor\'s advice'
+                  })),
+                  riskFactors: pdfAnalysisData.emotion_report?.summary?.risk_factors || []
+                }
+              },
+              startTime: new Date(),
+              endTime: new Date(),
+              metadata: {
+                browser: req.headers['user-agent'],
+                platform: req.headers['sec-ch-ua-platform'] || 'unknown'
+              }
+            });
+            
+            // Save to MongoDB - with explicit error handling
+            console.log('Saving documents to MongoDB...');
+            try {
+              // First try to save the HealthReport
+              const savedReport = await newReport.save();
+              console.log('Successfully saved HealthReport with ID:', savedReport._id);
+              
+              // Then try to save the UserInteraction
+              const savedInteraction = await userInteraction.save();
+              console.log('Successfully saved UserInteraction with ID:', savedInteraction._id);
+              
+              console.log('PDF analysis saved for user:', userId);
+              console.log('=== PDF ANALYSIS COMPLETE ===');
+            } catch (dbError) {
+              console.error('DATABASE SAVE ERROR:', dbError);
+              console.error('Error message:', dbError.message);
+              console.error('Error name:', dbError.name);
+              if (dbError.code) {
+                console.error('MongoDB error code:', dbError.code);
+              }
+              if (dbError.errors) {
+                console.error('Validation errors:', JSON.stringify(dbError.errors, null, 2));
+              }
+              
+              // Try to save each document separately to identify which one fails
+              try {
+                console.log('Attempting to save HealthReport separately...');
+                const savedReport = await newReport.save();
+                console.log('HealthReport saved successfully with ID:', savedReport._id);
+              } catch (healthReportError) {
+                console.error('Error saving HealthReport:', healthReportError.message);
+              }
+              
+              try {
+                console.log('Attempting to save UserInteraction separately...');
+                const savedInteraction = await userInteraction.save();
+                console.log('UserInteraction saved successfully with ID:', savedInteraction._id);
+              } catch (interactionError) {
+                console.error('Error saving UserInteraction:', interactionError.message);
+              }
+            }
+            
+            // Clean up temporary files
+            try {
+              if (fs.existsSync(outputJsonPath)) {
+                fs.unlinkSync(outputJsonPath);
+                console.log('Temporary JSON file cleaned up:', outputJsonPath);
+              }
+            } catch (cleanupError) {
+              console.error('Error cleaning up temporary file:', cleanupError);
+            }
+            
+          } catch (processError) {
+            console.error('Error processing uploaded PDF:', processError);
+            console.error('Stack trace:', processError.stack);
+          }
+        });
+        
+      } catch (processError) {
+        console.error('Error processing uploaded PDF:', processError);
+        console.error('Stack trace:', processError.stack);
+      }
+    }, 100); // Add a slight delay to ensure response is sent first
     
   } catch (error) {
     console.error('Error in PDF analysis endpoint:', error);

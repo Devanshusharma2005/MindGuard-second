@@ -34,8 +34,11 @@ export default function LoginPage() {
         }
       }
 
-      localStorage.setItem('userData', JSON.stringify(data.user));
-      localStorage.setItem('userType', 'user');
+      // Store user information in localStorage
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('mindguard_user_id', data.user.id);
+      localStorage.setItem('username', data.user.username);
+      localStorage.setItem('email', data.user.email);
 
       document.cookie = `token=${data.token}; path=/`;
 

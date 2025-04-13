@@ -102,9 +102,17 @@ app.post('/api/auth/signup', async (req, res) => {
 
     await newUser.save();
 
+    // Generate JWT token
+    const token = jwt.sign(
+      { user: { id: newUser._id } },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
     res.status(201).json({
       success: true,
       msg: 'User registered successfully',
+      token,
       user: {
         id: newUser._id,
         username: newUser.username,

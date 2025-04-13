@@ -639,13 +639,12 @@ class QuestionnaireAnalyzer:
         
         return sentences
     
-    def analyze_pdf(self, pdf_path: str, output_json_path: Optional[str] = None) -> Dict[str, Any]:
+    def analyze_pdf(self, pdf_path: str) -> Dict[str, Any]:
         """
         Analyze a PDF containing questionnaire answers.
         
         Args:
             pdf_path: Path to the PDF file
-            output_json_path: Optional path to save JSON output
             
         Returns:
             Dictionary of extracted answers
@@ -723,9 +722,6 @@ class QuestionnaireAnalyzer:
         
         # Add timestamp
         results["timestamp"] = datetime.now().isoformat()
-        
-        # Note: We're no longer saving to file in this method
-        # Let the main function handle saving to the default file
         
         # Clean up temporary file
         try:
@@ -871,38 +867,14 @@ class QuestionnaireAnalyzer:
             
         return health_data
 
-# At the top of the file with other imports
+# Define a default output path for JSON results
 DEFAULT_JSON_OUTPUT = "pdf_health_result.json"
 
-def save_to_json_file(data: Dict[str, Any], file_path: str = DEFAULT_JSON_OUTPUT) -> None:
-    """
-    Save data to the specified JSON file, preserving existing entries.
-    
-    Args:
-        data: Data to save
-        file_path: Path to JSON file
-    """
+def save_to_json_file(data: Dict[str, Any], file_path: str) -> None:
+    """Save data to a JSON file."""
     try:
-        # Read existing data if file exists
-        existing_data = []
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    existing_data = json.load(f)
-                    # Convert to list if it's not already
-                    if not isinstance(existing_data, list):
-                        existing_data = [existing_data]
-            except Exception as e:
-                print(f"Error reading existing file {file_path}: {e}")
-                print("Creating new file...")
-        
-        # Add the new data
-        existing_data.append(data)
-        
-        # Write the updated data back to the file
         with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(existing_data, f, indent=2)
-            
+            json.dump(data, f, indent=2)
         print(f"Data saved to {file_path}")
     except Exception as e:
         print(f"Error saving data to {file_path}: {e}")
@@ -913,8 +885,8 @@ DEFAULT_PDF_PATH = "mental_health_report.pdf"
 def main():
     parser = argparse.ArgumentParser(description="Extract questionnaire answers from PDF files")
     parser.add_argument("pdf_path", nargs="?", default=None, help="Path to the PDF file")
-    parser.add_argument("--output", "-o", default=DEFAULT_JSON_OUTPUT, 
-                       help=f"Path to save the JSON output (default: {DEFAULT_JSON_OUTPUT})")
+    parser.add_argument("--output", "-o", default="pdf_health_result.json", 
+                       help="Path to save the JSON output (default: pdf_health_result.json)")
     parser.add_argument("--debug", "-d", action="store_true", help="Enable debug output")
     parser.add_argument("--user-id", help="User ID for the results")
     parser.add_argument("--generate-report", "-r", action="store_true", help="Generate emotion report")
@@ -926,6 +898,11 @@ def main():
     
     # Create analyzer
     analyzer = QuestionnaireAnalyzer(debug=args.debug)
+    
+    # Get the output path (prioritize command line argument)
+    output_path = args.output
+    if args.debug:
+        print(f"Output will be saved to: {output_path}")
     
     # Test mode with sample data
     if args.test:
@@ -952,8 +929,8 @@ def main():
         if args.user_id:
             sample_results["user_id"] = args.user_id
             
-        # Always save to the default file, ignoring PDF filename
-        save_to_json_file(sample_results, DEFAULT_JSON_OUTPUT)
+        # Save to the specified output file
+        save_to_json_file(sample_results, output_path)
         
         # Generate emotion report if requested
         if args.generate_report or args.format == "healthdata":
@@ -961,7 +938,7 @@ def main():
             emotion_report = analyzer.generate_emotion_report(sample_results)
             
             if args.format == "healthdata":
-                healthdata_output_path = args.output or "sample_healthdata.json"
+                healthdata_output_path = output_path or "sample_healthdata.json"
                 analyzer.save_to_healthdata_format(
                     sample_results,
                     emotion_report,
@@ -978,17 +955,22 @@ def main():
     
     # Analyze PDF
     print(f"Starting PDF analysis of {pdf_path}...")
-    # Always use the default output path, not derived from PDF filename
-    output_path = DEFAULT_JSON_OUTPUT
     
     try:
-        results = analyzer.analyze_pdf(pdf_path, None)  # Don't save in analyze_pdf
+        results = analyzer.analyze_pdf(pdf_path)  # Don't pass output path here
     except Exception as e:
         print(f"Error in PDF analysis: {e}")
         return 1
     
-    # Save results to the default JSON file
-    save_to_json_file(results, output_path)
+    # Save results to the specified JSON file
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=2)
+        print(f"Data saved to {output_path}")
+    except Exception as e:
+        print(f"Error saving data to {output_path}: {e}")
+        return 1
+        
     print(f"Analysis results saved to {output_path}")
     
     # Add user ID if provided
@@ -1021,7 +1003,7 @@ def main():
     # Save in MindGuard format if requested
     if args.format == "healthdata":
         try:
-            healthdata_output_path = args.output or f"{os.path.splitext(pdf_path)[0]}_healthdata.json"
+            healthdata_output_path = output_path or f"{os.path.splitext(pdf_path)[0]}_healthdata.json"
             health_data = analyzer.save_to_healthdata_format(
                 results, 
                 emotion_report, 

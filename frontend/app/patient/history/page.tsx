@@ -46,9 +46,23 @@ interface UserInteraction {
   reportData?: {
     title: string;
     filename: string;
-    uploadDate: string;
+    filePath?: string;
     fileType: string;
     fileSize: number;
+    uploadDate: string;
+    analysisResults?: {
+      summary?: {
+        mood?: { value: number, change: number },
+        anxiety?: { value: string, change: number },
+        sleep?: { value: number, change: number }
+      },
+      insights?: Array<{
+        area: string,
+        insight: string,
+        recommendation: string
+      }>,
+      riskFactors?: string[]
+    }
   };
   startTime: string;
   endTime: string;
@@ -101,6 +115,8 @@ export default function HistoryPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load history');
       console.error('Error fetching history:', err);
+      setInteractions([]);
+      setPagination({ total: 0, page: 1, pages: 1 });
     } finally {
       setLoading(false);
     }
@@ -174,7 +190,7 @@ export default function HistoryPage() {
         View your chat conversations and questionnaire responses
       </p>
 
-      <Tabs value={activeTab} onValueChange={(value: 'chat' | 'questionnaire' | 'report') => setActiveTab(value)} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'chat' | 'questionnaire' | 'report')} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3 h-auto">
           <TabsTrigger value="chat" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Chat History
@@ -307,7 +323,7 @@ export default function HistoryPage() {
           <Card>
             <CardHeader>
               <CardTitle>Report History</CardTitle>
-              <CardDescription>Your uploaded health reports and documents</CardDescription>
+              <CardDescription>Your uploaded health reports and analysis results</CardDescription>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -319,27 +335,56 @@ export default function HistoryPage() {
               ) : (
                 <div className="space-y-4">
                   {interactions.map((interaction) => (
-                    <Card key={interaction._id} className="bg-muted/50 p-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium">{interaction.reportData?.title || 'Untitled Report'}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {interaction.reportData?.filename || 'No filename'} • 
-                            {interaction.reportData?.fileType || 'Unknown type'} • 
-                            {interaction.reportData?.fileSize ? `${(interaction.reportData.fileSize / 1024).toFixed(1)} KB` : 'Unknown size'}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Uploaded on {formatDate(interaction.startTime)}
-                          </p>
+                    <Card key={interaction._id} className="bg-muted/50">
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-center">
+                          <CardTitle className="text-sm font-medium">
+                            {interaction.reportData?.title || 'Untitled Report'} - {formatDate(interaction.startTime)}
+                          </CardTitle>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleViewReport(interaction._id)}
+                          >
+                            View PDF
+                          </Button>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => handleViewReport(interaction._id)}
-                        >
-                          View
-                        </Button>
-                      </div>
+                        <CardDescription>
+                          {interaction.reportData?.filename || 'No filename'} • 
+                          {interaction.reportData?.fileSize ? `${(interaction.reportData.fileSize / 1024).toFixed(1)} KB` : 'Unknown size'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {interaction.questionnaireResponses && interaction.questionnaireResponses.length > 0 ? (
+                          <>
+                            <h4 className="font-medium text-sm mb-2">Extracted Health Data</h4>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Metric</TableHead>
+                                  <TableHead className="w-[200px]">Value</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {interaction.questionnaireResponses.map((response) => (
+                                  <TableRow key={response.questionId}>
+                                    <TableCell className="font-medium">
+                                      {response.questionText}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Badge className={getSeverityColor(response.response)}>
+                                        {getResponseDisplay(response.response)}
+                                      </Badge>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">No analysis data available for this report.</p>
+                        )}
+                      </CardContent>
                     </Card>
                   ))}
                 </div>
@@ -355,8 +400,12 @@ export default function HistoryPage() {
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page === 1}
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePageChange(pagination.page - 1);
+                  }}
+                  className={pagination.page === 1 ? "pointer-events-none opacity-50" : ""}
                 />
               </PaginationItem>
               {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((page) => (
@@ -371,8 +420,12 @@ export default function HistoryPage() {
               ))}
               <PaginationItem>
                 <PaginationNext
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page === pagination.pages}
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePageChange(pagination.page + 1);
+                  }}
+                  className={pagination.page === pagination.pages ? "pointer-events-none opacity-50" : ""}
                 />
               </PaginationItem>
             </PaginationContent>

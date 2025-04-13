@@ -33,7 +33,30 @@ export default function SignupPage() {
         throw new Error(data.msg || 'Signup failed');
       }
 
-      localStorage.setItem('token', data.token);
+      // Generate jwt token for login
+      const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+      
+      const loginData = await loginRes.json();
+      
+      if (!loginRes.ok) {
+        throw new Error(loginData.msg || 'Login after signup failed');
+      }
+      
+      // Store user information in localStorage
+      localStorage.setItem('token', loginData.token);
+      localStorage.setItem('mindguard_user_id', loginData.user.id);
+      localStorage.setItem('username', loginData.user.username);
+      localStorage.setItem('email', loginData.user.email);
+      
       router.push('/patient');
     } catch (err: any) {
       setError(err.message);

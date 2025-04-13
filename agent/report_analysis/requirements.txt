@@ -3,4 +3,6 @@ pdf2image
 Pillow
 python-multipart
 nltk
-typing
+numpy
+argparse
+PyPDF2

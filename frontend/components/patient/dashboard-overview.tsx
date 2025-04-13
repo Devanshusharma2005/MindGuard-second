@@ -16,6 +16,12 @@ export function DashboardOverview() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasCompletedAssessment, setHasCompletedAssessment] = useState(true);
+  
+  // Log username changes for debugging
+  useEffect(() => {
+    console.log('Username state updated:', username);
+  }, [username]);
+  
   const [healthData, setHealthData] = useState({
     healthreports: {
       mood: 0,
@@ -59,32 +65,72 @@ export function DashboardOverview() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          setUsername('Guest');
+        // First try to get username from localStorage
+        const userId = localStorage.getItem('mindguard_user_id');
+        const storedUsername = localStorage.getItem('username');
+        
+        // Debug localStorage values
+        console.log('localStorage values:', {
+          userId,
+          username: storedUsername,
+          token: localStorage.getItem('token')
+        });
+        
+        if (storedUsername && storedUsername !== 'Guest' && storedUsername !== 'undefined') {
+          setUsername(storedUsername);
+          // Still make the API call in background to keep data fresh
+          fetchUserFromAPI(userId);
           return;
         }
-
-        const response = await fetch('http://localhost:5000/api/user/profile', {
-          headers: {
-            'x-auth-token': token,
-            'Content-Type': 'application/json'
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
-        }
-
-        const data = await response.json();
-        if (data && data.username) {
-          setUsername(data.username);
+        
+        // If no stored username, fetch from API
+        if (userId) {
+          await fetchUserFromAPI(userId);
         } else {
           setUsername('Guest');
         }
       } catch (error) {
         console.error('Error fetching user data:', error);
         setUsername('Guest');
+      }
+    };
+    
+    const fetchUserFromAPI = async (userId: string | null) => {
+      if (!userId) {
+        setUsername('Guest');
+        return;
+      }
+
+      try {
+        // Try direct API call with userId parameter - this will bypass token auth issues
+        const response = await fetch(`/api/user/profile?userId=${userId}`);
+
+        if (!response.ok) {
+          console.error('Failed to fetch user data:', await response.text());
+          throw new Error('Failed to fetch user data');
+        }
+
+        const data = await response.json();
+        console.log('User data from API:', data);
+        
+        if (data && data.name) {
+          setUsername(data.name);
+          localStorage.setItem('username', data.name);
+        } else if (data && data.username) {
+          setUsername(data.username);
+          localStorage.setItem('username', data.username);
+        } else {
+          setUsername('Guest');
+        }
+      } catch (error) {
+        console.error('API error:', error);
+        // Try to use existing data from localStorage if API fails
+        const storedUsername = localStorage.getItem('username');
+        if (storedUsername && storedUsername !== 'Guest' && storedUsername !== 'undefined') {
+          setUsername(storedUsername);
+        } else {
+          setUsername('Guest');
+        }
       }
     };
 

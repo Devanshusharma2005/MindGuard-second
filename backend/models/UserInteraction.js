@@ -65,6 +65,19 @@ const userInteractionSchema = new mongoose.Schema({
     uploadDate: {
       type: Date,
       default: Date.now
+    },
+    analysisResults: {
+      summary: {
+        mood: { value: Number, change: Number },
+        anxiety: { value: String, change: Number },
+        sleep: { value: Number, change: Number }
+      },
+      insights: [{
+        area: String,
+        insight: String,
+        recommendation: String
+      }],
+      riskFactors: [String]
     }
   },
   startTime: {
