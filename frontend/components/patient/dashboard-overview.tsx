@@ -10,12 +10,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-export function DashboardOverview() {
+interface DashboardOverviewProps {
+  onAssessmentStatusChange?: (hasCompleted: boolean) => void;
+}
+
+export function DashboardOverview({ onAssessmentStatusChange }: DashboardOverviewProps) {
   const router = useRouter();
   const [username, setUsername] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(true);
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
   
   // Log username changes for debugging
   useEffect(() => {
@@ -61,6 +65,14 @@ export function DashboardOverview() {
     console.log('Current health data:', healthData);
   }, [healthData]);
 
+  // Update the completed assessment state and notify parent
+  const updateAssessmentStatus = (status: boolean) => {
+    setHasCompletedAssessment(status);
+    if (onAssessmentStatusChange) {
+      onAssessmentStatusChange(status);
+    }
+  };
+
   // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
@@ -68,15 +80,16 @@ export function DashboardOverview() {
         // First try to get username from localStorage
         const userId = localStorage.getItem('mindguard_user_id');
         const storedUsername = localStorage.getItem('username');
+        const token = localStorage.getItem('token');
         
         // Debug localStorage values
         console.log('localStorage values:', {
           userId,
           username: storedUsername,
-          token: localStorage.getItem('token')
+          token
         });
         
-        if (storedUsername && storedUsername !== 'Guest' && storedUsername !== 'undefined') {
+        if (storedUsername && storedUsername !== 'undefined') {
           setUsername(storedUsername);
           // Still make the API call in background to keep data fresh
           fetchUserFromAPI(userId);
@@ -92,6 +105,8 @@ export function DashboardOverview() {
       } catch (error) {
         console.error('Error fetching user data:', error);
         setUsername('Guest');
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -102,6 +117,23 @@ export function DashboardOverview() {
       }
 
       try {
+        // Try to get username directly from token payload
+        const token = localStorage.getItem('token');
+        if (token) {
+          try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(window.atob(base64));
+            if (payload.username) {
+              setUsername(payload.username);
+              localStorage.setItem('username', payload.username);
+              return;
+            }
+          } catch (e) {
+            console.error('Error parsing token:', e);
+          }
+        }
+
         // Try direct API call with userId parameter - this will bypass token auth issues
         const response = await fetch(`/api/user/profile?userId=${userId}`);
 
@@ -120,7 +152,23 @@ export function DashboardOverview() {
           setUsername(data.username);
           localStorage.setItem('username', data.username);
         } else {
-          setUsername('Guest');
+          // Try to get from mindguard_user object if it exists
+          const userDataString = localStorage.getItem('mindguard_user');
+          if (userDataString) {
+            try {
+              const userData = JSON.parse(userDataString);
+              if (userData.username) {
+                setUsername(userData.username);
+                localStorage.setItem('username', userData.username);
+                return;
+              }
+            } catch (e) {
+              console.error('Error parsing user data:', e);
+            }
+          }
+          
+          // Fall back to user ID if nothing else works
+          setUsername(userId);
         }
       } catch (error) {
         console.error('API error:', error);
@@ -129,7 +177,7 @@ export function DashboardOverview() {
         if (storedUsername && storedUsername !== 'Guest' && storedUsername !== 'undefined') {
           setUsername(storedUsername);
         } else {
-          setUsername('Guest');
+          setUsername(userId || 'Guest');
         }
       }
     };
@@ -143,7 +191,7 @@ export function DashboardOverview() {
       try {
         const userId = localStorage.getItem('mindguard_user_id');
         if (!userId) {
-          setHasCompletedAssessment(false);
+          updateAssessmentStatus(false);
           setIsLoading(false);
           return;
         }
@@ -151,7 +199,7 @@ export function DashboardOverview() {
         const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
         if (!response.ok) {
           if (response.status === 404) {
-            setHasCompletedAssessment(false);
+            updateAssessmentStatus(false);
             setIsLoading(false);
             router.push('/patient/health-tracking?firstTime=true');
             return;
@@ -162,7 +210,7 @@ export function DashboardOverview() {
         const data = await response.json();
         console.log('Received health data:', data);
         
-        if (data && data.healthreports) {
+        if (data && data.healthreports && data.healthreports.length > 0) {
           // Transform the data to match the expected format
           const transformedData = {
             healthreports: {
@@ -199,21 +247,21 @@ export function DashboardOverview() {
           };
           
           setHealthData(transformedData);
-          setHasCompletedAssessment(true);
+          updateAssessmentStatus(true);
         } else {
-          setHasCompletedAssessment(false);
+          updateAssessmentStatus(false);
         }
       } catch (error) {
         console.error('Error loading health data:', error);
         setError(error instanceof Error ? error.message : 'Failed to load health data');
-        setHasCompletedAssessment(false);
+        updateAssessmentStatus(false);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchHealthData();
-  }, [router]);
+  }, [router, onAssessmentStatusChange]);
 
   if (isLoading) {
     return <div className="flex items-center justify-center p-8">Loading health data...</div>;
@@ -224,7 +272,37 @@ export function DashboardOverview() {
   }
 
   if (!hasCompletedAssessment) {
-    return null;
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-primary">{username}</h1>
+            <p className="text-muted-foreground">
+              Welcome to MindGuard! Let's start your wellness journey
+            </p>
+          </div>
+        </div>
+
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Complete Your Assessment</CardTitle>
+            <CardDescription>
+              Complete a brief assessment to get personalized insights and recommendations
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <p className="text-center text-muted-foreground mb-6">
+              Your personalized dashboard will appear here after you complete your first health assessment.
+              This helps us understand your needs and provide relevant recommendations.
+            </p>
+            <Button size="lg" onClick={() => router.push('/patient/health-tracking?firstTime=true')}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Start Assessment
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const submitQuestionnaireData = async (data: any) => {
@@ -386,7 +464,9 @@ export function DashboardOverview() {
         <CardHeader className="pb-2">
           <CardTitle>Your Wellness Journey</CardTitle>
           <CardDescription>
-            You've been making steady progress over the past 30 days
+            {healthData.healthreports.mood > 0 
+              ? "Your assessment progress across sessions" 
+              : "Complete an assessment to see your progress"}
           </CardDescription>
         </CardHeader>
         <CardContent>

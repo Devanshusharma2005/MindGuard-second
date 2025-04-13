@@ -16,6 +16,7 @@ interface UserData {
 
 export default function PatientDashboard() {
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [hasCompletedAssessment, setHasCompletedAssessment] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -34,6 +35,26 @@ export default function PatientDashboard() {
     }
   }, [router]);
 
+  // Check if user has completed an assessment
+  useEffect(() => {
+    const checkAssessmentStatus = async () => {
+      const userId = localStorage.getItem('mindguard_user_id');
+      if (!userId) return;
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasCompletedAssessment(data.healthreports && data.healthreports.length > 0);
+        }
+      } catch (error) {
+        console.error('Error checking assessment status:', error);
+      }
+    };
+
+    checkAssessmentStatus();
+  }, []);
+
   const handleLogout = () => {
     // Clear localStorage
     localStorage.removeItem('userData');
@@ -50,16 +71,16 @@ export default function PatientDashboard() {
 
   return (
     <div className="space-y-8">
-
-      {/* Rest of your dashboard content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <DashboardOverview />
-        <div className="grid grid-cols-1 gap-6 mt-5 md:grid-cols-2 lg:grid-cols-3">
-          <WellnessScore />
-          <MoodTracker />
-          <UpcomingAppointments />
-        </div>
+        <DashboardOverview onAssessmentStatusChange={setHasCompletedAssessment} />
         
+        {hasCompletedAssessment && (
+          <div className="grid grid-cols-1 gap-6 mt-5 md:grid-cols-2 lg:grid-cols-3">
+            <WellnessScore />
+            <MoodTracker />
+            <UpcomingAppointments />
+          </div>
+        )}
       </div>
     </div>
   );
