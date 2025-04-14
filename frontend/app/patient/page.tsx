@@ -20,19 +20,20 @@ export default function PatientDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-    const storedData = localStorage.getItem('userData');
-    if (!storedData) {
+    const token = localStorage.getItem('token');
+    const userId = localStorage.getItem('mindguard_user_id');
+    const username = localStorage.getItem('username');
+    const email = localStorage.getItem('email');
+    
+    if (!token || !userId) {
       router.push('/login');
       return;
     }
 
-    try {
-      const data = JSON.parse(storedData);
-      setUserData(data);
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      router.push('/login');
-    }
+    setUserData({
+      username: username || '',
+      email: email || ''
+    });
   }, [router]);
 
   // Check if user has completed an assessment
