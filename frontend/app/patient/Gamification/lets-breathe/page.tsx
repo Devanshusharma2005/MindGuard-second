@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 const breathingSteps = [
   "Inhale deeply...",
@@ -25,6 +27,7 @@ const breathingImages = {
 const rewards = ["Relaxation Badge", "Mindfulness Star", "Focus Master"];
 
 export default function MindGuardGame() {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
   const [reward, setReward] = useState<string | null>(null);
@@ -34,6 +37,10 @@ export default function MindGuardGame() {
   const [showNextStep, setShowNextStep] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const sessionStartTime = useRef(Date.now());
+  const [sessionScore, setSessionScore] = useState(0);
+  const hasLoggedStart = useRef(false);
+  const hasLoggedEnd = useRef(false);
 
   // Initialize audio
   useEffect(() => {
@@ -44,10 +51,22 @@ export default function MindGuardGame() {
       }
     }
 
+    // Log game start only once
+    if (!hasLoggedStart.current) {
+      logGameSession('in-progress');
+      hasLoggedStart.current = true;
+    }
+
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.src = '';
+      }
+      
+      // Log game abandonment if not completed with a reward and not already logged
+      if (!reward && !hasLoggedEnd.current) {
+        logGameSession('abandoned');
+        hasLoggedEnd.current = true;
       }
     };
   }, []);
@@ -105,6 +124,9 @@ export default function MindGuardGame() {
     setTimerActive(false);
     const newReward = rewards[Math.floor(Math.random() * rewards.length)];
     setReward(newReward);
+    // Increase score for completion
+    const newScore = sessionScore + (level * 10);
+    setSessionScore(newScore);
 
     if (audioRef.current) {
       audioRef.current.pause();
@@ -117,10 +139,76 @@ export default function MindGuardGame() {
         window.speechSynthesis.speak(speech);
       }, 500);
     }
+    
+    // Log completed session only once
+    if (!hasLoggedEnd.current) {
+      logGameSession('completed');
+      hasLoggedEnd.current = true;
+    }
+  };
+  
+  const logGameSession = async (status: 'completed' | 'abandoned' | 'in-progress') => {
+    try {
+      const userId = localStorage.getItem('mindguard_user_id');
+      const token = localStorage.getItem('token');
+      
+      if (!userId || !token) return;
+      
+      const duration = Math.floor((Date.now() - sessionStartTime.current) / 1000);
+      
+      // Don't log 0 duration sessions unless they're in-progress
+      if (duration === 0 && status !== 'in-progress') return;
+      
+      await fetch('/api/gameLogs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-auth-token': token
+        },
+        body: JSON.stringify({
+          userId,
+          gameType: 'breathing',
+          duration,
+          completionStatus: status,
+          score: sessionScore,
+          notes: `Breathing exercise - Level: ${level}`,
+          metadata: {
+            level,
+            reward: reward || 'none'
+          }
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to log game session:', error);
+    }
+  };
+  
+  const handleExit = async () => {
+    // Log session as abandoned if no reward was earned and not already logged
+    if (!reward && !hasLoggedEnd.current) {
+      await logGameSession('abandoned');
+      hasLoggedEnd.current = true;
+    }
+    
+    // Return to games selection
+    router.push('/patient/Gamification');
   };
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-blue-100 p-6">
+      <div className="w-full max-w-md flex justify-between mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleExit}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft size={16} />
+          Exit Game
+        </Button>
+        {sessionScore > 0 && <div className="font-medium">Score: {sessionScore}</div>}
+      </div>
+      
       <Card className="p-6 max-w-md w-full text-center shadow-lg rounded-2xl bg-white">
         <CardContent>
           {!gameStarted ? (
@@ -177,7 +265,12 @@ export default function MindGuardGame() {
                   onClick={() => { 
                     setLevel(level + 1); 
                     setGameStarted(false); 
-                    setReward(null); 
+                    setReward(null);
+                    // Reset session start time for the next level
+                    sessionStartTime.current = Date.now();
+                    // Reset logging flags for the new level
+                    hasLoggedStart.current = false;
+                    hasLoggedEnd.current = false;
                   }} 
                   className="mt-4"
                 >

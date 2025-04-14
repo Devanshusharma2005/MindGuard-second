@@ -10,6 +10,8 @@ const questionnaireRoutes = require('./routes/api/questionnaire');
 const { router: voiceRoutes, setupWebSocket } = require('./routes/voice');
 const doctorAuthRoutes = require('./routes/doctorAuth');
 const adminAuthRoutes = require('./routes/adminAuth');
+const gameLogRoutes = require('./routes/gameLog');
+const memoriesRoutes = require('./routes/memories');
 
 const app = express();
 
@@ -37,6 +39,8 @@ app.use('/api/questionnaire', questionnaireRoutes);
 app.use('/voice', voiceRoutes);
 app.use('/api/auth/doctor', doctorAuthRoutes);
 app.use('/api/auth/admin', adminAuthRoutes);
+app.use('/api/game-logs', gameLogRoutes);
+app.use('/api/memories', memoriesRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {
