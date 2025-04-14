@@ -104,7 +104,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { user: { id: newUser._id } },
+      { id: newUser._id, username: newUser.username },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
@@ -162,7 +162,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Generate JWT token
     const token = jwt.sign(
-      { user: { id: user._id } },
+      { id: user._id, username: user.username },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );

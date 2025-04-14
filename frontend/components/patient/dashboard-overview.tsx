@@ -127,6 +127,7 @@ export function DashboardOverview({ onAssessmentStatusChange }: DashboardOvervie
             if (payload.username) {
               setUsername(payload.username);
               localStorage.setItem('username', payload.username);
+              // Skip API call since we already have the username
               return;
             }
           } catch (e) {
@@ -134,12 +135,36 @@ export function DashboardOverview({ onAssessmentStatusChange }: DashboardOvervie
           }
         }
 
-        // Try direct API call with userId parameter - this will bypass token auth issues
-        const response = await fetch(`/api/user/profile?userId=${userId}`);
+        // Check if we already have a valid stored username for this user
+        const storedUsername = localStorage.getItem('username');
+        if (storedUsername && storedUsername !== 'undefined' && storedUsername !== 'Guest') {
+          setUsername(storedUsername);
+          // Skip the API call if we already have the username
+          return;
+        }
+
+        // Only make API call if we couldn't get username from token or localStorage
+        console.log('Fetching user profile from API...');
+        const response = await fetch(`/api/user/profile?userId=${userId}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': token || ''
+          }
+        });
 
         if (!response.ok) {
-          console.error('Failed to fetch user data:', await response.text());
-          throw new Error('Failed to fetch user data');
+          let errorMessage = 'Failed to fetch user data';
+          try {
+            const errorData = await response.json();
+            console.error('Failed to fetch user data:', errorData);
+          } catch (e) {
+            console.error('Failed to parse error response:', e);
+          }
+          // Don't throw error here - we'll just use the fallback
+          console.warn('Using fallback username - API request failed');
+          // Use userId as fallback if we have nothing better
+          setUsername(userId);
+          return;
         }
 
         const data = await response.json();
@@ -196,7 +221,7 @@ export function DashboardOverview({ onAssessmentStatusChange }: DashboardOvervie
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+        const response = await fetch(`/api/health-tracking/${userId}`);
         if (!response.ok) {
           if (response.status === 404) {
             updateAssessmentStatus(false);
@@ -210,41 +235,78 @@ export function DashboardOverview({ onAssessmentStatusChange }: DashboardOvervie
         const data = await response.json();
         console.log('Received health data:', data);
         
-        if (data && data.healthreports && data.healthreports.length > 0) {
-          // Transform the data to match the expected format
-          const transformedData = {
-            healthreports: {
-              mood: data.healthreports[0]?.mood * 10 || 0,
-              anxiety: data.healthreports[0]?.anxiety || 0,
-              sleep_quality: data.healthreports[0]?.sleep_quality * 10 || 0,
-              energy_levels: data.healthreports[0]?.energy_levels * 10 || 0,
-              concentration: data.healthreports[0]?.concentration * 10 || 0,
-              social_interactions: data.healthreports[0]?.social_interactions * 10 || 0,
-              optimism: data.healthreports[0]?.optimism * 10 || 0
-            },
-            insights: data.insights || {
-              mainInsight: {},
-              riskAnalysis: {
-                low: 0,
-                moderate: 0,
-                high: 0
+        if (data && data.healthreports) {
+          // Check if healthreports is an array or already transformed
+          let transformedData;
+          
+          if (Array.isArray(data.healthreports) && data.healthreports.length > 0) {
+            // Transform the array data to match the expected format
+            transformedData = {
+              healthreports: {
+                mood: data.healthreports[0]?.mood * 10 || 0,
+                anxiety: data.healthreports[0]?.anxiety || 0,
+                sleep_quality: data.healthreports[0]?.sleep_quality * 10 || 0,
+                energy_levels: data.healthreports[0]?.energy_levels * 10 || 0,
+                concentration: data.healthreports[0]?.concentration * 10 || 0,
+                social_interactions: data.healthreports[0]?.social_interactions * 10 || 0,
+                optimism: data.healthreports[0]?.optimism * 10 || 0
               },
-              anxietyTrend: {
-                status: 'stable',
-                percentage: 0,
-                detail: 'No trend data available yet'
-              },
-              stressResponse: {
-                status: 'stable',
-                percentage: 0,
-                detail: 'No stress data available yet'
-              },
-              moodStability: {
-                status: 'stable',
-                detail: 'No mood data available yet'
+              insights: data.insights || {
+                mainInsight: {},
+                riskAnalysis: {
+                  low: 0,
+                  moderate: 0,
+                  high: 0
+                },
+                anxietyTrend: {
+                  status: 'stable',
+                  percentage: 0,
+                  detail: 'No trend data available yet'
+                },
+                stressResponse: {
+                  status: 'stable',
+                  percentage: 0,
+                  detail: 'No stress data available yet'
+                },
+                moodStability: {
+                  status: 'stable',
+                  detail: 'No mood data available yet'
+                }
               }
-            }
-          };
+            };
+          } else if (typeof data.healthreports === 'object') {
+            // Data is already in the expected format or needs minimal transformation
+            transformedData = {
+              healthreports: data.healthreports,
+              insights: data.insights || {
+                mainInsight: {},
+                riskAnalysis: { low: 0, moderate: 0, high: 0 },
+                anxietyTrend: { status: 'stable', percentage: 0, detail: 'No trend data available yet' },
+                stressResponse: { status: 'stable', percentage: 0, detail: 'No stress data available yet' },
+                moodStability: { status: 'stable', detail: 'No mood data available yet' }
+              }
+            };
+          } else {
+            // Empty or invalid data
+            transformedData = {
+              healthreports: {
+                mood: 0,
+                anxiety: 0,
+                sleep_quality: 0,
+                energy_levels: 0,
+                concentration: 0,
+                social_interactions: 0,
+                optimism: 0
+              },
+              insights: {
+                mainInsight: {},
+                riskAnalysis: { low: 0, moderate: 0, high: 0 },
+                anxietyTrend: { status: 'stable', percentage: 0, detail: 'No trend data available yet' },
+                stressResponse: { status: 'stable', percentage: 0, detail: 'No stress data available yet' },
+                moodStability: { status: 'stable', detail: 'No mood data available yet' }
+              }
+            };
+          }
           
           setHealthData(transformedData);
           updateAssessmentStatus(true);

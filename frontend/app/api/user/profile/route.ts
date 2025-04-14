@@ -14,22 +14,45 @@ export async function GET(request: NextRequest) {
     }
 
     // Call backend API to get user profile
-    const backendUrl = `http://127.0.0.1:5000/api/user/profile${userId ? `?userId=${userId}` : ''}`;
+    const backendUrl = `http://localhost:5000/api/user/profile${userId ? `?userId=${userId}` : ''}`;
     
+    // Add token to request headers if available
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json'
+    };
+    
+    if (authHeader) {
+      headers['x-auth-token'] = authHeader;
+    }
+    
+    console.log('Making backend request to:', backendUrl);
+    console.log('With headers:', JSON.stringify(headers));
+    
+    // Make the request to the backend
     const response = await fetch(backendUrl, {
-      headers: {
-        'Content-Type': 'application/json',
-        'x-auth-token': authHeader || ''
-      },
+      headers,
       cache: 'no-store'
     });
     
     if (!response.ok) {
-      console.error('Backend error:', await response.text());
-      return NextResponse.json(
-        { error: 'Failed to fetch user profile' },
-        { status: response.status }
-      );
+      const errorText = await response.text();
+      console.error('Backend error status:', response.status);
+      console.error('Backend error text:', errorText);
+      
+      // Try to parse the error text as JSON
+      try {
+        const errorJson = JSON.parse(errorText);
+        return NextResponse.json(
+          { error: errorJson.error || errorJson.msg || 'Failed to fetch user profile' },
+          { status: response.status }
+        );
+      } catch (e) {
+        // If not JSON, return the raw error text
+        return NextResponse.json(
+          { error: 'Failed to fetch user profile', details: errorText },
+          { status: response.status }
+        );
+      }
     }
     
     const userData = await response.json();
@@ -38,7 +61,7 @@ export async function GET(request: NextRequest) {
     console.error('API route error:', error);
     
     return NextResponse.json(
-      { error: 'An error occurred while processing your request' },
+      { error: 'An error occurred while processing your request', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

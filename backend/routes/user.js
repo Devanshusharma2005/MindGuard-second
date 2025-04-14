@@ -5,12 +5,17 @@ const User = require('../models/User');
 // Get user profile - can fetch either by auth token or by userId parameter
 router.get('/profile', auth, async (req, res) => {
   try {
-    let userId = req.user.id;
+    let userId;
     
     // If userId is provided in query params, use that instead
     // This allows admin routes or direct lookups
     if (req.query.userId) {
       userId = req.query.userId;
+    } else if (req.user && req.user.id) {
+      // Otherwise use the authenticated user's ID
+      userId = req.user.id;
+    } else {
+      return res.status(401).json({ error: 'User ID not found' });
     }
     
     const user = await User.findById(userId).select('-password');

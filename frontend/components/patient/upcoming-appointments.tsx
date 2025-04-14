@@ -30,7 +30,7 @@ export function UpcomingAppointments() {
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/consultations/upcoming/${userId}`);
+        const response = await fetch(`/api/consultations/upcoming/${userId}`);
         
         // If endpoint doesn't exist or returns error, use an empty array
         if (!response.ok) {
