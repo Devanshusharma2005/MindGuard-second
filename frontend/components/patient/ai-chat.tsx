@@ -40,7 +40,6 @@ const initialMessages: Message[] = [
 
 const suggestedQuestions = [
   "How can I improve my sleep quality?",
-  "What are some mindfulness exercises for anxiety?",
   "Can you suggest some self-care activities?",
   "How do I recognize signs of burnout?"
 ];

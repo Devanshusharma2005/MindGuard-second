@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ConsultationHistory } from "./consultation-history"; // Import the ConsultationHistory component
+import { ConsultationHistory } from "./consultation-history";
+import { DoctorInfoPopup } from "./doctor-info-popup";
 
 interface Consultation {
   id: number;
@@ -22,7 +23,10 @@ const doctors = [
   {
     id: 1,
     name: "Dr. Devanshu Sharma",
+    email: "devanshu.sharma@mindguard.com",
+    password: "********",
     specialty: "Psychiatrist",
+    yearsOfExperience: 8,
     rating: 4.9,
     reviews: 124,
     avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=256&h=256&auto=format&fit=crop",
@@ -32,7 +36,10 @@ const doctors = [
   {
     id: 2,
     name: "Dr. Priyanshu Thapliyal",
+    email: "priyanshu.thapliyal@mindguard.com",
+    password: "********",
     specialty: "Therapist",
+    yearsOfExperience: 5,
     rating: 4.8,
     reviews: 98,
     avatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?q=80&w=256&h=256&auto=format&fit=crop",
@@ -43,9 +50,19 @@ const doctors = [
 
 export function ConsultationCalendar() {
   const [selectedDoctor, setSelectedDoctor] = useState<any>(null);
+  const [showDoctorInfo, setShowDoctorInfo] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState("");
   const [bookedConsultations, setBookedConsultations] = useState<Consultation[]>([]);
+
+  const handleDoctorClick = (doctor: any) => {
+    setSelectedDoctor(doctor);
+    setShowDoctorInfo(true);
+  };
+
+  const handleCloseDoctorInfo = () => {
+    setShowDoctorInfo(false);
+  };
 
   const handleBooking = () => {
     if (selectedDoctor) {
@@ -82,7 +99,7 @@ export function ConsultationCalendar() {
               <Card 
                 key={doctor.id} 
                 className={`cursor-pointer transition-colors ${selectedDoctor?.id === doctor.id ? 'border-primary' : ''}`}
-                onClick={() => setSelectedDoctor(doctor)}
+                onClick={() => handleDoctorClick(doctor)}
               >
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
@@ -128,6 +145,14 @@ export function ConsultationCalendar() {
 
       {/* Pass the booked consultations to ConsultationHistory */}
       <ConsultationHistory consultations={bookedConsultations} />
+
+      {/* Doctor Info Popup */}
+      {showDoctorInfo && selectedDoctor && (
+        <DoctorInfoPopup 
+          doctor={selectedDoctor} 
+          onClose={handleCloseDoctorInfo} 
+        />
+      )}
     </div>
   );
 }

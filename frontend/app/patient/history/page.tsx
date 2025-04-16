@@ -222,9 +222,9 @@ export default function HistoryPage() {
                     <Card key={interaction._id} className="bg-muted/50">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-center">
-                          <CardTitle className="text-sm font-medium">
+                          {/* <CardTitle className="text-sm font-medium">
                             Session {interaction.sessionId.substring(0, 8)}
-                          </CardTitle>
+                          </CardTitle> */}
                           <span className="text-xs text-muted-foreground">
                             {formatDate(interaction.startTime)}
                           </span>
