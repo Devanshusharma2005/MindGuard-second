@@ -74,13 +74,18 @@ router.get('/conversations/:userId', verifyUser, async (req, res) => {
         try {
           let participantData = null;
           
-          // Try to find participant in each model
+          // Try to find participant in each model with improved admin handling
           if (p.role === 'patient') {
             participantData = await User.findById(p.user).select('username email profileImage');
           } else if (p.role === 'doctor') {
             participantData = await Doctor.findById(p.user).select('fullName email specialization profileImage');
           } else if (p.role === 'admin') {
+            // More comprehensive admin data selection to ensure admin participants are correctly identified
             participantData = await Admin.findById(p.user).select('fullName username email role profileImage');
+            // Ensure the role is explicitly set for admins
+            if (participantData) {
+              participantData.role = 'admin';
+            }
           }
           
           if (participantData) {
@@ -435,4 +440,4 @@ router.delete('/conversations/:conversationId', verifyUser, async (req, res) => 
   }
 });
 
-module.exports = router; 
+module.exports = router;

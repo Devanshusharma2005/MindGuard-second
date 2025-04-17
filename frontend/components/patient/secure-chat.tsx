@@ -523,9 +523,10 @@ export function SecureChat() {
           const formattedConversations = data.conversations.map((conv: any) => {
             console.log("Processing conversation:", conv);
             
-            // Filter out current user from participants
+            // Filter out current user from participants - fix admin identification issue
             const otherParticipants = Array.isArray(conv.participants) 
               ? conv.participants.filter((p: any) => {
+                  // Standardize participant ID format to handle various field formats
                   const participantId = p.id || p.userId || p.user;
                   console.log(`Comparing participant ID ${participantId} with current user ID ${userId}`);
                   return participantId !== userId;
@@ -534,18 +535,21 @@ export function SecureChat() {
             
             console.log("Other participants after filtering:", otherParticipants);
             
-            // Ensure each participant has the required fields
+            // Ensure each participant has the required fields with proper handling for admins
             const formattedParticipants = otherParticipants.map((p: any) => {
               // Extract participant ID from various possible fields
               const id = p.id || p.userId || p.user;
               
-              // Extract name from various possible fields
+              // Extract name from various possible fields with proper fallbacks
               const name = p.name || p.fullName || p.username || 'Unknown User';
+              
+              // Ensure role is properly identified, especially for admins
+              const role = p.role || (p.model === 'Admin' ? 'admin' : p.model === 'Doctor' ? 'doctor' : 'patient');
               
               return {
                 id,
                 name,
-                role: p.role || 'unknown',
+                role,
                 profileImage: p.profileImage || null,
                 specialty: p.specialty || p.specialization || null
               };

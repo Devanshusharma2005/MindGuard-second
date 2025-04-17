@@ -142,11 +142,19 @@ async function handleChatMessage(senderId, senderType, data) {
     timestamp: new Date().toISOString()
   };
   
+  // Track delivery status
+  let delivered = false;
+  
   // Send to all online recipients
   recipients.forEach((recipientId) => {
     const recipientConnection = connections.get(recipientId);
     if (recipientConnection) {
       recipientConnection.ws.send(JSON.stringify(messageData));
+      delivered = true;
+      console.log(`Message delivered to online user: ${recipientId}`);
+    } else {
+      // Log that the recipient is offline
+      console.log(`Recipient ${recipientId} is offline. Message will be retrieved when they connect.`);
     }
   });
   
@@ -156,6 +164,7 @@ async function handleChatMessage(senderId, senderType, data) {
     messageId,
     conversationId,
     status: 'delivered',
+    deliveredToOnline: delivered,
     timestamp: new Date().toISOString()
   }));
 }
@@ -254,4 +263,4 @@ module.exports = {
   initializeWebSocket,
   sendNotification,
   getOnlineUsers
-}; 
+};
