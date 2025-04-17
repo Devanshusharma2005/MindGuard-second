@@ -22,16 +22,21 @@ const verifyUser = async (req, res, next) => {
     }
     
     // Check if user exists in any of the models
-    const user = await User.findById(userId);
-    const doctor = await Doctor.findById(userId);
-    const admin = await Admin.findById(userId);
+    const user = await User.findById(userId).select('-password');
+    const doctor = await Doctor.findById(userId).select('-password');
+    const admin = await Admin.findById(userId).select('-password');
     
     if (!user && !doctor && !admin) {
       return res.status(404).json({ success: false, msg: 'User not found' });
     }
     
+    // Store the actual user object as well for easier access
+    req.userData = user || doctor || admin;
     req.userType = user ? 'User' : (doctor ? 'Doctor' : 'Admin');
     req.userRole = user ? 'patient' : (doctor ? 'doctor' : 'admin');
+    
+    // Ensure we have consistent user identification fields
+    req.userName = req.userData.fullName || req.userData.username || 'Unknown User';
     next();
   } catch (error) {
     console.error('Error verifying user:', error);
@@ -71,17 +76,18 @@ router.get('/conversations/:userId', verifyUser, async (req, res) => {
           
           // Try to find participant in each model
           if (p.role === 'patient') {
-            participantData = await User.findById(p.user).select('username email');
+            participantData = await User.findById(p.user).select('username email profileImage');
           } else if (p.role === 'doctor') {
-            participantData = await Doctor.findById(p.user).select('fullName email specialization');
+            participantData = await Doctor.findById(p.user).select('fullName email specialization profileImage');
           } else if (p.role === 'admin') {
-            participantData = await Admin.findById(p.user).select('username email');
+            participantData = await Admin.findById(p.user).select('fullName username email role profileImage');
           }
           
           if (participantData) {
             otherParticipants.push({
               id: p.user,
               name: participantData.fullName || participantData.username || 'Unknown',
+              username: participantData.username || null,
               role: p.role,
               profileImage: participantData.profileImage || null,
               specialty: participantData.specialization || null,
@@ -178,7 +184,7 @@ router.get('/conversations/:conversationId/messages', async (req, res) => {
         $addToSet: {
           readBy: {
             user: userId,
-            model: conversation.participantModel,
+            model: 'User', // This could be wrong if the user is not a Patient
             readAt: new Date()
           }
         }
@@ -303,35 +309,20 @@ router.post('/conversations/:conversationId/messages', verifyUser, async (req, r
       return res.status(404).json({ success: false, msg: 'Conversation not found or user not authorized' });
     }
     
-    // Get user details based on type
-    let sender;
-    let senderModel = req.userType;
-    
-    if (senderModel === 'User') {
-      sender = await User.findById(userId);
-    } else if (senderModel === 'Doctor') {
-      sender = await Doctor.findById(userId);
-    } else if (senderModel === 'Admin') {
-      sender = await Admin.findById(userId);
-    }
-    
-    if (!sender) {
-      return res.status(404).json({ success: false, msg: 'Sender not found' });
-    }
-    
-    // Create a new message
+    // Create a new message with consistent sender information
     const newMessage = new ChatMessage({
       conversationId,
       sender: {
         id: userId,
-        model: senderModel,
-        name: sender.name || sender.username
+        model: req.userType,
+        name: req.userName,
+        role: req.userRole
       },
       content,
       attachments: attachments || [],
       readBy: [{
         user: userId,
-        model: senderModel,
+        model: req.userType,
         readAt: new Date()
       }],
       createdAt: new Date()
@@ -346,6 +337,8 @@ router.post('/conversations/:conversationId/messages', verifyUser, async (req, r
         lastMessage: {
           content,
           sender: userId,
+          senderName: req.userName,
+          senderRole: req.userRole,
           timestamp: new Date()
         },
         updatedAt: new Date()
