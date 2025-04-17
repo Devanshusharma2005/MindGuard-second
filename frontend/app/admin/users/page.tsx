@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,102 +10,252 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, MoreHorizontal, UserPlus, Download, Trash2, Edit, Eye, Ban } from 'lucide-react';
+import { Search, Filter, MoreHorizontal, UserPlus, Download, Trash2, Edit, Eye, Ban, AlertCircle } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
-const users = [
-  {
-    id: '1',
-    name: 'Emma Wilson',
-    email: 'emma.w@example.com',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=100&auto=format&fit=crop',
-    status: 'active',
-    plan: 'Premium',
-    joinedAt: 'Jan 12, 2023',
-    lastActive: '2 hours ago',
-    sessions: 42,
-    progress: 'Improving',
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'michael.c@example.com',
-    avatar: '',
-    status: 'active',
-    plan: 'Basic',
-    joinedAt: 'Mar 5, 2023',
-    lastActive: '5 hours ago',
-    sessions: 18,
-    progress: 'Stable',
-  },
-  {
-    id: '3',
-    name: 'Sophia Rodriguez',
-    email: 'sophia.r@example.com',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop',
-    status: 'active',
-    plan: 'Premium',
-    joinedAt: 'Feb 18, 2023',
-    lastActive: '1 day ago',
-    sessions: 36,
-    progress: 'Improving',
-  },
-  {
-    id: '4',
-    name: 'James Johnson',
-    email: 'james.j@example.com',
-    avatar: '',
-    status: 'inactive',
-    plan: 'Basic',
-    joinedAt: 'Apr 22, 2023',
-    lastActive: '10 days ago',
-    sessions: 8,
-    progress: 'Declining',
-  },
-  {
-    id: '5',
-    name: 'Olivia Brown',
-    email: 'olivia.b@example.com',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=100&auto=format&fit=crop',
-    status: 'active',
-    plan: 'Premium',
-    joinedAt: 'Jan 5, 2023',
-    lastActive: '3 hours ago',
-    sessions: 52,
-    progress: 'Stable',
-  },
-  {
-    id: '6',
-    name: 'William Davis',
-    email: 'william.d@example.com',
-    avatar: '',
-    status: 'suspended',
-    plan: 'Basic',
-    joinedAt: 'May 15, 2023',
-    lastActive: '30 days ago',
-    sessions: 4,
-    progress: 'Unknown',
-  },
-  {
-    id: '7',
-    name: 'Ava Martinez',
-    email: 'ava.m@example.com',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=100&auto=format&fit=crop',
-    status: 'active',
-    plan: 'Premium',
-    joinedAt: 'Feb 28, 2023',
-    lastActive: '1 hour ago',
-    sessions: 38,
-    progress: 'Improving',
-  },
-];
+interface User {
+  _id: string;
+  username: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: string;
+  lastActive?: string;
+  sessions?: number;
+  progress?: string;
+  avatarUrl?: string;
+  bookings?: any[];
+}
 
 export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const [activeTab, setActiveTab] = useState('all');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false);
+  const [userToSuspend, setUserToSuspend] = useState<User | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      // Try different token storage methods as in secure-chat.tsx
+      const token = localStorage.getItem('token') || 
+                    localStorage.getItem('mindguard_token') ||
+                    sessionStorage.getItem('token');
+      
+      // For debugging
+      console.log('Available token:', token ? 'Token found' : 'No token found');
+      
+      // Common headers with token if available
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-auth-token'] = token;
+      }
+      
+      let patients: any[] = [];
+      
+      try {
+        // Direct API endpoint with full URL to fetch real users from MongoDB
+        const response = await fetch(`http://localhost:5000/api/test/users`, { headers });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch patients: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Parse data based on the expected format
+        if (Array.isArray(data)) {
+          patients = data;
+        } else {
+          // If it's a single object not wrapped in array
+          patients = [data];
+        }
+        
+        console.log(`Found ${patients.length} patients from database`);
+      } catch (err) {
+        console.error('Error fetching patients:', err);
+        setError('Error loading patients. Please check the API endpoint or database connection.');
+        setLoading(false);
+        return;
+      }
+      
+      if (patients.length === 0) {
+        setError('No patients found in the database.');
+        setLoading(false);
+        return;
+      }
+      
+      // Transform patients to match our interface using exact fields from the DB
+      const transformedUsers: User[] = patients.map((patient: any) => {
+        // Get creation date from the nested $date field if present
+        const createdDate = patient.createdAt && patient.createdAt.$date 
+          ? patient.createdAt.$date 
+          : patient.createdAt || new Date().toISOString();
+        
+        return {
+          _id: patient._id && patient._id.$oid ? patient._id.$oid : patient._id || '',
+          username: patient.username || '',
+          email: patient.email || '',
+          role: 'patient',
+          status: patient.status || 'active',
+          createdAt: createdDate,
+          lastActive: patient.lastActive || 'Unknown',
+          avatarUrl: patient.avatarUrl || null,
+          // Additional fields shown in screenshot
+          bookings: patient.bookings || []
+        };
+      });
+      
+      console.log('Transformed patients:', transformedUsers);
+      setUsers(transformedUsers);
+      setError(null);
+    } catch (err: any) {
+      console.error('Error processing patient data:', err);
+      setError(err.message || 'Failed to process patient data');
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to fetch users',
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const suspendUser = async () => {
+    if (!userToSuspend) return;
+    
+    try {
+      const token = localStorage.getItem('token') || 
+                    localStorage.getItem('mindguard_token') ||
+                    sessionStorage.getItem('token');
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-auth-token'] = token;
+      }
+      
+      const response = await fetch(`/api/user/suspend/${userToSuspend._id}`, {
+        method: 'PUT',
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to suspend user');
+      }
+      
+      // Update the user's status in the UI
+      setUsers(users.map(user => 
+        user._id === userToSuspend._id ? {...user, status: 'suspended'} : user
+      ));
+      
+      toast({
+        title: "Success",
+        description: `${userToSuspend.username} has been suspended`,
+      });
+    } catch (err: any) {
+      console.error('Error suspending user:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to suspend user',
+        variant: "destructive"
+      });
+    } finally {
+      setShowSuspendDialog(false);
+      setUserToSuspend(null);
+    }
+  };
+
+  const deleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      const token = localStorage.getItem('token') || 
+                    localStorage.getItem('mindguard_token') ||
+                    sessionStorage.getItem('token');
+      
+      const headers: HeadersInit = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-auth-token'] = token;
+      }
+      
+      const response = await fetch(`/api/user/delete/${userToDelete._id}`, {
+        method: 'DELETE',
+        headers
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete user');
+      }
+      
+      // Remove the user from the UI
+      setUsers(users.filter(user => user._id !== userToDelete._id));
+      
+      toast({
+        title: "Success",
+        description: `${userToDelete.username} has been deleted`,
+      });
+    } catch (err: any) {
+      console.error('Error deleting user:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to delete user',
+        variant: "destructive"
+      });
+    } finally {
+      setShowDeleteDialog(false);
+      setUserToDelete(null);
+    }
+  };
+
+  // Filter users based on search term and active tab
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.username.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+      
+    if (activeTab === 'all') {
+      return matchesSearch;
+    } else {
+      return matchesSearch && user.status === activeTab;
+    }
+  });
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <p className="text-muted-foreground">Loading users...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-destructive text-lg font-medium">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -117,7 +267,11 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs 
+        defaultValue="all" 
+        className="space-y-4"
+        onValueChange={setActiveTab}
+      >
         <div className="flex justify-between items-center">
           <TabsList>
             <TabsTrigger value="all">All Users</TabsTrigger>
@@ -145,13 +299,12 @@ export default function UsersPage() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>Plan Type</DropdownMenuItem>
+                <DropdownMenuItem>Role</DropdownMenuItem>
                 <DropdownMenuItem>Join Date</DropdownMenuItem>
                 <DropdownMenuItem>Activity Level</DropdownMenuItem>
-                <DropdownMenuItem>Progress Status</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" size="icon">
+            <Button variant="outline" size="icon" onClick={() => fetchUsers()}>
               <Download className="h-4 w-4" />
             </Button>
           </div>
@@ -164,29 +317,37 @@ export default function UsersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Plan</TableHead>
                     <TableHead>Joined</TableHead>
                     <TableHead>Last Active</TableHead>
-                    <TableHead>Sessions</TableHead>
-                    <TableHead>Progress</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user._id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
-                            <AvatarImage src={user.avatar} alt={user.name} />
-                            <AvatarFallback>{user.name.charAt(0)}{user.name.split(' ')[1]?.charAt(0)}</AvatarFallback>
+                              <AvatarImage src={user.avatarUrl} alt={user.username} />
+                              <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <span className="font-medium">{user.name}</span>
+                              <span className="font-medium">{user.username}</span>
                             <span className="text-xs text-muted-foreground">{user.email}</span>
                           </div>
                         </div>
+                      </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            user.role === 'admin' ? 'default' : 
+                            user.role === 'doctor' ? 'secondary' :
+                            'outline'
+                          }>
+                            {user.role}
+                          </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant={
@@ -197,20 +358,8 @@ export default function UsersPage() {
                           {user.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{user.plan}</TableCell>
-                      <TableCell>{user.joinedAt}</TableCell>
-                      <TableCell>{user.lastActive}</TableCell>
-                      <TableCell>{user.sessions}</TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          user.progress === 'Improving' ? 'default' : 
-                          user.progress === 'Stable' ? 'secondary' : 
-                          user.progress === 'Declining' ? 'destructive' : 
-                          'outline'
-                        }>
-                          {user.progress}
-                        </Badge>
-                      </TableCell>
+                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{user.lastActive || 'Unknown'}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -230,11 +379,24 @@ export default function UsersPage() {
                               Edit User
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setUserToSuspend(user);
+                                  setShowSuspendDialog(true);
+                                }}
+                                disabled={user.role === 'admin' || user.status === 'suspended'}
+                              >
                               <Ban className="mr-2 h-4 w-4" />
                               Suspend User
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => {
+                                  setUserToDelete(user);
+                                  setShowDeleteDialog(true);
+                                }}
+                                disabled={user.role === 'admin'}
+                              >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete User
                             </DropdownMenuItem>
@@ -242,7 +404,14 @@ export default function UsersPage() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6">
+                        <p className="text-muted-foreground">No users found</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -251,52 +420,370 @@ export default function UsersPage() {
         
         <TabsContent value="active" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Active Users</CardTitle>
-              <CardDescription>
-                Manage users who are currently active on the platform.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Showing active users only. Filter applied.
-              </p>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Last Active</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user._id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={user.avatarUrl} alt={user.username} />
+                              <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user.username}</span>
+                              <span className="text-xs text-muted-foreground">{user.email}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            user.role === 'admin' ? 'default' : 
+                            user.role === 'doctor' ? 'secondary' :
+                            'outline'
+                          }>
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="default">
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{user.lastActive || 'Unknown'}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit User
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setUserToSuspend(user);
+                                  setShowSuspendDialog(true);
+                                }}
+                                disabled={user.role === 'admin'}
+                              >
+                                <Ban className="mr-2 h-4 w-4" />
+                                Suspend User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => {
+                                  setUserToDelete(user);
+                                  setShowDeleteDialog(true);
+                                }}
+                                disabled={user.role === 'admin'}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6">
+                        <p className="text-muted-foreground">No active users found</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="inactive" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Inactive Users</CardTitle>
-              <CardDescription>
-                Manage users who haven't been active recently.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Showing inactive users only. Filter applied.
-              </p>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Last Active</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user._id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={user.avatarUrl} alt={user.username} />
+                              <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user.username}</span>
+                              <span className="text-xs text-muted-foreground">{user.email}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            user.role === 'admin' ? 'default' : 
+                            user.role === 'doctor' ? 'secondary' :
+                            'outline'
+                          }>
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{user.lastActive || 'Unknown'}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit User
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setUserToSuspend(user);
+                                  setShowSuspendDialog(true);
+                                }}
+                                disabled={user.role === 'admin'}
+                              >
+                                <Ban className="mr-2 h-4 w-4" />
+                                Suspend User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => {
+                                  setUserToDelete(user);
+                                  setShowDeleteDialog(true);
+                                }}
+                                disabled={user.role === 'admin'}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6">
+                        <p className="text-muted-foreground">No inactive users found</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
         
         <TabsContent value="suspended" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Suspended Users</CardTitle>
-              <CardDescription>
-                Manage users who have been suspended from the platform.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Showing suspended users only. Filter applied.
-              </p>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Joined</TableHead>
+                    <TableHead>Last Active</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user._id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar>
+                              <AvatarImage src={user.avatarUrl} alt={user.username} />
+                              <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{user.username}</span>
+                              <span className="text-xs text-muted-foreground">{user.email}</span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            user.role === 'admin' ? 'default' : 
+                            user.role === 'doctor' ? 'secondary' :
+                            'outline'
+                          }>
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="destructive">
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{user.lastActive || 'Unknown'}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit User
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive"
+                                onClick={() => {
+                                  setUserToDelete(user);
+                                  setShowDeleteDialog(true);
+                                }}
+                                disabled={user.role === 'admin'}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete User
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-6">
+                        <p className="text-muted-foreground">No suspended users found</p>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Suspend User Dialog */}
+      <Dialog open={showSuspendDialog} onOpenChange={setShowSuspendDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Suspend User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to suspend this user? They will no longer be able to access the platform.
+            </DialogDescription>
+          </DialogHeader>
+          {userToSuspend && (
+            <div className="flex items-center gap-3 py-3">
+              <Avatar>
+                <AvatarImage src={userToSuspend.avatarUrl} alt={userToSuspend.username} />
+                <AvatarFallback>{userToSuspend.username.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="font-medium">{userToSuspend.username}</span>
+                <span className="text-xs text-muted-foreground">{userToSuspend.email}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSuspendDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={suspendUser}>
+              Suspend User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this user? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {userToDelete && (
+            <div className="flex items-center gap-3 py-3">
+              <Avatar>
+                <AvatarImage src={userToDelete.avatarUrl} alt={userToDelete.username} />
+                <AvatarFallback>{userToDelete.username.charAt(0).toUpperCase()}</AvatarFallback>
+              </Avatar>
+              <div className="flex flex-col">
+                <span className="font-medium">{userToDelete.username}</span>
+                <span className="text-xs text-muted-foreground">{userToDelete.email}</span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={deleteUser}>
+              Delete User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

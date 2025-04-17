@@ -66,7 +66,7 @@ export function TopNav() {
                   alt="MindGuard Logo" 
                   width={32} 
                   height={32} 
-                  className="h-6 sm:h-8 w-auto"
+                  className="h-auto w-6 sm:w-8"
                 />
                 <span className="font-bold text-xl sm:text-2xl">MindGuard</span>
               </Link>
@@ -89,7 +89,7 @@ export function TopNav() {
             alt="MindGuard Logo" 
             width={32} 
             height={32} 
-            className="h-6 sm:h-8 w-auto"
+            className="h-auto w-6 sm:w-8"
           />
           <span className="text-xl sm:text-2xl hidden sm:inline">MindGuard</span>
         </Link>

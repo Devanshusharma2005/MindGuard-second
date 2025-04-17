@@ -32,13 +32,29 @@ export default function DoctorLoginPage() {
         throw new Error(data.msg || 'Login failed');
       }
 
-      // Store token and doctor info
+      // Store token and doctor info using multiple storage methods for compatibility
       localStorage.setItem('token', data.token);
+      localStorage.setItem('mindguard_token', data.token);
       localStorage.setItem('userType', 'doctor');
+      localStorage.setItem('mindguard_user_type', 'doctor');
       localStorage.setItem('doctor', JSON.stringify(data.doctor));
+      
+      // Store doctor ID for API calls
+      if (data.doctor && data.doctor._id) {
+        localStorage.setItem('mindguard_user_id', data.doctor._id);
+      }
+      
+      // Also store in sessionStorage as fallback
+      sessionStorage.setItem('token', data.token);
+      
+      // Set cookie for additional compatibility
+      document.cookie = `token=${data.token}; path=/`;
+      
+      console.log('Doctor login successful, token stored');
       
       router.push('/doctor');
     } catch (err: any) {
+      console.error('Doctor login error:', err);
       setError(err.message);
     }
   };

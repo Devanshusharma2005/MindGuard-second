@@ -32,13 +32,29 @@ export default function AdminLoginPage() {
         throw new Error(data.msg || 'Login failed');
       }
 
-      // Store token and admin info
+      // Store token and admin info using multiple storage methods for compatibility
       localStorage.setItem('token', data.token);
+      localStorage.setItem('mindguard_token', data.token);
       localStorage.setItem('userType', 'admin');
+      localStorage.setItem('mindguard_user_type', 'admin');
       localStorage.setItem('admin', JSON.stringify(data.admin));
+      
+      // Store admin ID for API calls
+      if (data.admin && data.admin._id) {
+        localStorage.setItem('mindguard_user_id', data.admin._id);
+      }
+      
+      // Also store in sessionStorage as fallback
+      sessionStorage.setItem('token', data.token);
+      
+      // Set cookie for additional compatibility
+      document.cookie = `token=${data.token}; path=/`;
+      
+      console.log('Admin login successful, token stored');
       
       router.push('/admin');
     } catch (err: any) {
+      console.error('Admin login error:', err);
       setError(err.message);
     }
   };

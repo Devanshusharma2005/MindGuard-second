@@ -32,6 +32,11 @@ const navItems = [
     icon: Users,
   },
   {
+    name: "Doctors",
+    href: "/therapist/doctors",
+    icon: Stethoscope,
+  },
+  {
     name: "Appointments",
     href: "/therapist/appointments",
     icon: Calendar,
@@ -101,4 +106,4 @@ export function SideNav({ isOpen }: { isOpen: boolean }) {
       </ScrollArea>
     </div>
   );
-} 
+}

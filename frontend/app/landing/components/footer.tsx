@@ -15,7 +15,7 @@ export function Footer() {
                 alt="MindGuard Logo" 
                 width={32} 
                 height={32} 
-                className="h-6 sm:h-8 w-auto"
+                className="h-auto w-6 sm:w-8"
               />
               <span className="font-poppins font-bold text-2xl sm:text-3xl hidden sm:inline">MindGuard</span>
             </Link>
