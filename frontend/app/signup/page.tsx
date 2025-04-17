@@ -53,7 +53,9 @@ export default function SignupPage() {
       
       // Store user information in localStorage
       localStorage.setItem('token', loginData.token);
+      localStorage.setItem('mindguard_token', loginData.token);
       localStorage.setItem('mindguard_user_id', loginData.user.id);
+      localStorage.setItem('mindguard_user_type', 'patient');
       localStorage.setItem('username', loginData.user.username);
       localStorage.setItem('email', loginData.user.email);
       

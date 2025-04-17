@@ -12,6 +12,9 @@ const doctorAuthRoutes = require('./routes/doctorAuth');
 const adminAuthRoutes = require('./routes/adminAuth');
 const gameLogRoutes = require('./routes/gameLog');
 const memoriesRoutes = require('./routes/memories');
+const chatRoutes = require('./routes/chat');
+const debugRoutes = require('./routes/debug');
+const { initializeWebSocket } = require('./services/websocketService');
 
 const app = express();
 
@@ -41,6 +44,8 @@ app.use('/api/auth/doctor', doctorAuthRoutes);
 app.use('/api/auth/admin', adminAuthRoutes);
 app.use('/api/game-logs', gameLogRoutes);
 app.use('/api/memories', memoriesRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/debug', debugRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {
@@ -222,3 +227,15 @@ const server = app.listen(PORT, () => {
 
 // Setup WebSocket server
 setupWebSocket(server); 
+
+// Initialize chat WebSocket service
+initializeWebSocket(server);
+
+// Handle server shutdown
+process.on('SIGINT', () => {
+  console.log('Server shutting down');
+  mongoose.connection.close(() => {
+    console.log('MongoDB connection closed');
+    process.exit(0);
+  });
+}); 

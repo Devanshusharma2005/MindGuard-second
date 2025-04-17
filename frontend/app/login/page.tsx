@@ -36,7 +36,9 @@ export default function LoginPage() {
 
       // Store user information in localStorage
       localStorage.setItem('token', data.token);
+      localStorage.setItem('mindguard_token', data.token);
       localStorage.setItem('mindguard_user_id', data.user.id);
+      localStorage.setItem('mindguard_user_type', 'patient');
       localStorage.setItem('username', data.user.username);
       localStorage.setItem('email', data.user.email);
 

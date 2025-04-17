@@ -8,6 +8,9 @@
     "dev": "nodemon server.js",
     "create-admin": "node scripts/createAdmin.js"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "@google-cloud/speech": "^6.7.1",
     "@google-cloud/text-to-speech": "^4.2.0",

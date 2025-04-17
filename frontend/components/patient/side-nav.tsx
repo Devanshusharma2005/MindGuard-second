@@ -17,7 +17,8 @@ import {
   Home,
   Gamepad2,
   History,
-  FileText
+  FileText,
+  MessageSquare
 } from "lucide-react";
 
 const navItems = [
@@ -45,6 +46,16 @@ const navItems = [
     name: "Consultations",
     href: "/patient/consultations",
     icon: Calendar,
+  },
+  {
+    name: "Secure Chat",
+    href: "/patient/secure-chat",
+    icon: MessageSquare,
+  },
+  {
+    name: "Secure Chat (Test)",
+    href: "/patient/secure-chat-test",
+    icon: MessageSquare,
   },
   {
     name: "Community",
