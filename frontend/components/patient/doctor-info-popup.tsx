@@ -4,6 +4,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Calendar, Mail, Briefcase, Star, Clock, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface DoctorInfoPopupProps {
   doctor: {
@@ -23,6 +28,14 @@ interface DoctorInfoPopupProps {
 
 export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
   const router = useRouter();
+  const [formData, setFormData] = useState({
+    fullName: "",
+    age: "",
+    gender: "",
+    email: "",
+    hasTestedQuestionnaire: false,
+    mentalProblem: ""
+  });
 
   const handleChat = () => {
     onClose();
@@ -40,21 +53,38 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
     }
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormData(prev => ({ 
+      ...prev, 
+      hasTestedQuestionnaire: checked,
+      mentalProblem: checked ? "" : prev.mentalProblem // Clear mental problem if questionnaire is checked
+    }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({ ...prev, mentalProblem: value }));
+  };
+
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={handleOverlayClick}
     >
-      <Card className="w-full max-w-2xl mx-4 relative">
+      <Card className="w-full max-w-2xl max-h-[90vh] relative flex flex-col">
         <Button
           variant="ghost"
           size="icon"
-          className="absolute right-2 top-2 rounded-full"
+          className="absolute right-2 top-2 rounded-full z-10"
           onClick={onClose}
         >
           <X className="h-4 w-4" />
         </Button>
-        <CardContent className="p-0">
+        <CardContent className="p-0 flex flex-col overflow-hidden">
           {/* Header Section */}
           <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-t-lg">
             <div className="flex items-center gap-6">
@@ -79,7 +109,7 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
           </div>
 
           {/* Content Section */}
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 overflow-y-auto flex-1">
             {/* Contact Information */}
             <div className="space-y-4">
               <h4 className="text-lg font-medium">Contact Information</h4>
@@ -115,24 +145,98 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex gap-4 pt-4 border-t">
-              <Button 
-                className="flex-1" 
-                onClick={handleChat}
-              >
-                <MessageSquare className="mr-2 h-4 w-4" />
-                Start Chat
-              </Button>
-              <Button 
-                className="flex-1" 
-                variant="outline"
-                onClick={handleScheduleMeeting}
-              >
-                <Calendar className="mr-2 h-4 w-4" />
-                Schedule Meeting
-              </Button>
+            {/* Patient Information Form */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-medium">Patient Information</h4>
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="age">Age</Label>
+                  <Input
+                    id="age"
+                    name="age"
+                    type="number"
+                    value={formData.age}
+                    onChange={handleInputChange}
+                    placeholder="Enter your age"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="gender">Gender</Label>
+                  <Input
+                    id="gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleInputChange}
+                    placeholder="Enter your gender"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="Enter your email"
+                  />
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="questionnaire"
+                    checked={formData.hasTestedQuestionnaire}
+                    onCheckedChange={handleCheckboxChange}
+                  />
+                  <Label htmlFor="questionnaire">I have completed the mental health questionnaire</Label>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="mentalProblem">Mental Health Concern</Label>
+                  <Select
+                    value={formData.mentalProblem}
+                    onValueChange={handleSelectChange}
+                    disabled={formData.hasTestedQuestionnaire}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a mental health concern" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ptsd">PTSD</SelectItem>
+                      <SelectItem value="anxiety">Anxiety</SelectItem>
+                      <SelectItem value="depression">Depression</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
+          </div>
+
+          {/* Action Buttons - Fixed at bottom */}
+          <div className="flex gap-4 p-6 border-t bg-background">
+            <Button 
+              className="flex-1" 
+              onClick={handleChat}
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Start Chat
+            </Button>
+            <Button 
+              className="flex-1" 
+              variant="outline"
+              onClick={handleScheduleMeeting}
+            >
+              <Calendar className="mr-2 h-4 w-4" />
+              Schedule Meeting
+            </Button>
           </div>
         </CardContent>
       </Card>
