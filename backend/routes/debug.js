@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 
 // Debug endpoint to check MongoDB collections and models
 router.get('/models', async (req, res) => {
@@ -473,6 +475,188 @@ router.get('/analytics', async (req, res) => {
       success: false, 
       error: error.message 
     });
+  }
+});
+
+// Check MongoDB connection status
+router.get('/mongo-status', async (req, res) => {
+  try {
+    const state = mongoose.connection.readyState;
+    const stateMap = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+    
+    res.json({
+      status: stateMap[state] || 'unknown',
+      state,
+      database: mongoose.connection.name,
+      host: mongoose.connection.host,
+      models: Object.keys(mongoose.models)
+    });
+  } catch (err) {
+    console.error('Error checking MongoDB status:', err);
+    res.status(500).json({ error: 'Failed to check MongoDB status' });
+  }
+});
+
+// List all collections in the database
+router.get('/collections', async (req, res) => {
+  try {
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    res.json(collections.map(col => col.name));
+  } catch (err) {
+    console.error('Error listing collections:', err);
+    res.status(500).json({ error: 'Failed to list collections' });
+  }
+});
+
+// Check auth status - user
+router.get('/auth-status', auth, (req, res) => {
+  res.json({
+    authenticated: true,
+    user: {
+      id: req.user.id,
+      username: req.user.username,
+      role: req.user.role || 'user'
+    },
+    token: req.header('x-auth-token') || req.header('authorization')
+  });
+});
+
+// Check admin auth status
+router.get('/admin-auth', adminAuth, (req, res) => {
+  res.json({
+    authenticated: true,
+    isAdmin: true,
+    user: {
+      id: req.user.id,
+      username: req.user.username,
+      role: req.user.role
+    }
+  });
+});
+
+// For any collection, output sample document
+router.get('/sample/:collection', async (req, res) => {
+  try {
+    const collection = req.params.collection;
+    const sample = await mongoose.connection.db.collection(collection).findOne();
+    res.json(sample);
+  } catch (err) {
+    console.error(`Error getting sample from ${req.params.collection}:`, err);
+    res.status(500).json({ error: `Failed to get sample from ${req.params.collection}` });
+  }
+});
+
+// Check gameLog schema and data directly
+router.get('/game-logs-schema', async (req, res) => {
+  try {
+    // List all collections first
+    const collections = await mongoose.connection.db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+    
+    console.log('Available collections:', collectionNames);
+    
+    // Look for any game log related collections
+    const gameLogCollections = collectionNames.filter(name => 
+      name.toLowerCase().includes('game') || 
+      name.toLowerCase().includes('log')
+    );
+    
+    if (gameLogCollections.length === 0) {
+      return res.json({
+        status: 'error',
+        message: 'No game log collections found',
+        allCollections: collectionNames
+      });
+    }
+    
+    // Get sample documents from each potential collection
+    const sampleDocs = {};
+    for (const colName of gameLogCollections) {
+      const collection = mongoose.connection.db.collection(colName);
+      const count = await collection.countDocuments();
+      const sample = await collection.findOne();
+      
+      sampleDocs[colName] = {
+        count,
+        sample,
+        fields: sample ? Object.keys(sample) : []
+      };
+    }
+    
+    // Check presence of expected fields
+    let bestMatchCollection = null;
+    let bestMatchScore = 0;
+    
+    const expectedFields = ['userId', 'gameType', 'duration', 'completionStatus', 'score', 'createdAt'];
+    
+    for (const colName in sampleDocs) {
+      const fields = sampleDocs[colName].fields;
+      let score = 0;
+      
+      for (const field of expectedFields) {
+        if (fields.includes(field)) {
+          score++;
+        }
+      }
+      
+      sampleDocs[colName].matchScore = score;
+      
+      if (score > bestMatchScore) {
+        bestMatchScore = score;
+        bestMatchCollection = colName;
+      }
+    }
+    
+    // Get aggregation counts from best match collection
+    let aggregateStats = null;
+    
+    if (bestMatchCollection) {
+      const collection = mongoose.connection.db.collection(bestMatchCollection);
+      
+      try {
+        // Test game type aggregation
+        const gameTypeBreakdown = await collection.aggregate([
+          { $group: {
+              _id: '$gameType',
+              count: { $sum: 1 }
+            }
+          }
+        ]).toArray();
+        
+        // Test user aggregation
+        const userCounts = await collection.aggregate([
+          { $group: {
+              _id: '$userId',
+              count: { $sum: 1 }
+            }
+          }
+        ]).toArray();
+        
+        aggregateStats = {
+          byGameType: gameTypeBreakdown,
+          byUser: userCounts.length
+        };
+      } catch (err) {
+        aggregateStats = { error: err.message };
+      }
+    }
+    
+    res.json({
+      status: 'success',
+      gameLogCollections,
+      sampleDocs,
+      bestMatch: bestMatchCollection,
+      bestMatchScore,
+      aggregateStats
+    });
+  } catch (err) {
+    console.error('Error checking game logs schema:', err);
+    res.status(500).json({ error: 'Failed to check game logs schema' });
   }
 });
 
