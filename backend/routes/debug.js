@@ -299,4 +299,181 @@ router.get('/admins', async (req, res) => {
   }
 });
 
-module.exports = router; 
+// Get analytics data from collections
+router.get('/analytics', async (req, res) => {
+  try {
+    // Check for timeframe parameter
+    const { timeframe } = req.query;
+    let dateFilter = {};
+    
+    // Apply date filtering based on timeframe
+    if (timeframe) {
+      const now = new Date();
+      
+      switch (timeframe) {
+        case '1w': // 1 week
+          dateFilter = { startTime: { $gte: new Date(now.setDate(now.getDate() - 7)) } };
+          break;
+        case '2w': // 2 weeks
+          dateFilter = { startTime: { $gte: new Date(now.setDate(now.getDate() - 14)) } };
+          break;
+        case '4w': // 4 weeks / 1 month
+          dateFilter = { startTime: { $gte: new Date(now.setDate(now.getDate() - 28)) } };
+          break;
+        case '3m': // 3 months
+          dateFilter = { startTime: { $gte: new Date(now.setMonth(now.getMonth() - 3)) } };
+          break;
+        case '6m': // 6 months
+          dateFilter = { startTime: { $gte: new Date(now.setMonth(now.getMonth() - 6)) } };
+          break;
+        case '1y': // 1 year
+          dateFilter = { startTime: { $gte: new Date(now.setFullYear(now.getFullYear() - 1)) } };
+          break;
+      }
+    }
+
+    // Get total counts with date filter
+    const stats = {
+      totalInteractions: await mongoose.connection.db.collection('userinteractions').countDocuments(dateFilter),
+      totalChats: await mongoose.connection.db.collection('chatmessages').countDocuments(dateFilter),
+      totalUsers: await mongoose.connection.db.collection('users').countDocuments(),
+      flaggedInteractions: await mongoose.connection.db.collection('userinteractions').countDocuments({ 
+        ...dateFilter,
+        'metadata.isFlagged': true 
+      })
+    };
+
+    // Get sentiment distribution with date filter
+    const sentimentStats = await mongoose.connection.db.collection('userinteractions').aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          'metadata.sentiment': { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: '$metadata.sentiment',
+          count: { $sum: 1 }
+        }
+      }
+    ]).toArray();
+
+    // Get topic distribution with date filter
+    const topicStats = await mongoose.connection.db.collection('userinteractions').aggregate([
+      {
+        $match: {
+          ...dateFilter,
+          'metadata.topic': { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: '$metadata.topic',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      },
+      {
+        $limit: 10
+      }
+    ]).toArray();
+
+    // Get interactions by date for time series with date filter
+    const dailyStats = await mongoose.connection.db.collection('userinteractions').aggregate([
+      {
+        $match: dateFilter
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$startTime' },
+            month: { $month: '$startTime' },
+            day: { $dayOfMonth: '$startTime' }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 }
+      }
+    ]).toArray();
+
+    // Get recent interactions with more detailed information
+    const recentInteractions = await mongoose.connection.db.collection('userinteractions').aggregate([
+      {
+        $match: dateFilter
+      },
+      {
+        $sort: { startTime: -1 }
+      },
+      {
+        $limit: 10 // Increased from 5 to 10 recent interactions
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'userDetails'
+        }
+      },
+      {
+        $addFields: {
+          userName: {
+            $cond: {
+              if: { $gt: [{ $size: '$userDetails' }, 0] },
+              then: { 
+                $concat: [
+                  { $ifNull: [{ $arrayElemAt: ['$userDetails.username', 0] }, ''] },
+                  ' ',
+                  { $ifNull: [{ $arrayElemAt: ['$userDetails.name', 0] }, ''] }
+                ]
+              },
+              else: 'Anonymous User'
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          userId: 1,
+          userName: 1,
+          interactionType: 1,
+          startTime: 1,
+          endTime: 1,
+          chatHistory: { $slice: ['$chatHistory', -1] }, // Get the last message
+          questionnaireResponses: 1,
+          metadata: 1,
+          duration: {
+            $cond: {
+              if: { $and: ['$startTime', '$endTime'] },
+              then: { $subtract: ['$endTime', '$startTime'] },
+              else: null
+            }
+          }
+        }
+      }
+    ]).toArray();
+
+    // Format response
+    res.json({
+      overview: stats,
+      sentiment: sentimentStats,
+      topics: topicStats,
+      dailyStats: dailyStats,
+      recentInteractions: recentInteractions
+    });
+
+  } catch (error) {
+    console.error('Error getting analytics:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+module.exports = router;

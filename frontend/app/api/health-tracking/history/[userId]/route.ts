@@ -98,22 +98,27 @@ export async function GET(
       }
       
       return NextResponse.json(data);
-    } catch (fetchError) {
+    } catch (fetchError: unknown) {
       console.error('Fetch error:', {
-        message: fetchError.message,
-        name: fetchError.name,
-        cause: fetchError.cause
+        message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+        name: fetchError instanceof Error ? fetchError.name : 'Error',
+        cause: fetchError instanceof Error ? fetchError.cause : undefined
       });
 
       // Handle specific fetch errors
-      if (fetchError.name === 'AbortError') {
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
         return NextResponse.json(
           { error: 'Request timed out while connecting to backend server' },
           { status: 504 }
         );
       }
 
-      if (fetchError.cause?.code === 'ECONNREFUSED') {
+      if (fetchError instanceof Error && 
+          fetchError.cause && 
+          typeof fetchError.cause === 'object' && 
+          fetchError.cause !== null &&
+          'code' in fetchError.cause && 
+          fetchError.cause.code === 'ECONNREFUSED') {
         return NextResponse.json(
           { error: 'Could not connect to backend server. Please ensure it is running.' },
           { status: 503 }
@@ -123,16 +128,16 @@ export async function GET(
       return NextResponse.json(
         { 
           error: 'Failed to connect to backend server',
-          details: fetchError.message
+          details: fetchError instanceof Error ? fetchError.message : 'Unknown error'
         },
         { status: 500 }
       );
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('API route error:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : 'Error'
     });
     
     return NextResponse.json(
@@ -143,4 +148,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

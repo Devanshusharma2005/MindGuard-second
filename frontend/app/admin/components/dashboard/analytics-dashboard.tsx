@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,41 +13,64 @@ import {
 import { LineChart, BarChart, DoughnutChart } from "@/app/admin/components/ui/charts"
 import { Calendar, TrendingUp, Users, Clock, Activity } from "lucide-react"
 
-// Mock data - Replace with actual API calls
-const analyticsData = {
-  overview: {
-    totalUsers: 1250,
-    activeTherapists: 48,
-    totalSessions: 3240,
-    averageRating: 4.8
-  },
-  sessionStats: [
-    { month: 'Jan', sessions: 280 },
-    { month: 'Feb', sessions: 310 },
-    { month: 'Mar', sessions: 345 },
-    { month: 'Apr', sessions: 380 },
-    { month: 'May', sessions: 420 },
-    { month: 'Jun', sessions: 450 }
-  ],
-  therapistSpecializations: [
-    { specialization: 'Anxiety & Depression', count: 15 },
-    { specialization: 'Trauma & PTSD', count: 10 },
-    { specialization: 'Family Therapy', count: 8 },
-    { specialization: 'Cognitive Behavioral Therapy', count: 12 },
-    { specialization: 'Addiction Recovery', count: 7 }
-  ],
-  userGrowth: [
-    { month: 'Jan', users: 850 },
-    { month: 'Feb', users: 950 },
-    { month: 'Mar', users: 1050 },
-    { month: 'Apr', users: 1150 },
-    { month: 'May', users: 1200 },
-    { month: 'Jun', users: 1250 }
-  ]
-}
-
 export function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("6M")
+  const [analyticsData, setAnalyticsData] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/analytics');
+        if (!response.ok) {
+          throw new Error('Failed to fetch analytics');
+        }
+        const data = await response.json();
+        setAnalyticsData(data);
+      } catch (error) {
+        console.error('Error fetching analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [])
+
+  if (loading) {
+    return <div>Loading analytics...</div>
+  }
+
+  const overview = analyticsData?.overview || {
+    totalUsers: 0,
+    totalInteractions: 0,
+    totalChats: 0,
+    flaggedInteractions: 0
+  }
+
+  const monthlyData = analyticsData?.monthlyTrends?.map((item: {
+    _id: { year: number; month: number };
+    count: number;
+  }) => ({
+    month: `${item._id.year}-${String(item._id.month).padStart(2, '0')}`,
+    sessions: item.count
+  })) || []
+
+  const topicData = analyticsData?.topics?.map((item: {
+    _id: string;
+    count: number;
+  }) => ({
+    specialization: item._id,
+    count: item.count
+  })) || []
+
+  const sentimentData = analyticsData?.sentiment?.map((item: {
+    _id: string;
+    count: number;
+  }) => ({
+    month: item._id,
+    users: item.count
+  })) || []
 
   return (
     <div className="space-y-6">
@@ -75,48 +98,48 @@ export function AnalyticsDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.overview.totalUsers}</div>
+            <div className="text-2xl font-bold">{overview.totalUsers}</div>
             <p className="text-xs text-muted-foreground">
-              +12% from last month
+              System total
             </p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Therapists</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Interactions</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.overview.activeTherapists}</div>
+            <div className="text-2xl font-bold">{overview.totalInteractions}</div>
             <p className="text-xs text-muted-foreground">
-              +3 this month
+              All time
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Sessions</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Chats</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.overview.totalSessions}</div>
+            <div className="text-2xl font-bold">{overview.totalChats}</div>
             <p className="text-xs text-muted-foreground">
-              +8% from last month
+              Chat messages
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
+            <CardTitle className="text-sm font-medium">Flagged Items</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.overview.averageRating}</div>
+            <div className="text-2xl font-bold">{overview.flaggedInteractions}</div>
             <p className="text-xs text-muted-foreground">
-              +0.2 from last month
+              Needs review
             </p>
           </CardContent>
         </Card>
@@ -126,12 +149,12 @@ export function AnalyticsDashboard() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>Session Trends</CardTitle>
+            <CardTitle>Monthly Activity</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <LineChart
-                data={analyticsData.sessionStats.map(item => ({
+                data={monthlyData.map((item: { month: string; sessions: number }) => ({
                   month: item.month,
                   value: item.sessions
                 }))}
@@ -144,16 +167,16 @@ export function AnalyticsDashboard() {
 
         <Card className="col-span-1">
           <CardHeader>
-            <CardTitle>User Growth</CardTitle>
+            <CardTitle>Sentiment Distribution</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <BarChart
-                data={analyticsData.userGrowth.map(item => ({
+                data={sentimentData.map((item: { month: string; users: number }) => ({
                   label: item.month,
                   value: item.users
                 }))}
-                title="Monthly Active Users"
+                title="Sentiment Analysis"
                 color="rgb(59, 130, 246)"
               />
             </div>
@@ -162,16 +185,16 @@ export function AnalyticsDashboard() {
 
         <Card className="col-span-2">
           <CardHeader>
-            <CardTitle>Therapist Specializations</CardTitle>
+            <CardTitle>Common Topics</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
               <DoughnutChart
-                data={analyticsData.therapistSpecializations.map(item => ({
+                data={topicData.map((item: { specialization: string; count: number }) => ({
                   label: item.specialization,
                   value: item.count
                 }))}
-                title="Specialization Distribution"
+                title="Topic Distribution"
               />
             </div>
           </CardContent>
