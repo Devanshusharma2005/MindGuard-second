@@ -77,10 +77,24 @@ export function DashboardCardStats() {
       setTherapistCount(count);
       
       // Also update it in the stats object
-      setStats(prevStats => ({
-        ...prevStats,
-        totalTherapists: count
-      }));
+      setStats(prevStats => {
+        if (prevStats === null) {
+          return {
+            totalUsers: 0,
+            totalTherapists: count,
+            totalSessions: 0,
+            crisisAlerts: 0,
+            usersTrend: 4,
+            therapistsTrend: 2,
+            sessionsTrend: 24,
+            alertsTrend: -7
+          };
+        }
+        return {
+          ...prevStats,
+          totalTherapists: count
+        };
+      });
       
     } catch (err) {
       console.error('Error fetching therapists:', err);
@@ -342,7 +356,7 @@ export function DashboardCardStats() {
         <CardContent>
           <div className="text-2xl font-bold">{displayStats.totalUsers.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">
-            {displayStats.usersTrend >= 0 ? '+' : ''}{displayStats.usersTrend}% from last month
+            {(displayStats.usersTrend || 0) >= 0 ? '+' : ''}{displayStats.usersTrend || 0}% from last month
           </p>
         </CardContent>
       </Card>
@@ -355,7 +369,7 @@ export function DashboardCardStats() {
         <CardContent>
           <div className="text-2xl font-bold">{displayStats.totalTherapists}</div>
           <p className="text-xs text-muted-foreground">
-            {displayStats.therapistsTrend >= 0 ? '+' : ''}{displayStats.therapistsTrend}% from last month
+            {(displayStats.therapistsTrend || 0) >= 0 ? '+' : ''}{displayStats.therapistsTrend || 0}% from last month
           </p>
         </CardContent>
       </Card>
@@ -368,7 +382,7 @@ export function DashboardCardStats() {
         <CardContent>
           <div className="text-2xl font-bold">{displayStats.totalSessions.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">
-            {displayStats.sessionsTrend >= 0 ? '+' : ''}{displayStats.sessionsTrend}% from last month
+            {(displayStats.sessionsTrend || 0) >= 0 ? '+' : ''}{displayStats.sessionsTrend || 0}% from last month
           </p>
         </CardContent>
       </Card>
@@ -381,7 +395,7 @@ export function DashboardCardStats() {
         <CardContent>
           <div className="text-2xl font-bold">{displayStats.crisisAlerts}</div>
           <p className="text-xs text-muted-foreground">
-            {displayStats.alertsTrend >= 0 ? '+' : ''}{displayStats.alertsTrend}% from last month
+            {(displayStats.alertsTrend || 0) >= 0 ? '+' : ''}{displayStats.alertsTrend || 0}% from last month
           </p>
         </CardContent>
       </Card>
