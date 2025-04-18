@@ -7,6 +7,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { usePathname } from "next/navigation";
 import { ModeToggle } from "@/app/landing/components/mode-toggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { LogIn } from "lucide-react";
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = React.useState(false);
@@ -49,9 +56,25 @@ export function Navbar() {
         
         <div className="flex items-center space-x-4">
           <ModeToggle />
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/login">Log in</Link>
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <LogIn className="h-4 w-4" />
+                Log in
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/login">Patient Login</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/doctor-login">Doctor Login</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/admin-login">Admin Login</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button variant="gradient" size="sm" className="shadow-md" asChild>
             <Link href="/signup">Get Started</Link>
           </Button>
