@@ -117,7 +117,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
             PLATFORM
           </h2>
           <div className="space-y-1">
-            <Link href="/admin/messages">
+            {/* <Link href="/admin/messages">
               <Button 
                 variant={pathname === '/admin/messages' ? 'secondary' : 'ghost'} 
                 size="sm" 
@@ -126,7 +126,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
                 <MessageCircle className="mr-2 h-4 w-4" />
                 Messages
               </Button>
-            </Link>
+            </Link> */}
             <Link href="/admin/ai-analytics">
               <Button 
                 variant={pathname === '/admin/ai-analytics' ? 'secondary' : 'ghost'} 

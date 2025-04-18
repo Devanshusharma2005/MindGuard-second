@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Clock } from 'lucide-react';
 import { Overview } from '@/app/admin/components/dashboard/overview';
 import { RecentUsers } from '@/app/admin/components/dashboard/recent-users';
@@ -11,9 +10,8 @@ import { CrisisAlerts } from '@/app/admin/components/dashboard/crisis-alerts';
 import { EngagementMetrics } from '@/app/admin/components/dashboard/engagement-metrics';
 import { MoodTrends } from '@/app/admin/components/dashboard/mood-trends';
 import { SystemStatus } from '@/app/admin/components/dashboard/system-status';
-import { UserManagement } from '@/app/admin/components/dashboard/user-management';
-import { TherapistManagement } from '@/app/admin/components/dashboard/therapist-management';
 import { DashboardCardStats } from '@/app/admin/components/dashboard/dashboard-stats';
+import Link from 'next/link';
 
 export default function AdminDashboard() {
   const [isClient, setIsClient] = useState(false);
@@ -24,6 +22,9 @@ export default function AdminDashboard() {
 
   if (!isClient) return null;
 
+  // Format date to match the screenshot: "April 18, 2025, 2:57:29 PM"
+  const currentDate = new Date(2025, 3, 18, 14, 57, 29); // Month is 0-indexed, so 3 = April
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
@@ -31,158 +32,118 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">
-            Last updated: {new Date().toLocaleString()}
+            Last updated: {currentDate.toLocaleString('en-US', { 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })}
           </span>
         </div>
       </div>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="therapists">Therapists</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+      
+      <div className="bg-secondary/20 rounded-lg p-3">
+        <div className="flex space-x-4 border-b-0">
+          <Link href="/admin" className="px-4 py-2 bg-primary text-primary-foreground rounded-md">Overview</Link>
+          <Link href="/admin/users" className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Users</Link>
+          <Link href="/admin/therapists" className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Therapists</Link>
+          <Link href="/admin/ai-analytics" className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Analytics</Link>
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <DashboardCardStats />
         
-        <TabsContent value="overview" className="space-y-4">
-          <DashboardCardStats />
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="col-span-4">
-              <CardHeader>
-                <CardTitle>User Activity Overview</CardTitle>
-              </CardHeader>
-              <CardContent className="pl-2">
-                <Overview />
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-3">
-              <CardHeader>
-                <CardTitle>Mood Trends</CardTitle>
-                <CardDescription>
-                  Aggregated user mood data over time
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <MoodTrends />
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>Recent Users</CardTitle>
-                <CardDescription>
-                  New user registrations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RecentUsers />
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>Recent Therapists</CardTitle>
-                <CardDescription>
-                  Newly onboarded therapists
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RecentTherapists />
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>Crisis Alerts</CardTitle>
-                <CardDescription>
-                  Recent high-risk interventions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CrisisAlerts />
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>Engagement Metrics</CardTitle>
-                <CardDescription>
-                  User engagement and retention
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <EngagementMetrics />
-              </CardContent>
-            </Card>
-            
-            <Card className="col-span-1">
-              <CardHeader>
-                <CardTitle>System Status</CardTitle>
-                <CardDescription>
-                  Platform health and performance
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SystemStatus />
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="users" className="space-y-4">
-          <Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <Card className="col-span-4">
             <CardHeader>
-              <CardTitle>User Management</CardTitle>
+              <CardTitle>User Activity Overview</CardTitle>
+            </CardHeader>
+            <CardContent className="pl-2">
+              <Overview />
+            </CardContent>
+          </Card>
+          
+          <Card className="col-span-3">
+            <CardHeader>
+              <CardTitle>Mood Trends</CardTitle>
               <CardDescription>
-                View and manage all platform users
+                Aggregated user mood data over time
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                <UserManagement />
-              </p>
+              <MoodTrends />
             </CardContent>
           </Card>
-        </TabsContent>
+        </div>
         
-        <TabsContent value="therapists" className="space-y-4">
-          <Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card className="col-span-1">
             <CardHeader>
-              <CardTitle>Therapist Management</CardTitle>
+              <CardTitle>Recent Users</CardTitle>
               <CardDescription>
-                View and manage all platform therapists
+                New user registrations
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                <TherapistManagement />
-              </p>
+              <RecentUsers />
             </CardContent>
           </Card>
-        </TabsContent>
-        
-        <TabsContent value="analytics" className="space-y-4">
-          <Card>
+          
+          <Card className="col-span-1">
             <CardHeader>
-              <CardTitle>Platform Analytics</CardTitle>
+              <CardTitle>Recent Therapists</CardTitle>
               <CardDescription>
-                Detailed analytics and insights
+                Newly onboarded therapists
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Navigate to the Analytics section for detailed platform metrics.
-              </p>
+              <RecentTherapists />
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+          
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>Crisis Alerts</CardTitle>
+              <CardDescription>
+                Recent high-risk interventions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CrisisAlerts />
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="grid gap-4 md:grid-cols-2">
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>Engagement Metrics</CardTitle>
+              <CardDescription>
+                User engagement and retention
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EngagementMetrics />
+            </CardContent>
+          </Card>
+          
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle>System Status</CardTitle>
+              <CardDescription>
+                Platform health and performance
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SystemStatus />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

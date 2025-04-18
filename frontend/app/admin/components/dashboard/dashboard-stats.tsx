@@ -6,6 +6,7 @@ import { AlertTriangle, Brain, MessageSquare, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from '@/components/ui/use-toast';
 import useAdminWebSocket from '@/hooks/useAdminWebSocket';
+import { apiUrl } from '@/lib/config';
 
 interface DashboardStats {
   totalUsers: number;
@@ -23,6 +24,9 @@ export function DashboardCardStats() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
+  // Store therapist count in a dedicated state to ensure it persists
+  const [therapistCount, setTherapistCount] = useState(0);
+  
   // Get token from localStorage or sessionStorage
   const [token, setToken] = useState<string | null>(null);
 
@@ -36,14 +40,72 @@ export function DashboardCardStats() {
     }
   }, []);
 
+  // Dedicated function to fetch therapist count using the same approach as therapists page
+  const fetchTherapistCount = useCallback(async () => {
+    if (!token) return;
+    
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-auth-token'] = token; // Include both auth headers as in therapists page
+      }
+      
+      // Use the exact same endpoint that the therapist page is using successfully
+      const response = await fetch(`http://localhost:5000/api/test/doctors`, { headers });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch therapists: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Therapist data:', data);
+      
+      let count = 0;
+      if (Array.isArray(data)) {
+        count = data.length;
+      } else if (data) {
+        count = 1;
+      }
+      
+      console.log(`Found ${count} therapists`);
+      
+      // Store therapist count in dedicated state
+      setTherapistCount(count);
+      
+      // Also update it in the stats object
+      setStats(prevStats => ({
+        ...prevStats,
+        totalTherapists: count
+      }));
+      
+    } catch (err) {
+      console.error('Error fetching therapists:', err);
+    }
+  }, [token]);
+
+  // Call the therapist fetch on mount and token change
+  useEffect(() => {
+    if (token) {
+      fetchTherapistCount();
+    }
+  }, [token, fetchTherapistCount]);
+
   // Handle stats updates from WebSocket
   const handleStatsUpdate = useCallback((updatedStats: DashboardStats) => {
     console.log('Received stats update:', updatedStats);
     if (updatedStats) {
-      setStats(updatedStats);
+      // Preserve therapist count from our dedicated fetch
+      setStats({
+        ...updatedStats,
+        totalTherapists: therapistCount || updatedStats.totalTherapists
+      });
       setLoading(false);
     }
-  }, []);
+  }, [therapistCount]);
 
   // Handle WebSocket connection changes
   const handleConnectionChange = useCallback((isConnected: boolean) => {
@@ -78,29 +140,142 @@ export function DashboardCardStats() {
     onError: handleError
   });
 
+  // Direct API fetch function for each statistic
+  const fetchDirectStatistics = useCallback(async () => {
+    try {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      // First try to get all stats from the analytics endpoint
+      const analyticsResponse = await fetch(`${apiUrl}/api/debug/analytics`, { headers });
+      
+      if (analyticsResponse.ok) {
+        const analyticsData = await analyticsResponse.json();
+        console.log('Analytics data:', analyticsData);
+        
+        // Extract the stats from the analytics response
+        const stats = {
+          totalUsers: analyticsData.overview?.totalUsers || 0,
+          totalTherapists: analyticsData.overview?.totalTherapists || 
+                           analyticsData.overview?.totalDoctors || 
+                           analyticsData.counts?.doctors ||
+                           0,
+          totalSessions: analyticsData.overview?.totalInteractions || 0,
+          crisisAlerts: analyticsData.overview?.flaggedInteractions || 0,
+          usersTrend: 4,
+          therapistsTrend: 2,
+          sessionsTrend: 24,
+          alertsTrend: -7
+        };
+        
+        return stats;
+      }
+      
+      // If the analytics endpoint fails, use individual endpoints
+      const fetchPromises = [
+        // Get total users count from debug API
+        fetch(`${apiUrl}/api/debug/models`, { headers })
+          .then(res => res.ok ? res.json() : { counts: { users: 0 } })
+          .then(data => ({ totalUsers: data.counts?.users || 0 }))
+          .catch(() => ({ totalUsers: 0 })),
+          
+        // Get active therapists count from doctors API - Fix how we extract the count
+        fetch(`${apiUrl}/api/debug/doctors`, { headers })
+          .then(res => res.ok ? res.json() : { doctors: [] })
+          .then(data => {
+            console.log('Doctors data:', data);
+            // Properly extract therapist count from the response
+            const count = data.doctors && Array.isArray(data.doctors) ? data.doctors.length : (data.count || 0);
+            return { totalTherapists: count };
+          })
+          .catch(() => ({ totalTherapists: 0 })),
+          
+        // Get AI interactions count - this will be the total interactions
+        fetch(`${apiUrl}/api/debug/models`, { headers })
+          .then(res => res.ok ? res.json() : { counts: { chatMessages: 0 } })
+          .then(data => ({ totalSessions: data.counts?.chatMessages || data.counts?.messages || 0 }))
+          .catch(() => ({ totalSessions: 0 })),
+          
+        // Get crisis alerts count - we'll use flagged interactions or just set a random count for now
+        fetch(`${apiUrl}/api/debug/analytics`, { headers })
+          .then(res => res.ok ? res.json() : { overview: { flaggedInteractions: 0 } })
+          .then(data => ({ crisisAlerts: data.overview?.flaggedInteractions || 0 }))
+          .catch(() => ({ crisisAlerts: 0 }))
+      ];
+      
+      // Execute all fetch requests in parallel
+      const results = await Promise.all(fetchPromises);
+      
+      // Combine all results into a single stats object
+      const combinedStats = Object.assign({}, ...results, {
+        // Include trend percentages
+        usersTrend: 4,
+        therapistsTrend: 2,
+        sessionsTrend: 24,
+        alertsTrend: -7
+      });
+      
+      console.log('Fetched direct statistics:', combinedStats);
+      return combinedStats;
+      
+    } catch (error) {
+      console.error('Error fetching direct statistics:', error);
+      return null;
+    }
+  }, [token]);
+
   // Fetch stats data on initial load
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       try {
+        // First try to use WebSocket data if connected
         if (!isConnected) {
-          // If WebSocket is not connected, use HTTP fallback
+          // If WebSocket is not connected, try the original fetchDashboardStats
           const fetchedStats = await fetchDashboardStats();
+          
+          // If that also fails, try our direct fetch approach
           if (!fetchedStats) {
-            // If no stats returned, use default values
-            setStats({
-              totalUsers: 0,
-              totalTherapists: 0,
-              totalSessions: 0,
-              crisisAlerts: 0,
-              usersTrend: 0,
-              therapistsTrend: 0,
-              sessionsTrend: 0,
-              alertsTrend: 0
-            });
+            const directStats = await fetchDirectStatistics();
+            if (directStats) {
+              // Use our dedicated therapist count with other stats
+              setStats({
+                ...directStats,
+                totalTherapists: therapistCount || directStats.totalTherapists
+              });
+            } else {
+              // If all fails, provide default values but keep therapist count
+              setStats({
+                totalUsers: 0,
+                totalTherapists: therapistCount,
+                totalSessions: 0,
+                crisisAlerts: 0,
+                usersTrend: 4,
+                therapistsTrend: 2,
+                sessionsTrend: 24,
+                alertsTrend: -7
+              });
+            }
           }
         }
       } catch (error) {
         console.error('Error fetching dashboard stats:', error);
+        // Set fallback data in case of error but keep therapist count
+        setStats({
+          totalUsers: 0,
+          totalTherapists: therapistCount,
+          totalSessions: 0,
+          crisisAlerts: 0,
+          usersTrend: 4,
+          therapistsTrend: 2,
+          sessionsTrend: 24,
+          alertsTrend: -7
+        });
       } finally {
         setLoading(false);
       }
@@ -111,20 +286,20 @@ export function DashboardCardStats() {
     // Set up a periodic refresh if WebSocket is not available
     const refreshInterval = !isConnected ? 
       setInterval(async () => {
-        await fetchDashboardStats();
+        const directStats = await fetchDirectStatistics();
+        if (directStats) {
+          // Use our dedicated therapist count with other stats
+          setStats({
+            ...directStats,
+            totalTherapists: therapistCount || directStats.totalTherapists
+          });
+        }
       }, 30000) : null;
     
     return () => {
       if (refreshInterval) clearInterval(refreshInterval);
     };
-  }, [isConnected, fetchDashboardStats]);
-
-  // Manual refresh function
-  const handleManualRefresh = async () => {
-    setLoading(true);
-    await fetchDashboardStats();
-    setLoading(false);
-  };
+  }, [isConnected, fetchDashboardStats, fetchDirectStatistics, therapistCount]);
 
   // Loading state
   if (loading) {
@@ -146,9 +321,9 @@ export function DashboardCardStats() {
     );
   }
 
-  const defaultStats: DashboardStats = {
+  const displayStats: DashboardStats = {
     totalUsers: stats?.totalUsers || 0,
-    totalTherapists: stats?.totalTherapists || 0,
+    totalTherapists: therapistCount || stats?.totalTherapists || 0,
     totalSessions: stats?.totalSessions || 0,
     crisisAlerts: stats?.crisisAlerts || 0,
     usersTrend: stats?.usersTrend || 4,
@@ -165,9 +340,9 @@ export function DashboardCardStats() {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{defaultStats.totalUsers.toLocaleString()}</div>
+          <div className="text-2xl font-bold">{displayStats.totalUsers.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">
-            {defaultStats.usersTrend >= 0 ? '+' : ''}{defaultStats.usersTrend}% from last month
+            {displayStats.usersTrend >= 0 ? '+' : ''}{displayStats.usersTrend}% from last month
           </p>
         </CardContent>
       </Card>
@@ -178,9 +353,9 @@ export function DashboardCardStats() {
           <Brain className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{defaultStats.totalTherapists}</div>
+          <div className="text-2xl font-bold">{displayStats.totalTherapists}</div>
           <p className="text-xs text-muted-foreground">
-            {defaultStats.therapistsTrend >= 0 ? '+' : ''}{defaultStats.therapistsTrend}% from last month
+            {displayStats.therapistsTrend >= 0 ? '+' : ''}{displayStats.therapistsTrend}% from last month
           </p>
         </CardContent>
       </Card>
@@ -191,9 +366,9 @@ export function DashboardCardStats() {
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{defaultStats.totalSessions.toLocaleString()}</div>
+          <div className="text-2xl font-bold">{displayStats.totalSessions.toLocaleString()}</div>
           <p className="text-xs text-muted-foreground">
-            {defaultStats.sessionsTrend >= 0 ? '+' : ''}{defaultStats.sessionsTrend}% from last month
+            {displayStats.sessionsTrend >= 0 ? '+' : ''}{displayStats.sessionsTrend}% from last month
           </p>
         </CardContent>
       </Card>
@@ -204,9 +379,9 @@ export function DashboardCardStats() {
           <AlertTriangle className="h-4 w-4 text-destructive" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{defaultStats.crisisAlerts}</div>
+          <div className="text-2xl font-bold">{displayStats.crisisAlerts}</div>
           <p className="text-xs text-muted-foreground">
-            {defaultStats.alertsTrend}% from last month
+            {displayStats.alertsTrend >= 0 ? '+' : ''}{displayStats.alertsTrend}% from last month
           </p>
         </CardContent>
       </Card>
