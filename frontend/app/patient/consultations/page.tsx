@@ -12,10 +12,6 @@ import { RoomBookingProvider } from "@/lib/hooks/use-room-booking";
 export default function Consultations() {
   const [activeTab, setActiveTab] = useState("book");
 
-  // We no longer need to load Cal.com script here since
-  // it's now handled directly in the DoctorInfoPopup component
-  // and we're using direct URL opening instead of embedded Cal
-
   return (
     <RoomBookingProvider>
       <div className="space-y-6">

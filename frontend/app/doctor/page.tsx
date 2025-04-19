@@ -1,9 +1,14 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Users, Calendar, MessageSquare, Activity } from "lucide-react";
 import { RecentAppointments } from "./dashboard/recent-appointments";
 import { StatCard } from "./dashboard/stat-card";
 import { RecentMessages } from "./dashboard/recent-messages";
 import { PatientConditionChart } from "./dashboard/patient-condition-chart";
 import { PatientTrendChart } from "./dashboard/patient-trend-chart";
+import { NewPatientSubmissions } from "./dashboard/new-patient-submissions";
+
 export default function DashboardPage() {
   // Mock data - in a real app, this would come from an API
   const stats = [
@@ -116,12 +121,22 @@ export default function DashboardPage() {
     { name: "Jun", newPatients: 40, recoveredPatients: 30 },
   ];
 
+  const [doctorName, setDoctorName] = useState("Doctor");
+
+  // Get doctor name from localStorage
+  useEffect(() => {
+    const name = localStorage.getItem('username');
+    if (name) {
+      setDoctorName(name);
+    }
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back, Dr. Smith. Here's an overview of your practice.
+          Welcome back, Dr. {doctorName}. Here's an overview of your practice.
         </p>
       </div>
       
@@ -135,6 +150,11 @@ export default function DashboardPage() {
             trend={stat.trend}
           />
         ))}
+      </div>
+      
+      {/* Add New Patient Submissions section */}
+      <div className="grid gap-4 md:grid-cols-1">
+        <NewPatientSubmissions />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

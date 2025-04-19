@@ -7,8 +7,19 @@ module.exports = function(req, res, next) {
     return next();
   }
   
-  // Get token from header
-  const token = req.header('x-auth-token');
+  // Get token from header (check both x-auth-token and Authorization headers)
+  let token = req.header('x-auth-token');
+  
+  // If token is not found in x-auth-token header, try Authorization header
+  if (!token) {
+    const authHeader = req.header('Authorization');
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (authHeader) {
+      // In case Authorization header is sent directly without 'Bearer' prefix
+      token = authHeader;
+    }
+  }
 
   // Check if no token
   if (!token) {

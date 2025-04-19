@@ -15,8 +15,14 @@ const memoriesRoutes = require('./routes/memories');
 const chatRoutes = require('./routes/chat');
 const debugRoutes = require('./routes/debug');
 const doctorsRoutes = require('./routes/doctors');
+const { router: appointmentsRoutes } = require('./routes/appointments');
+const patientDetailsRoutes = require('./routes/patientDetails');
+const extraDetailsPatientsRoutes = require('./routes/extraDetailsPatients');
+const consultationsRoutes = require('./routes/consultations');
 const { initializeWebSocket } = require('./services/websocketService');
 const testApiRoutes = require('./routes/test-api');
+const authRoutes = require('./routes/auth');
+const userInteractionRoutes = require('./routes/userInteraction');
 
 const app = express();
 
@@ -50,6 +56,12 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/test', testApiRoutes);
 app.use('/api/doctors', doctorsRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/patient-details', patientDetailsRoutes);
+app.use('/api/extra-details-patients', extraDetailsPatientsRoutes);
+app.use('/api/consultations', consultationsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user-interactions', userInteractionRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {

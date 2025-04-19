@@ -3,66 +3,45 @@ import { apiUrl } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get parameters from query
-    const endpoint = request.nextUrl.searchParams.get('endpoint');
-    
-    // Get auth token
-    const token = request.headers.get('x-auth-token') || 
-                   request.headers.get('authorization')?.replace('Bearer ', '');
-    
-    if (!endpoint) {
-      return NextResponse.json({
-        status: 'error',
-        message: 'Missing endpoint parameter',
-        token: token ? 'present' : 'missing'
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+    const doctorId = searchParams.get('doctorId');
+
+    if (!action) {
+      return NextResponse.json(
+        { status: 'error', message: 'Action parameter is required' },
+        { status: 400 }
+      );
+    }
+
+    if (action === 'dumpCollections') {
+      // Call backend debug endpoint to get direct collection data
+      const response = await fetch(`${apiUrl}/api/debug/dump-collections?doctorId=${doctorId}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to get debug data');
+      }
+
+      const data = await response.json();
+      return NextResponse.json(data);
     }
-    
-    // Set up request headers
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (token) {
-      headers['x-auth-token'] = token;
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    // Make request to backend
-    const backendUrl = `${apiUrl}${endpoint}`;
-    console.log(`Debug API: Calling ${backendUrl}`);
-    console.log(`Debug API: Token present: ${!!token}`);
-    
-    const response = await fetch(backendUrl, {
-      headers,
-      cache: 'no-store'
-    });
-    
-    console.log(`Debug API: Response status: ${response.status}`);
-    
-    let responseData;
-    try {
-      responseData = await response.json();
-      console.log(`Debug API: Response parsed as JSON`);
-    } catch (err) {
-      console.log(`Debug API: Response is not JSON, using text`);
-      responseData = await response.text();
-    }
-    
-    console.log(`Debug API: Response data type: ${typeof responseData}`);
-    
-    return NextResponse.json({
-      status: response.status,
-      statusText: response.statusText,
-      data: responseData,
-      headers: Object.fromEntries(response.headers.entries())
-    });
+
+    return NextResponse.json(
+      { status: 'error', message: 'Unknown action' },
+      { status: 400 }
+    );
   } catch (error) {
-    console.error('Debug API error:', error);
+    console.error('Error in debug API:', error);
     return NextResponse.json(
       { 
-        status: 'error',
-        message: 'An error occurred',
+        status: 'error', 
+        message: 'Error in debug API',
         error: error instanceof Error ? error.message : String(error)
       },
       { status: 500 }

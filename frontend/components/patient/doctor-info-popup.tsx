@@ -10,10 +10,11 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/components/ui/use-toast";
+import { userIdKey } from "@/lib/config";
 
 interface DoctorInfoPopupProps {
   doctor: {
-    id: number;
+    id: number | string;
     name: string;
     email: string;
     specialty: string;
@@ -39,6 +40,16 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [patientId, setPatientId] = useState<string | null>(null);
+
+  // Get logged in patient ID
+  useEffect(() => {
+    // Get patient ID from localStorage
+    const storedPatientId = localStorage.getItem(userIdKey);
+    if (storedPatientId) {
+      setPatientId(storedPatientId);
+    }
+  }, []);
 
   // Function to safely open Cal.com URL
   const openCalendarLink = useCallback((url: string) => {
@@ -105,29 +116,39 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
     try {
       setIsLoading(true);
       
-      // Save patient details to extradetailspatients table
-      const response = await fetch('/api/patient/details', {
+      // Make sure doctorId is stored as string for consistent queries
+      const doctorIdString = String(doctor.id);
+      console.log("Scheduling with doctor ID:", doctorIdString);
+      
+      // Prepare appointment data for backend
+      const appointmentData = {
+        doctorId: doctorIdString,
+        patientId: patientId, // From logged in user
+        patientName: formData.fullName,
+        patientAge: formData.age,
+        patientGender: formData.gender,
+        patientEmail: formData.email,
+        hasCompletedQuestionnaire: formData.hasTestedQuestionnaire,
+        mentalHealthConcern: formData.mentalProblem,
+        appointmentDate: new Date().toISOString(),
+        doctorName: doctor.name,
+        doctorSpecialty: doctor.specialty
+      };
+      
+      console.log("Sending appointment data:", appointmentData);
+      
+      // Save the appointment data using our combined endpoint
+      const response = await fetch('/api/patient-appointment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          doctorId: doctor.id,
-          doctorName: doctor.name,
-          doctorSpecialty: doctor.specialty,
-          patientName: formData.fullName,
-          patientAge: formData.age,
-          patientGender: formData.gender,
-          patientEmail: formData.email,
-          hasCompletedQuestionnaire: formData.hasTestedQuestionnaire,
-          mentalHealthConcern: formData.mentalProblem,
-          appointmentRequestDate: new Date().toISOString()
-        }),
+        body: JSON.stringify(appointmentData),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save patient details');
+        throw new Error(errorData.message || 'Failed to save patient data');
       }
       
       // After successful save, open cal.com using our safe method
