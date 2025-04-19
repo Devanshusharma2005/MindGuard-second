@@ -14,6 +14,7 @@ const gameLogRoutes = require('./routes/gameLog');
 const memoriesRoutes = require('./routes/memories');
 const chatRoutes = require('./routes/chat');
 const debugRoutes = require('./routes/debug');
+const doctorsRoutes = require('./routes/doctors');
 const { initializeWebSocket } = require('./services/websocketService');
 const testApiRoutes = require('./routes/test-api');
 
@@ -48,6 +49,7 @@ app.use('/api/memories', memoriesRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/test', testApiRoutes);
+app.use('/api/doctors', doctorsRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {
