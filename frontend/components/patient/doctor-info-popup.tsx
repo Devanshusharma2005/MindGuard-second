@@ -4,11 +4,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Calendar, Mail, Briefcase, Star, Clock, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toast } from "@/components/ui/use-toast";
 
 interface DoctorInfoPopupProps {
   doctor: {
@@ -36,14 +37,119 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
     hasTestedQuestionnaire: false,
     mentalProblem: ""
   });
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Function to safely open Cal.com URL
+  const openCalendarLink = useCallback((url: string) => {
+    // Ensure we're opening a valid URL
+    try {
+      // Use window.open directly instead of relying on Cal.com's embed script
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Error opening calendar link:", error);
+      toast({
+        title: "Error",
+        description: "Could not open booking calendar. Please try again.",
+        variant: "destructive"
+      });
+    }
+  }, []);
 
   const handleChat = () => {
     onClose();
     router.push("/patient/consultations?tab=chat");
   };
 
-  const handleScheduleMeeting = () => {
-    window.open(doctor.bookingLink, "_blank");
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    
+    if (!formData.fullName.trim()) {
+      newErrors.fullName = "Full name is required";
+    }
+    
+    if (!formData.age) {
+      newErrors.age = "Age is required";
+    } else if (isNaN(Number(formData.age)) || Number(formData.age) <= 0) {
+      newErrors.age = "Age must be a valid number";
+    }
+    
+    if (!formData.gender.trim()) {
+      newErrors.gender = "Gender is required";
+    }
+    
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required";
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = "Email is invalid";
+    }
+    
+    if (!formData.hasTestedQuestionnaire && !formData.mentalProblem) {
+      newErrors.mentalProblem = "Please select a mental health concern or check the questionnaire box";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleScheduleMeeting = async () => {
+    if (!validateForm()) {
+      toast({
+        title: "Form Validation Error",
+        description: "Please fill in all required fields correctly.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      // Save patient details to extradetailspatients table
+      const response = await fetch('/api/patient/details', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          doctorId: doctor.id,
+          doctorName: doctor.name,
+          doctorSpecialty: doctor.specialty,
+          patientName: formData.fullName,
+          patientAge: formData.age,
+          patientGender: formData.gender,
+          patientEmail: formData.email,
+          hasCompletedQuestionnaire: formData.hasTestedQuestionnaire,
+          mentalHealthConcern: formData.mentalProblem,
+          appointmentRequestDate: new Date().toISOString()
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save patient details');
+      }
+      
+      // After successful save, open cal.com using our safe method
+      openCalendarLink(doctor.bookingLink);
+      
+      // Close the popup
+      onClose();
+      
+      toast({
+        title: "Appointment Request Submitted",
+        description: "Your details have been saved. Complete your booking on the calendar page.",
+      });
+    } catch (error) {
+      console.error('Error submitting appointment request:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while saving your details",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOverlayClick = (e: React.MouseEvent) => {
@@ -56,6 +162,10 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    // Clear error when user types
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const handleCheckboxChange = (checked: boolean) => {
@@ -64,10 +174,18 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
       hasTestedQuestionnaire: checked,
       mentalProblem: checked ? "" : prev.mentalProblem // Clear mental problem if questionnaire is checked
     }));
+    // Clear error when user checks
+    if (errors.mentalProblem) {
+      setErrors(prev => ({ ...prev, mentalProblem: '' }));
+    }
   };
 
   const handleSelectChange = (value: string) => {
     setFormData(prev => ({ ...prev, mentalProblem: value }));
+    // Clear error when user selects
+    if (errors.mentalProblem) {
+      setErrors(prev => ({ ...prev, mentalProblem: '' }));
+    }
   };
 
   return (
@@ -150,17 +268,19 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
               <h4 className="text-lg font-medium">Patient Information</h4>
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName">Full Name *</Label>
                   <Input
                     id="fullName"
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleInputChange}
                     placeholder="Enter your full name"
+                    className={errors.fullName ? "border-red-500" : ""}
                   />
+                  {errors.fullName && <p className="text-sm text-red-500">{errors.fullName}</p>}
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="age">Age</Label>
+                  <Label htmlFor="age">Age *</Label>
                   <Input
                     id="age"
                     name="age"
@@ -168,20 +288,24 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
                     value={formData.age}
                     onChange={handleInputChange}
                     placeholder="Enter your age"
+                    className={errors.age ? "border-red-500" : ""}
                   />
+                  {errors.age && <p className="text-sm text-red-500">{errors.age}</p>}
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="gender">Gender</Label>
+                  <Label htmlFor="gender">Gender *</Label>
                   <Input
                     id="gender"
                     name="gender"
                     value={formData.gender}
                     onChange={handleInputChange}
                     placeholder="Enter your gender"
+                    className={errors.gender ? "border-red-500" : ""}
                   />
+                  {errors.gender && <p className="text-sm text-red-500">{errors.gender}</p>}
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     name="email"
@@ -189,7 +313,9 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
                     value={formData.email}
                     onChange={handleInputChange}
                     placeholder="Enter your email"
+                    className={errors.email ? "border-red-500" : ""}
                   />
+                  {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -200,13 +326,13 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
                   <Label htmlFor="questionnaire">I have completed the mental health questionnaire</Label>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="mentalProblem">Mental Health Concern</Label>
+                  <Label htmlFor="mentalProblem">Mental Health Concern {!formData.hasTestedQuestionnaire && "*"}</Label>
                   <Select
                     value={formData.mentalProblem}
                     onValueChange={handleSelectChange}
                     disabled={formData.hasTestedQuestionnaire}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={errors.mentalProblem ? "border-red-500" : ""}>
                       <SelectValue placeholder="Select a mental health concern" />
                     </SelectTrigger>
                     <SelectContent>
@@ -215,6 +341,7 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
                       <SelectItem value="depression">Depression</SelectItem>
                     </SelectContent>
                   </Select>
+                  {errors.mentalProblem && <p className="text-sm text-red-500">{errors.mentalProblem}</p>}
                 </div>
               </div>
             </div>
@@ -233,9 +360,22 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
               className="flex-1" 
               variant="outline"
               onClick={handleScheduleMeeting}
+              disabled={isLoading}
             >
-              <Calendar className="mr-2 h-4 w-4" />
-              Schedule Meeting
+              {isLoading ? (
+                <div className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </div>
+              ) : (
+                <>
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Schedule Meeting
+                </>
+              )}
             </Button>
           </div>
         </CardContent>

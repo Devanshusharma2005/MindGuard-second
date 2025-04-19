@@ -12,29 +12,9 @@ import { RoomBookingProvider } from "@/lib/hooks/use-room-booking";
 export default function Consultations() {
   const [activeTab, setActiveTab] = useState("book");
 
-  useEffect(() => {
-    // Load the Cal.com embed script
-    const script = document.createElement("script");
-    script.src = "https://app.cal.com/embed/embed.js";
-    script.async = true;
-    script.onload = () => {
-      // Initialize the calendar after the script loads
-      if (window.Cal) {
-        window.Cal("init", "secret", { origin: "https://cal.com" });
-        window.Cal.ns.secret("inline", {
-          elementOrSelector: "#my-cal-inline",
-          config: { layout: "month_view" },
-          calLink: "devanshu-sharma-9noi9z/secret",
-        });
-      }
-    };
-    document.body.appendChild(script);
-
-    // Cleanup script on component unmount
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
+  // We no longer need to load Cal.com script here since
+  // it's now handled directly in the DoctorInfoPopup component
+  // and we're using direct URL opening instead of embedded Cal
 
   return (
     <RoomBookingProvider>
@@ -46,7 +26,7 @@ export default function Consultations() {
               Book appointments with licensed therapists and manage your medical support
             </p>
           </div>
-          <Button>Book New Consultation</Button>
+          <Button onClick={() => setActiveTab("book")}>Book New Consultation</Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
