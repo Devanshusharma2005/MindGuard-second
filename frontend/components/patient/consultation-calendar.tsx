@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { ConsultationHistory } from "./consultation-history";
 import { DoctorInfoPopup } from "./doctor-info-popup";
 import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/use-toast";
 
 interface Doctor {
   id: number | string;
@@ -41,9 +40,7 @@ export function ConsultationCalendar() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [showDoctorInfo, setShowDoctorInfo] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [fetchingDoctors, setFetchingDoctors] = useState(true);
-  const [confirmationMessage, setConfirmationMessage] = useState("");
   const [bookedConsultations, setBookedConsultations] = useState<Consultation[]>([]);
   const [error, setError] = useState("");
 
@@ -86,128 +83,22 @@ export function ConsultationCalendar() {
     setShowDoctorInfo(false);
   };
 
-  const handleBooking = () => {
-    if (selectedDoctor) {
-      setLoading(true);
-      
-      // Use _id if available, otherwise fall back to id
-      const doctorIdToStore = selectedDoctor._id || String(selectedDoctor.id);
-      console.log("Storing doctor ID in localStorage:", doctorIdToStore);
-      
-      // Store the selected doctor ID in localStorage for the patient form
-      localStorage.setItem('scheduled_doctor_id', doctorIdToStore);
-      
-      // Get patient info from localStorage
-      const patientId = localStorage.getItem('mindguard_user_id');
-      const patientName = localStorage.getItem('username');
-      const patientEmail = localStorage.getItem('email');
-      
-      if (patientId && patientName && patientEmail) {
-        // Create and submit initial patient data record for the doctor
-        submitInitialPatientData(doctorIdToStore, patientId, patientName, patientEmail)
-          .then(() => {
-            // After successful data submission, open Cal.com
-            window.open(selectedDoctor.bookingLink, "_blank");
-          })
-          .catch(error => {
-            console.error("Error submitting initial patient data:", error);
-            // Open Cal.com anyway even if data submission fails
-            window.open(selectedDoctor.bookingLink, "_blank");
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      } else {
-        // If patient info is not available, just open Cal.com
-        window.open(selectedDoctor.bookingLink, "_blank");
-        setLoading(false);
-      }
+  // Callback for when a booking is made via the popup
+  const handleAppointmentBooked = (doctor: Doctor) => {
+    // Create a new consultation entry for the history
+    const newConsultation: Consultation = {
+      id: bookedConsultations.length + 1,
+      doctor: doctor.name,
+      specialty: doctor.specialty,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString(),
+      type: "virtual",
+      status: "scheduled",
+      avatar: doctor.avatar
+    };
 
-      // Create a consultation entry
-      const newConsultation: Consultation = {
-        id: bookedConsultations.length + 1,
-        doctor: selectedDoctor.name,
-        specialty: selectedDoctor.specialty,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        type: "virtual",
-        status: "scheduled",
-        avatar: selectedDoctor.avatar
-      };
-
-      // Update booked consultations
-      setBookedConsultations([...bookedConsultations, newConsultation]);
-
-      setConfirmationMessage(`Booking initiated for ${selectedDoctor.name}. Please check your email for confirmation.`);
-    }
-  };
-  
-  // Function to submit initial patient data to the doctor
-  const submitInitialPatientData = async (doctorId: string, patientId: string, patientName: string, patientEmail: string) => {
-    try {
-      // Get auth token
-      const token = localStorage.getItem('token') || localStorage.getItem('mindguard_token');
-      
-      if (!token) {
-        throw new Error("Authentication token not found");
-      }
-      
-      // Format token properly with Bearer prefix if it doesn't have it
-      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      
-      // Prepare initial patient data
-      const patientData = {
-        doctorId,
-        patientId,
-        patientName,
-        patientEmail,
-        patientAge: '', // These will be filled in the patient profile form later
-        patientGender: '',
-        hasCompletedQuestionnaire: false,
-        mentalHealthConcern: 'Initial consultation',
-        appointmentRequestDate: new Date().toISOString(),
-        status: 'requested'
-      };
-      
-      console.log("Submitting initial patient data to doctor:", patientData);
-      
-      // Submit data to API
-      const response = await fetch('/api/extra-details-patients', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken
-        },
-        body: JSON.stringify(patientData)
-      });
-      
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.message || 'Failed to submit patient data');
-      }
-      
-      console.log("Initial patient data submitted successfully");
-      
-      // Also notify the patient they need to complete their profile
-      toast({
-        title: "Appointment Requested",
-        description: "Please complete your medical profile for the doctor after scheduling your appointment time.",
-        duration: 5000
-      });
-      
-      return true;
-    } catch (error) {
-      console.error("Error submitting initial patient data:", error);
-      
-      toast({
-        title: "Warning",
-        description: "We couldn't save your initial data. Please make sure to complete your profile after scheduling.",
-        variant: "destructive",
-        duration: 5000
-      });
-      
-      return false;
-    }
+    // Update booked consultations
+    setBookedConsultations(prev => [...prev, newConsultation]);
   };
 
   // Loading skeletons for doctors
@@ -295,19 +186,11 @@ export function ConsultationCalendar() {
         </div>
       </div>
 
-      <Button 
-        className="w-full" 
-        disabled={!selectedDoctor || loading || fetchingDoctors}
-        onClick={handleBooking}
-      >
-        {loading ? "Booking..." : "Book Appointment"}
-      </Button>
-
-      {confirmationMessage && (
-        <div className="mt-4 text-green-600">
-          {confirmationMessage}
-        </div>
-      )}
+      <div className="text-center p-3 bg-muted/50 rounded-lg">
+        <p className="text-sm text-muted-foreground">
+          Click on a doctor to view details and schedule an appointment
+        </p>
+      </div>
 
       {/* Pass the booked consultations to ConsultationHistory */}
       <ConsultationHistory consultations={bookedConsultations} />
@@ -316,7 +199,8 @@ export function ConsultationCalendar() {
       {showDoctorInfo && selectedDoctor && (
         <DoctorInfoPopup 
           doctor={selectedDoctor} 
-          onClose={handleCloseDoctorInfo} 
+          onClose={handleCloseDoctorInfo}
+          onAppointmentBooked={handleAppointmentBooked}
         />
       )}
     </div>

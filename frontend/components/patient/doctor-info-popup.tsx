@@ -26,9 +26,10 @@ interface DoctorInfoPopupProps {
     bookingLink: string;
   };
   onClose: () => void;
+  onAppointmentBooked?: (doctor: any) => void;
 }
 
-export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
+export function DoctorInfoPopup({ doctor, onClose, onAppointmentBooked }: DoctorInfoPopupProps) {
   const router = useRouter();
   const [formData, setFormData] = useState({
     fullName: "",
@@ -120,6 +121,9 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
       const doctorIdString = String(doctor.id);
       console.log("Scheduling with doctor ID:", doctorIdString);
       
+      // Store the selected doctor ID in localStorage for the patient form if needed later
+      localStorage.setItem('scheduled_doctor_id', doctorIdString);
+      
       // Prepare appointment data for backend
       const appointmentData = {
         doctorId: doctorIdString,
@@ -130,18 +134,30 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
         patientEmail: formData.email,
         hasCompletedQuestionnaire: formData.hasTestedQuestionnaire,
         mentalHealthConcern: formData.mentalProblem,
-        appointmentDate: new Date().toISOString(),
+        appointmentRequestDate: new Date().toISOString(),
+        status: 'requested',
         doctorName: doctor.name,
         doctorSpecialty: doctor.specialty
       };
       
       console.log("Sending appointment data:", appointmentData);
       
-      // Save the appointment data using our combined endpoint
-      const response = await fetch('/api/patient-appointment', {
+      // Get auth token
+      const token = localStorage.getItem('token') || localStorage.getItem('mindguard_token');
+      
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+      
+      // Format token properly with Bearer prefix if it doesn't have it
+      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      
+      // Save the appointment data 
+      const response = await fetch('/api/extra-details-patients', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': authToken
         },
         body: JSON.stringify(appointmentData),
       });
@@ -151,8 +167,15 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
         throw new Error(errorData.message || 'Failed to save patient data');
       }
       
+      console.log("Patient data submitted successfully");
+      
       // After successful save, open cal.com using our safe method
       openCalendarLink(doctor.bookingLink);
+      
+      // Notify parent component about the booking if callback exists
+      if (onAppointmentBooked) {
+        onAppointmentBooked(doctor);
+      }
       
       // Close the popup
       onClose();
@@ -168,6 +191,18 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
         description: error instanceof Error ? error.message : "An error occurred while saving your details",
         variant: "destructive"
       });
+      
+      // Try to open Cal.com anyway, even if the data submission failed
+      try {
+        openCalendarLink(doctor.bookingLink);
+        
+        // Still notify parent about booking attempt
+        if (onAppointmentBooked) {
+          onAppointmentBooked(doctor);
+        }
+      } catch (calError) {
+        console.error("Failed to open calendar as fallback:", calError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -214,7 +249,7 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={handleOverlayClick}
     >
-      <Card className="w-full max-w-2xl max-h-[90vh] relative flex flex-col">
+      <Card className="w-full max-w-2xl max-h-[90vh] relative flex flex-col overflow-hidden">
         <Button
           variant="ghost"
           size="icon"
@@ -223,9 +258,9 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
         >
           <X className="h-4 w-4" />
         </Button>
-        <CardContent className="p-0 flex flex-col overflow-hidden">
+        <CardContent className="p-0 flex flex-col h-full overflow-hidden">
           {/* Header Section */}
-          <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-t-lg">
+          <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-6 rounded-t-lg flex-shrink-0">
             <div className="flex items-center gap-6">
               <Avatar className="h-24 w-24 border-4 border-background">
                 <AvatarImage src={doctor.avatar} />
@@ -247,8 +282,8 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
             </div>
           </div>
 
-          {/* Content Section */}
-          <div className="p-6 space-y-6 overflow-y-auto flex-1">
+          {/* Content Section - Scrollable */}
+          <div className="p-6 space-y-6 overflow-y-auto flex-grow">
             {/* Contact Information */}
             <div className="space-y-4">
               <h4 className="text-lg font-medium">Contact Information</h4>
@@ -315,14 +350,20 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="gender">Gender *</Label>
-                  <Input
-                    id="gender"
-                    name="gender"
+                  <Select
                     value={formData.gender}
-                    onChange={handleInputChange}
-                    placeholder="Enter your gender"
-                    className={errors.gender ? "border-red-500" : ""}
-                  />
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
+                  >
+                    <SelectTrigger id="gender" className={errors.gender ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.gender && <p className="text-sm text-red-500">{errors.gender}</p>}
                 </div>
                 <div className="grid gap-2">
@@ -360,6 +401,10 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
                       <SelectItem value="ptsd">PTSD</SelectItem>
                       <SelectItem value="anxiety">Anxiety</SelectItem>
                       <SelectItem value="depression">Depression</SelectItem>
+                      <SelectItem value="stress">Stress</SelectItem>
+                      <SelectItem value="trauma">Trauma</SelectItem>
+                      <SelectItem value="relationship-issues">Relationship Issues</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.mentalProblem && <p className="text-sm text-red-500">{errors.mentalProblem}</p>}
@@ -369,7 +414,7 @@ export function DoctorInfoPopup({ doctor, onClose }: DoctorInfoPopupProps) {
           </div>
 
           {/* Action Buttons - Fixed at bottom */}
-          <div className="flex gap-4 p-6 border-t bg-background">
+          <div className="flex gap-4 p-6 border-t bg-background flex-shrink-0">
             <Button 
               className="flex-1" 
               onClick={handleChat}

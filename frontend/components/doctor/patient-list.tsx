@@ -19,6 +19,7 @@ import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, 
 import { userIdKey } from "@/lib/config";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PatientProfileView } from "./patient-profile-view";
 
 interface PatientDetails {
@@ -60,12 +61,12 @@ interface Appointment {
 }
 
 export function PatientList() {
+  const router = useRouter();
   const [patients, setPatients] = useState<PatientDetails[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<PatientDetails | null>(null);
-  const [showFullProfile, setShowFullProfile] = useState(false);
   const [doctorId, setDoctorId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletePatientId, setDeletePatientId] = useState<string | null>(null);
@@ -408,24 +409,29 @@ export function PatientList() {
         <div className="space-y-4">
           {console.log("Rendering patients:", patients)}
           {patients.map((patient) => (
-            <Card key={patient._id} className="overflow-hidden">
+            <Card key={patient._id} className="overflow-hidden hover:shadow-md transition-shadow">
               <CardContent className="p-0">
-                <div className="p-4 flex flex-wrap items-center justify-between">
+                <div className="p-6 flex flex-wrap items-center justify-between border-b">
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-10 w-10 border">
-                      <AvatarFallback className="bg-primary/10 text-primary">
-                        {patient.patientName.charAt(0).toUpperCase()}
+                    <Avatar className="h-14 w-14 border-2 border-primary/10">
+                      <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        {patient.patientName.charAt(0).toUpperCase() + (patient.patientName.split(' ')[1]?.[0]?.toUpperCase() || '')}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <h3 className="font-medium">{patient.patientName}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                        <Mail className="h-3.5 w-3.5" />
-                        <span>{patient.patientEmail}</span>
+                      <h3 className="font-semibold text-lg">{patient.patientName}</h3>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <div className="flex items-center gap-1">
+                          <Mail className="h-3.5 w-3.5" />
+                          <span>{patient.patientEmail}</span>
+                        </div>
+                        <Badge variant="outline" className="hidden sm:inline-flex text-xs">
+                          Patient ID: {typeof patient._id === 'string' ? patient._id.substring(0, 8) : ''}
+                        </Badge>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                  <div className="flex items-center gap-2 mt-4 sm:mt-0">
                     {getStatusBadge(patient.status)}
                     <Button 
                       variant="ghost" 
@@ -439,7 +445,7 @@ export function PatientList() {
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button 
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           className="text-xs"
                           onClick={() => setSelectedPatient(patient)}
@@ -456,30 +462,34 @@ export function PatientList() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div>
                                 <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
-                                <dl className="space-y-2">
+                                <dl className="space-y-3">
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Full Name</dt>
-                                    <dd className="text-sm">{selectedPatient.patientName}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.patientName}</dd>
                                   </div>
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Email</dt>
-                                    <dd className="text-sm">{selectedPatient.patientEmail}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.patientEmail}</dd>
                                   </div>
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Age</dt>
-                                    <dd className="text-sm">{selectedPatient.patientAge || 'Not provided'}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.patientAge || 'Not provided'}</dd>
                                   </div>
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Gender</dt>
-                                    <dd className="text-sm">{selectedPatient.patientGender || 'Not provided'}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.patientGender || 'Not provided'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Patient ID</dt>
+                                    <dd className="text-sm font-medium">{selectedPatient._id}</dd>
                                   </div>
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Appointment Status</dt>
-                                    <dd className="text-sm">{selectedPatient.status || 'Not set'}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.status || 'Not set'}</dd>
                                   </div>
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Request Date</dt>
-                                    <dd className="text-sm">
+                                    <dd className="text-sm font-medium">
                                       {selectedPatient.appointmentRequestDate
                                         ? new Date(selectedPatient.appointmentRequestDate).toLocaleString()
                                         : 'Not provided'}
@@ -490,37 +500,34 @@ export function PatientList() {
                               
                               <div>
                                 <h3 className="text-lg font-semibold mb-4">Health Information</h3>
-                                <dl className="space-y-4">
+                                <dl className="space-y-3">
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Mental Health Concern</dt>
-                                    <dd className="text-sm">{selectedPatient.mentalHealthConcern || 'Not provided'}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.mentalHealthConcern || 'Not provided'}</dd>
                                   </div>
                                   <div className="flex flex-col">
                                     <dt className="text-sm font-medium text-muted-foreground">Completed Questionnaire</dt>
-                                    <dd className="text-sm">{selectedPatient.hasCompletedQuestionnaire ? 'Yes' : 'No'}</dd>
+                                    <dd className="text-sm font-medium">{selectedPatient.hasCompletedQuestionnaire ? 'Yes' : 'No'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Doctor Assigned</dt>
+                                    <dd className="text-sm font-medium">{selectedPatient.doctorName || 'Not assigned'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Doctor ID</dt>
+                                    <dd className="text-sm font-medium">{selectedPatient.doctorId || 'Not assigned'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Doctor Specialty</dt>
+                                    <dd className="text-sm font-medium">{selectedPatient.doctorSpecialty || 'Not specified'}</dd>
                                   </div>
                                 </dl>
                               </div>
                             </div>
                             
-                            <DialogFooter className="flex justify-between border-t pt-3">
-                              <div className="flex gap-2">
-                                <Button 
-                                  variant="outline"
-                                  onClick={() => setShowFullProfile(true)}
-                                >
-                                  <FileText className="h-4 w-4 mr-2" />
-                                  Full Medical Profile
-                                </Button>
-                                <Link href={`/doctor/patients/${selectedPatient._id}`}>
-                                  <Button variant="outline">
-                                    View Patient Page
-                                  </Button>
-                                </Link>
-                              </div>
-                              
+                            <DialogFooter className="border-t pt-3">
                               {(!selectedPatient.status || selectedPatient.status === 'requested') && (
-                                <div className="flex gap-2">
+                                <div className="flex justify-end gap-2">
                                   <Button
                                     variant="destructive"
                                     onClick={() => updatePatientStatus(selectedPatient._id, 'cancelled')}
@@ -545,23 +552,16 @@ export function PatientList() {
                   </div>
                 </div>
                 
-                <div className="border-t border-border p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-muted/10">
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-muted-foreground text-xs">
                       <User className="h-3.5 w-3.5 mr-1" />
-                      <span>Age</span>
+                      <span>Age / Gender</span>
                     </div>
-                    <span className="font-medium">{patient.patientAge || 'N/A'}</span>
+                    <span className="font-medium">{patient.patientAge || 'N/A'} / {patient.patientGender || 'N/A'}</span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground">
-                      <User className="h-3.5 w-3.5 mr-1" />
-                      <span>Gender</span>
-                    </div>
-                    <span className="font-medium">{patient.patientGender || 'N/A'}</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-muted-foreground text-xs">
                       <Calendar className="h-3.5 w-3.5 mr-1" />
                       <span>Appointment Date</span>
                     </div>
@@ -570,12 +570,21 @@ export function PatientList() {
                     </span>
                   </div>
                   <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground">
+                    <div className="flex items-center text-muted-foreground text-xs">
                       <Heart className="h-3.5 w-3.5 mr-1" />
-                      <span>Concern</span>
+                      <span>Mental Health Concern</span>
                     </div>
-                    <span className="font-medium line-clamp-1">
+                    <span className="font-medium line-clamp-1 capitalize">
                       {patient.mentalHealthConcern || 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center text-muted-foreground text-xs">
+                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
+                      <span>Completed Questionnaire</span>
+                    </div>
+                    <span className="font-medium">
+                      {patient.hasCompletedQuestionnaire ? 'Yes' : 'No'}
                     </span>
                   </div>
                 </div>
