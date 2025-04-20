@@ -53,6 +53,7 @@ app.use('/api/auth/doctor', doctorAuthRoutes);
 app.use('/api/auth/admin', adminAuthRoutes);
 app.use('/api/game-logs', gameLogRoutes);
 app.use('/api/memories', memoriesRoutes);
+app.use('/api/health-reports', require('./routes/healthReport'));
 app.use('/api/chat', chatRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/test', testApiRoutes);

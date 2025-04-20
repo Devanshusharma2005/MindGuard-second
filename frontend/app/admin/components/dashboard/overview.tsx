@@ -77,54 +77,81 @@ export function Overview() {
   const fetchRecentUserActivity = async () => {
     setLoading(true);
     try {
-      // Create an array of the last 4 weeks (starting dates)
+      const token = localStorage.getItem('token') || 
+                    localStorage.getItem('mindguard_token') ||
+                    sessionStorage.getItem('token');
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-auth-token'] = token;
+      }
+
+      // Fetch both users and doctors data
+      const [usersResponse, doctorsResponse] = await Promise.all([
+        fetch('http://localhost:5000/api/test/users', { headers }),
+        fetch('http://localhost:5000/api/test/doctors', { headers })
+      ]);
+
+      if (!usersResponse.ok || !doctorsResponse.ok) {
+        throw new Error('Failed to fetch user activity data');
+      }
+
+      const users = await usersResponse.json();
+      const doctors = await doctorsResponse.json();
+
+      // Create an array of the last 6 weeks
       const today = new Date();
-      const fourWeeksAgo = subWeeks(today, 4);
+      const sixWeeksAgo = subWeeks(today, 5); // 5 because we want current week + 5 previous weeks
       
       // Get weekly intervals
       const weekIntervals = eachWeekOfInterval({
-        start: fourWeeksAgo,
+        start: sixWeeksAgo,
         end: today
       });
-      
-      // Format for API request
-      const startDate = format(fourWeeksAgo, 'yyyy-MM-dd');
-      const endDate = format(today, 'yyyy-MM-dd');
-      
-      // Fetch user registrations from API - Using the correct path: /api/user/registrations
-      const response = await fetch(`${apiUrl}/api/user/registrations?startDate=${startDate}&endDate=${endDate}`);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch user activity data');
-      }
-      
-      const data = await response.json();
-      
+
       // Process the data into weekly format
       const processedData = weekIntervals.map((weekStart, index) => {
         const weekEnd = index < weekIntervals.length - 1 
           ? weekIntervals[index + 1] 
           : today;
-        
+
+        // Format week label as "MMM d" (e.g., "Apr 15")
         const weekLabel = format(weekStart, 'MMM d');
-        
-        // Filter user registrations for this week
-        const weekUsers = data.registrations?.filter((reg: any) => {
-          const regDate = new Date(reg.registrationDate);
+
+        // Filter users and doctors registered in this week
+        const weekUsers = users.filter((user: any) => {
+          const regDate = new Date(user.createdAt?.$date || user.createdAt);
           return regDate >= weekStart && regDate < weekEnd;
-        }) || [];
-        
+        });
+
+        const weekDoctors = doctors.filter((doctor: any) => {
+          const regDate = new Date(doctor.createdAt?.$date || doctor.createdAt);
+          return regDate >= weekStart && regDate < weekEnd;
+        });
+
+        // Calculate interactions based on bookings in this week
+        const interactions = weekUsers.reduce((acc: number, user: any) => {
+          const weekBookings = (user.bookings || []).filter((booking: any) => {
+            const bookingDate = new Date(booking.date?.$date || booking.date);
+            return bookingDate >= weekStart && bookingDate < weekEnd;
+          });
+          return acc + weekBookings.length;
+        }, 0);
+
         return {
           name: weekLabel,
           users: weekUsers.length,
-          // Include other metrics as available or leave as 0
-          therapists: data.therapists?.[index] || 0,
-          interactions: data.interactions?.[index] || 0
+          therapists: weekDoctors.length,
+          interactions: interactions
         };
       });
-      
-      setUserData(processedData.length > 0 ? processedData : mockData);
-      
+
+      setUserData(processedData);
+      setError(null);
     } catch (err) {
       console.error('Error fetching user activity:', err);
       setError('Failed to load user activity data');
