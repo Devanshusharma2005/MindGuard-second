@@ -3,19 +3,71 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { apiUrl } from "@/lib/config";
 
+// Complete HealthReport interface matching the MongoDB schema
 interface HealthReport {
+  _id: string;
+  userId: string;
+  questionnaireData: {
+    mood: number;
+    anxiety: string;
+    sleep_quality: number;
+    energy_levels: number;
+    physical_symptoms: string;
+    concentration: number;
+    self_care: string;
+    social_interactions: number;
+    intrusive_thoughts: string;
+    optimism: number;
+    stress_factors: string;
+    coping_strategies: string;
+    social_support: number;
+    self_harm: string;
+    discuss_professional: string;
+  };
+  voiceAssessment: boolean;
+  raw_responses: any[];
+  emotionReport: {
+    summary: {
+      emotions_count: { [key: string]: number };
+      average_confidence: number;
+      average_valence: number;
+      crisis_count: number;
+      risk_factors: string[];
+    };
+    disorder_indicators: string[];
+  };
+  progressData: {
+    moodData: Array<{
+      date: string;
+      mood: number;
+      anxiety: number;
+      stress: number;
+      _id: string;
+    }>;
+    sleepData: Array<{
+      date: string;
+      hours: number;
+      quality: number;
+      _id: string;
+    }>;
+    activityData: Array<{
+      date: string;
+      exercise: number;
+      meditation: number;
+      social: number;
+      _id: string;
+    }>;
+  };
   timestamp: string;
-  mood: number;
-  anxiety: number;
-  energy_levels: number;
 }
 
 interface MoodData {
   chartData: Array<{
     date: string;
+    mood: number;
     anxiety: number;
-    depression: number;
     stress: number;
   }>;
   insightText: string;
@@ -37,59 +89,107 @@ export function MoodTracker() {
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+        const token = localStorage.getItem('token') || 
+                     localStorage.getItem('mindguard_token') ||
+                     sessionStorage.getItem('token');
+
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+          headers['x-auth-token'] = token;
+        }
+
+        console.log('Fetching mood data for user:', userId);
+        const response = await fetch(`${apiUrl}/api/health-reports/admin/reports?timeframe=4w`, {
+          headers
+        });
+
         if (!response.ok) {
           throw new Error('Failed to fetch mood data');
         }
 
         const data = await response.json();
+        console.log('Received data:', data);
         
-        if (data && data.healthreports && data.healthreports.length > 0) {
-          // Format data for chart - most recent 7 entries
-          const recentReports = data.healthreports.slice(0, Math.min(7, data.healthreports.length));
+        if (data && data.reports) {
+          // Filter reports for current user and sort by timestamp
+          const userReports = data.reports
+            .filter((report: HealthReport) => report.userId === userId)
+            .sort((a: HealthReport, b: HealthReport) => 
+              new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+
+          console.log('Filtered user reports:', userReports.length);
+
+          // Get the most recent 7 entries
+          const recentReports = userReports.slice(-7);
           
-          // Reverse the array to get oldest reports first (for left-to-right chronological order)
-          const orderedReports = [...recentReports].reverse();
-          
-          // Use session number instead of date for x-axis
-          const formattedData = orderedReports.map((report: HealthReport, index: number) => {
-            // Calculate session number (oldest is #1, newest is higher number)
-            const sessionNumber = index + 1;
-            
+          // Format data for chart
+          const formattedData = recentReports.map((report: HealthReport) => {
+            const date = new Date(report.timestamp).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric'
+            });
+
+            // Get mood from questionnaire data
+            const moodScore = report.questionnaireData.mood * 10; // Scale to 0-100
+
+            // Get anxiety from both questionnaire and emotion report
+            const anxietyFromQuestionnaire = report.questionnaireData.anxiety === 'high' ? 100 :
+                                           report.questionnaireData.anxiety === 'medium' ? 66 :
+                                           report.questionnaireData.anxiety === 'low' ? 33 : 0;
+
+            // Calculate stress using multiple factors
+            const stressFactors = [
+              report.questionnaireData.stress_factors ? 1 : 0, // Presence of stress factors
+              10 - report.questionnaireData.energy_levels, // Inverse of energy levels
+              10 - report.questionnaireData.sleep_quality, // Poor sleep quality
+              report.emotionReport?.summary?.crisis_count || 0, // Crisis indicators
+              (report.emotionReport?.summary?.emotions_count?.['stress'] || 0) > 0 ? 1 : 0 // Detected stress emotion
+            ];
+
+            // Average the stress factors and scale to 0-100
+            const stressLevel = (stressFactors.reduce((a, b) => a + b, 0) / stressFactors.length) * 20;
+
             return {
-              date: `Session ${sessionNumber}`,
-              anxiety: report.anxiety || 0,
-              depression: (10 - report.mood) * 10 || 0, // Invert mood to estimate depression level
-              stress: (10 - report.energy_levels) * 10 || 0 // Invert energy to estimate stress
+              date,
+              mood: moodScore,
+              anxiety: anxietyFromQuestionnaire,
+              stress: stressLevel
             };
           });
 
-          // Get insight text from API data if available
+          console.log('Formatted chart data:', formattedData);
+
+          // Generate insight text based on trends
           let insightText = "";
-          if (data.insights && data.insights.anxietyTrend) {
-            insightText = data.insights.anxietyTrend.detail;
-          } else {
-            // Generate default insight based on trends
-            // Compare first and last assessment instead of dates
-            const firstEntry = formattedData[0]; // oldest session
-            const lastEntry = formattedData[formattedData.length - 1]; // newest session
+          if (formattedData.length >= 2) {
+            const firstEntry = formattedData[0];
+            const lastEntry = formattedData[formattedData.length - 1];
             
-            const firstAnxiety = firstEntry?.anxiety || 0;
-            const lastAnxiety = lastEntry?.anxiety || 0;
+            const moodChange = lastEntry.mood - firstEntry.mood;
+            const anxietyChange = lastEntry.anxiety - firstEntry.anxiety;
+            const stressChange = lastEntry.stress - firstEntry.stress;
             
-            if (firstAnxiety === 0) {
-              insightText = "Track your progress by completing more assessments";
+            // Determine the most significant change
+            const changes = [
+              { type: 'mood', value: Math.abs(moodChange), direction: moodChange > 0 ? 'improved' : 'decreased' },
+              { type: 'anxiety', value: Math.abs(anxietyChange), direction: anxietyChange < 0 ? 'improved' : 'increased' },
+              { type: 'stress', value: Math.abs(stressChange), direction: stressChange < 0 ? 'improved' : 'increased' }
+            ].sort((a, b) => b.value - a.value);
+
+            const mostSignificant = changes[0];
+            
+            if (mostSignificant.value > 10) { // Only report significant changes
+              insightText = `Your ${mostSignificant.type} has ${mostSignificant.direction} by ${Math.round(mostSignificant.value)}% since ${firstEntry.date}`;
             } else {
-              const anxietyChange = Math.round(((lastAnxiety - firstAnxiety) / firstAnxiety) * 100);
-              
-              if (anxietyChange < 0) {
-                insightText = `Your anxiety levels have decreased by ${Math.abs(anxietyChange)}% since your first assessment`;
-              } else if (anxietyChange > 0) {
-                insightText = `Your anxiety levels have increased by ${anxietyChange}% since your first assessment`;
-              } else {
-                insightText = "Your anxiety levels have remained stable across assessments";
-              }
+              insightText = "Your emotional state has remained relatively stable";
             }
+          } else {
+            insightText = "Track your progress by completing more assessments";
           }
 
           setMoodData({
@@ -155,7 +255,8 @@ export function MoodTracker() {
               />
               <Line 
                 type="monotone" 
-                dataKey="anxiety" 
+                dataKey="mood" 
+                name="Mood"
                 stroke="hsl(var(--chart-1))" 
                 strokeWidth={2} 
                 dot={{ r: 3 }} 
@@ -163,7 +264,8 @@ export function MoodTracker() {
               />
               <Line 
                 type="monotone" 
-                dataKey="depression" 
+                dataKey="anxiety" 
+                name="Anxiety"
                 stroke="hsl(var(--chart-2))" 
                 strokeWidth={2} 
                 dot={{ r: 3 }} 
@@ -172,6 +274,7 @@ export function MoodTracker() {
               <Line 
                 type="monotone" 
                 dataKey="stress" 
+                name="Stress"
                 stroke="hsl(var(--chart-3))" 
                 strokeWidth={2} 
                 dot={{ r: 3 }} 
