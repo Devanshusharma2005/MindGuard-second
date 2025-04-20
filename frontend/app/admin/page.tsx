@@ -57,10 +57,13 @@ export default function AdminDashboard() {
       <div className="space-y-4">
         <DashboardCardStats />
         
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+          <Card className="col-span-3">
             <CardHeader>
               <CardTitle>User Activity Overview</CardTitle>
+              <CardDescription>
+              Summary of recent activity levels
+              </CardDescription>
             </CardHeader>
             <CardContent className="pl-2">
               <Overview />
@@ -69,9 +72,9 @@ export default function AdminDashboard() {
           
           <Card className="col-span-3">
             <CardHeader>
-              <CardTitle>Mood Trends</CardTitle>
+              <CardTitle>User Sentiment Over Time</CardTitle>
               <CardDescription>
-                Aggregated user mood data over time
+              Trends in emotional states like joy, anxiety, and stress
               </CardDescription>
             </CardHeader>
             <CardContent>

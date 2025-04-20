@@ -130,12 +130,6 @@ export function MoodTrends() {
   }
 
   return (
-    <Card className="col-span-4">
-      <CardHeader>
-        <CardTitle>Mood Trends</CardTitle>
-        <CardDescription>Emotional states reported over the past 4 weeks</CardDescription>
-      </CardHeader>
-      <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={emotionData}>
@@ -161,7 +155,5 @@ export function MoodTrends() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </CardContent>
-    </Card>
   );
 }
