@@ -15,11 +15,18 @@ export default function SignupPage() {
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    setStatusMessage('Creating your account...');
+    
     try {
+      // First create the user account
       const res = await fetch('http://localhost:5000/api/auth/signup', {
         method: 'POST',
         headers: {
@@ -32,8 +39,10 @@ export default function SignupPage() {
       if (!res.ok) {
         throw new Error(data.msg || 'Signup failed');
       }
+      
+      setStatusMessage('Account created! Logging you in...');
 
-      // Generate jwt token for login
+      // Then log in with the new credentials
       const loginRes = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: {
@@ -59,9 +68,16 @@ export default function SignupPage() {
       localStorage.setItem('username', loginData.user.username);
       localStorage.setItem('email', loginData.user.email);
       
-      router.push('/patient');
+      setStatusMessage('Success! Redirecting to dashboard...');
+      setTimeout(() => {
+        router.push('/patient');
+      }, 1000);
+      
     } catch (err: any) {
-      setError(err.message);
+      console.error('Signup/Login error:', err);
+      setError(err.message || 'An error occurred during signup');
+      setStatusMessage('');
+      setIsLoading(false);
     }
   };
 
@@ -100,6 +116,20 @@ export default function SignupPage() {
           </motion.div>
         )}
 
+        {statusMessage && !error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-4 bg-primary/10 text-primary p-3 rounded-lg flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {statusMessage}
+          </motion.div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-foreground font-medium mb-2">Full Name</label>
@@ -111,6 +141,7 @@ export default function SignupPage() {
                 placeholder="Enter your full name"
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -125,6 +156,7 @@ export default function SignupPage() {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -139,11 +171,13 @@ export default function SignupPage() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors duration-200"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
               </button>
@@ -154,6 +188,7 @@ export default function SignupPage() {
             <input
               type="checkbox"
               className="h-4 w-4 text-primary border-input rounded focus:ring-ring"
+              disabled={isLoading}
             />
             <label className="ml-2 block text-sm text-foreground">
               I agree to the Terms of Service and Privacy Policy
@@ -161,13 +196,26 @@ export default function SignupPage() {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isLoading ? 1 : 0.98 }}
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2"
+            className={`w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            disabled={isLoading}
           >
-            <UserPlus size={20} />
-            <span>Sign Up</span>
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Creating Account...</span>
+              </>
+            ) : (
+              <>
+                <UserPlus size={20} />
+                <span>Sign Up</span>
+              </>
+            )}
           </motion.button>
         </form>
 

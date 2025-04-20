@@ -14,11 +14,18 @@ export default function DoctorLoginPage() {
   });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsLoading(true);
+    setStatusMessage('Signing in...');
+    
     try {
+      setStatusMessage('Connecting to server...');
       const res = await fetch('http://localhost:5000/api/auth/doctor/login', {
         method: 'POST',
         headers: {
@@ -29,8 +36,10 @@ export default function DoctorLoginPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.msg || 'Login failed');
+        throw new Error(data.msg || 'Login failed. Please check your credentials.');
       }
+
+      setStatusMessage('Login successful! Preparing your dashboard...');
 
       // Store token and doctor info using multiple storage methods for compatibility
       localStorage.setItem('token', data.token);
@@ -40,22 +49,27 @@ export default function DoctorLoginPage() {
       localStorage.setItem('doctor', JSON.stringify(data.doctor));
       
       // Store doctor ID for API calls
-      if (data.doctor && data.doctor._id) {
-        localStorage.setItem('mindguard_user_id', data.doctor._id);
+      if (data.doctor && data.doctor.id) {
+        localStorage.setItem('mindguard_user_id', data.doctor.id);
       }
       
       // Also store in sessionStorage as fallback
       sessionStorage.setItem('token', data.token);
       
       // Set cookie for additional compatibility
-      document.cookie = `token=${data.token}; path=/`;
+      document.cookie = `token=${data.token}; path=/; max-age=86400`; // 24 hours
       
       console.log('Doctor login successful, token stored');
       
-      router.push('/doctor');
+      // Short delay for better UX
+      setTimeout(() => {
+        router.push('/doctor');
+      }, 1000);
     } catch (err: any) {
       console.error('Doctor login error:', err);
-      setError(err.message);
+      setError(err.message || 'Login failed. Please check your credentials.');
+      setIsLoading(false);
+      setStatusMessage('');
     }
   };
 
@@ -94,6 +108,20 @@ export default function DoctorLoginPage() {
           </motion.div>
         )}
 
+        {statusMessage && !error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-4 bg-primary/10 text-primary p-3 rounded-lg flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {statusMessage}
+          </motion.div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-foreground font-medium mb-2">Email</label>
@@ -104,6 +132,7 @@ export default function DoctorLoginPage() {
               placeholder="Enter your email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              disabled={isLoading}
             />
           </div>
 
@@ -117,11 +146,13 @@ export default function DoctorLoginPage() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors duration-200"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
               </button>
@@ -133,6 +164,7 @@ export default function DoctorLoginPage() {
               <input
                 type="checkbox"
                 className="h-4 w-4 text-primary border-input rounded focus:ring-ring"
+                disabled={isLoading}
               />
               <label className="ml-2 block text-sm text-foreground">
                 Remember me
@@ -144,13 +176,26 @@ export default function DoctorLoginPage() {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isLoading ? 1 : 0.98 }}
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2"
+            className={`w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            disabled={isLoading}
           >
-            <LogIn size={20} />
-            <span>Login</span>
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <>
+                <LogIn size={20} />
+                <span>Login</span>
+              </>
+            )}
           </motion.button>
         </form>
 

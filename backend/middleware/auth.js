@@ -1,52 +1,84 @@
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
+const User = require('../models/User');
 
-module.exports = function(req, res, next) {
+/**
+ * Authentication middleware for verifying user tokens
+ * This middleware can be used on protected routes
+ */
+module.exports = async function(req, res, next) {
   // Allow access if userId is provided in query params (mainly for profile lookup)
   if (req.path === '/profile' && req.query.userId) {
     return next();
   }
   
-  // Get token from header (check both x-auth-token and Authorization headers)
-  let token = req.header('x-auth-token');
-  
-  // If token is not found in x-auth-token header, try Authorization header
-  if (!token) {
-    const authHeader = req.header('Authorization');
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    } else if (authHeader) {
-      // In case Authorization header is sent directly without 'Bearer' prefix
-      token = authHeader;
-    }
-  }
+  // Get token from various possible sources
+  const token = 
+    req.header('Authorization')?.replace('Bearer ', '') || 
+    req.cookies?.token ||
+    req.body?.token || 
+    req.query?.token;
 
-  // Check if no token
+  // Check if token exists
   if (!token) {
-    return res.status(401).json({ msg: 'No token, authorization denied' });
+    return res.status(401).json({ 
+      success: false, 
+      msg: 'No authentication token, access denied' 
+    });
   }
 
   try {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    // Add user from payload to request
-    // Handle both token formats (old: {user: {id}} and new: {id, username})
-    if (decoded.user && decoded.user.id) {
-      req.user = decoded.user;
-    } else if (decoded.id) {
-      req.user = { id: decoded.id };
-      if (decoded.username) {
-        req.user.username = decoded.username;
-      }
-    } else {
-      throw new Error('Invalid token format');
+    // Check if there's a user ID in the decoded token
+    if (!decoded.id && !decoded.user?.id) {
+      return res.status(401).json({ 
+        success: false, 
+        msg: 'Invalid token format' 
+      });
     }
+
+    // Get user ID from token (handling different token formats)
+    const userId = decoded.id || decoded.user.id;
+    
+    // Find user by ID
+    const user = await User.findById(userId).select('-password');
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        msg: 'Token is valid but user no longer exists' 
+      });
+    }
+    
+    // Set user in request object
+    req.user = user;
+    req.user.id = user._id.toString(); // Ensure ID is consistent
+    req.userId = user._id.toString();
     
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err.message);
-    res.status(401).json({ msg: 'Token is not valid' });
+    // Handle different JWT errors
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        success: false, 
+        msg: 'Token expired, please login again' 
+      });
+    }
+    
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        success: false, 
+        msg: 'Invalid token, please login again' 
+      });
+    }
+    
+    console.error('Authentication error:', err);
+    res.status(500).json({ 
+      success: false, 
+      msg: 'Server authentication error' 
+    });
   }
 };
 

@@ -308,8 +308,18 @@ router.post('/', async (req, res) => {
       appointmentRequestDate: new Date()
     });
     
+    // Try to convert doctorId to ObjectId if possible
+    let formattedDoctorId = doctorIdStr;
+    try {
+      if (mongoose.Types.ObjectId.isValid(doctorIdStr)) {
+        formattedDoctorId = new mongoose.Types.ObjectId(doctorIdStr);
+      }
+    } catch (err) {
+      console.log('Error converting doctorId to ObjectId, will use string value:', err.message);
+    }
+    
     const patientDetails = new ExtraDetailsPatients({
-      doctorId: doctorIdStr,
+      doctorId: formattedDoctorId,
       doctorName: doctorName || 'Doctor',
       doctorSpecialty: doctorSpecialty || 'Specialist',
       patientName,
@@ -357,6 +367,44 @@ router.post('/', async (req, res) => {
     res.status(500).json({ 
       success: false,
       msg: 'Server error',
+      error: err.message
+    });
+  }
+});
+
+// @route   DELETE api/extra-details-patients/:id
+// @desc    Delete a patient record
+// @access  Private
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    // Find the patient record
+    const patient = await ExtraDetailsPatients.findById(req.params.id);
+    
+    if (!patient) {
+      return res.status(404).json({ message: 'Patient record not found' });
+    }
+
+    // Check if the doctor is authorized to delete this patient
+    // Optional: Verify that the doctor is the owner of this patient record
+    // if (patient.doctorId.toString() !== req.user.id.toString()) {
+    //   return res.status(401).json({ message: 'Not authorized to delete this patient record' });
+    // }
+
+    // Delete the patient record
+    await ExtraDetailsPatients.findByIdAndDelete(req.params.id);
+    
+    res.json({ 
+      success: true,
+      message: 'Patient record deleted successfully'
+    });
+  } catch (err) {
+    console.error('Error deleting patient record:', err.message);
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ message: 'Patient record not found' });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
       error: err.message
     });
   }

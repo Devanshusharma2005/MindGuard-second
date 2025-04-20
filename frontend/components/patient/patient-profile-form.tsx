@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -19,6 +19,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { 
+  Select,
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+
+interface Doctor {
+  _id: string;
+  fullName: string;
+  email: string;
+  specialty: string;
+}
 
 const formSchema = z.object({
   doctorId: z.string().min(1, {
@@ -38,8 +52,11 @@ const formSchema = z.object({
 
 export function PatientProfileForm() {
   const [isLoading, setIsLoading] = useState(false);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loadingDoctors, setLoadingDoctors] = useState(true);
   const router = useRouter();
 
+  // Form setup with default values
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -52,6 +69,69 @@ export function PatientProfileForm() {
       notes: "",
     },
   });
+
+  // Fetch available doctors on component mount
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        setLoadingDoctors(true);
+        const response = await fetch('/api/doctors');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch doctors');
+        }
+        
+        const data = await response.json();
+        
+        if (Array.isArray(data)) {
+          setDoctors(data);
+          
+          // Check if we have a scheduled doctor ID in localStorage
+          const scheduledDoctorId = localStorage.getItem('scheduled_doctor_id');
+          if (scheduledDoctorId) {
+            console.log("Found scheduled doctor ID in localStorage:", scheduledDoctorId);
+            console.log("Available doctors:", data.map((d: Doctor) => ({ id: d._id, name: d.fullName })));
+            form.setValue('doctorId', scheduledDoctorId);
+            
+            // Verify if the doctor exists in our list
+            const doctorExists = data.some((doc: Doctor) => doc._id === scheduledDoctorId);
+            if (!doctorExists) {
+              console.warn("Scheduled doctor ID not found in available doctors list");
+            }
+          }
+        } else if (data.status === 'success' && Array.isArray(data.data)) {
+          setDoctors(data.data);
+          
+          // Check if we have a scheduled doctor ID in localStorage
+          const scheduledDoctorId = localStorage.getItem('scheduled_doctor_id');
+          if (scheduledDoctorId) {
+            console.log("Found scheduled doctor ID in localStorage:", scheduledDoctorId);
+            console.log("Available doctors:", data.data.map((d: Doctor) => ({ id: d._id, name: d.fullName })));
+            form.setValue('doctorId', scheduledDoctorId);
+            
+            // Verify if the doctor exists in our list
+            const doctorExists = data.data.some((doc: Doctor) => doc._id === scheduledDoctorId);
+            if (!doctorExists) {
+              console.warn("Scheduled doctor ID not found in available doctors list");
+            }
+          }
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+        toast({
+          title: "Error",
+          description: "Unable to load doctors. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoadingDoctors(false);
+      }
+    };
+
+    fetchDoctors();
+  }, [form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -86,43 +166,139 @@ export function PatientProfileForm() {
       // Format token properly with Bearer prefix if it doesn't have it
       const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
       
+      // Get doctor information
+      const selectedDoctor = doctors.find(doctor => 
+        doctor._id === values.doctorId || 
+        (doctor._id?.toString() === values.doctorId) || 
+        (doctor.id?.toString() === values.doctorId)
+      );
+      
+      // If doctor not found, log warning
+      if (!selectedDoctor) {
+        console.warn("Selected doctor not found in doctors list. ID:", values.doctorId);
+      } else {
+        console.log("Found doctor:", selectedDoctor);
+      }
+      
       // Format medications and allergies as arrays
       const formattedData = {
         ...values,
         patientId,
         patientName,
         patientEmail,
+        doctorName: selectedDoctor ? selectedDoctor.fullName : '',
+        doctorSpecialty: selectedDoctor ? selectedDoctor.specialty : '',
         currentMedications: values.currentMedications ? values.currentMedications.split(',').map(m => m.trim()) : [],
         allergies: values.allergies ? values.allergies.split(',').map(a => a.trim()) : [],
+        // Set hasCompletedQuestionnaire to true to indicate this profile is complete
+        hasCompletedQuestionnaire: true,
+        // Ensure appointment status is set
+        status: 'confirmed'
       };
       
       console.log("Submitting patient data to doctor:", formattedData);
       
-      const response = await fetch('/api/extra-details-patients', {
-        method: 'POST',
+      // First check if a record already exists for this doctor-patient combination
+      const checkExistingResponse = await fetch(`/api/patient-exists?doctorId=${values.doctorId}&patientId=${patientId}`, {
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': authToken,
-        },
-        body: JSON.stringify(formattedData),
+          'Authorization': authToken
+        }
       });
       
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        toast({
-          title: "Success",
-          description: "Your details have been sent to the doctor successfully",
+      if (checkExistingResponse.ok) {
+        const { exists, recordId } = await checkExistingResponse.json();
+        
+        if (exists && recordId) {
+          console.log("Existing record found, updating instead of creating new one. ID:", recordId);
+          
+          // Update existing record
+          const updateResponse = await fetch(`/api/extra-details-patients/${recordId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authToken,
+            },
+            body: JSON.stringify(formattedData)
+          });
+          
+          if (!updateResponse.ok) {
+            const errorData = await updateResponse.json();
+            throw new Error(errorData.message || 'Failed to update existing patient details');
+          }
+          
+          const updateData = await updateResponse.json();
+          console.log("Patient record updated successfully:", updateData);
+        } else {
+          // Create new record
+          const response = await fetch('/api/extra-details-patients', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authToken,
+            },
+            body: JSON.stringify(formattedData)
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to create patient details');
+          }
+          
+          const data = await response.json();
+          console.log("Patient record created successfully:", data);
+        }
+      } else {
+        // Fallback to direct creation if check fails
+        const response = await fetch('/api/extra-details-patients', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authToken,
+          },
+          body: JSON.stringify(formattedData)
         });
         
-        // Reset the form
-        form.reset();
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to submit patient details');
+        }
         
-        // Redirect to patient dashboard
-        router.push('/patient');
-      } else {
-        throw new Error(data.message || 'Failed to submit patient details');
+        const data = await response.json();
+        console.log("Patient record created successfully:", data);
       }
+      
+      // Call notification API to alert doctor
+      try {
+        await fetch('/api/notify-doctor', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authToken
+          },
+          body: JSON.stringify({
+            doctorId: values.doctorId,
+            patientName,
+            message: 'A patient has completed their profile and is ready for consultation.'
+          })
+        });
+        console.log("Doctor notification sent");
+      } catch (notifyError) {
+        console.error("Failed to notify doctor, but profile was saved:", notifyError);
+      }
+      
+      toast({
+        title: "Success",
+        description: "Your details have been sent to the doctor successfully",
+      });
+      
+      // Reset the form
+      form.reset();
+      
+      // Clear the scheduled doctor ID from localStorage
+      localStorage.removeItem('scheduled_doctor_id');
+      
+      // Redirect to patient dashboard
+      router.push('/patient');
     } catch (error) {
       console.error('Error submitting patient details:', error);
       toast({
@@ -151,12 +327,27 @@ export function PatientProfileForm() {
               name="doctorId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Doctor ID</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter the doctor ID" {...field} />
-                  </FormControl>
+                  <FormLabel>Select Doctor</FormLabel>
+                  <Select
+                    disabled={loadingDoctors}
+                    onValueChange={field.onChange}
+                    value={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder={loadingDoctors ? "Loading doctors..." : "Select a doctor"} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {doctors.map((doctor) => (
+                        <SelectItem key={doctor._id} value={doctor._id}>
+                          {doctor.fullName} - {doctor.specialty}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormDescription>
-                    You can find the doctor ID on their profile or appointment card.
+                    Select the doctor you want to share your medical details with.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -250,7 +441,7 @@ export function PatientProfileForm() {
                     />
                   </FormControl>
                   <FormDescription>
-                    Enter allergies separated by commas (e.g. Penicillin, Peanuts)
+                    Enter allergies separated by commas (e.g. Penicillin, Aspirin)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -265,7 +456,7 @@ export function PatientProfileForm() {
                   <FormLabel>Additional Notes</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Any additional notes you want to share with the doctor"
+                      placeholder="Any additional information you'd like to share"
                       className="min-h-[100px]"
                       {...field}
                     />
@@ -276,7 +467,7 @@ export function PatientProfileForm() {
             />
             
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Submitting..." : "Submit Details to Doctor"}
+              {isLoading ? "Submitting..." : "Submit Details"}
             </Button>
           </form>
         </Form>

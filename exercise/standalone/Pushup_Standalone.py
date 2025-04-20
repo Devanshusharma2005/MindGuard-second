@@ -1,9 +1,9 @@
-import mediapipe as mp
 import cv2
 import time
 import numpy as np
 import os
 import sys
+import logging
 
 # Add parent directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,53 +11,95 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.append(parent_dir)
 
-# Fix imports to use relative paths
-from src.ThreadedCamera import ThreadedCamera
-from src.utils import get_idx_to_coordinates, rescale_frame, ang, convert_arc, draw_ellipse
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger("pushup_exercise")
 
-# Initialize MediaPipe pose
-mp_drawing = mp.solutions.drawing_utils
-mp_pose = mp.solutions.pose
+# Import utilities with error handling
+from src.ThreadedCamera import ThreadedCamera
+from mp_utils import (
+    create_pose_detector,
+    process_image, 
+    draw_pose_landmarks,
+    get_landmark_coordinates,
+    MEDIAPIPE_AVAILABLE
+)
 
 class Pushup:
     def __init__(self):
-        pass
+        """Initialize the Pushup exercise detector"""
+        # Check if MediaPipe is available
+        if not MEDIAPIPE_AVAILABLE:
+            logger.warning("MediaPipe is not available. Pushup detection will be limited.")
         
     def process_frame(self, frame, target_width=640):
         """
         Preprocess the frame to ensure consistent processing regardless of video size/orientation
+        
+        Args:
+            frame: Input video frame
+            target_width: Target width for resizing
+            
+        Returns:
+            Processed frame or None if input is invalid
         """
         if frame is None:
             return None
             
-        # Get original dimensions
-        h, w = frame.shape[:2]
-        
-        # Calculate new height while maintaining aspect ratio
-        target_height = int(h * (target_width / w))
-        
-        # Resize frame to target dimensions
-        resized_frame = cv2.resize(frame, (target_width, target_height))
-        
-        return resized_frame
+        try:
+            # Get original dimensions
+            h, w = frame.shape[:2]
+            
+            # Calculate new height while maintaining aspect ratio
+            target_height = int(h * (target_width / w))
+            
+            # Resize frame to target dimensions
+            resized_frame = cv2.resize(frame, (target_width, target_height))
+            
+            return resized_frame
+        except Exception as e:
+            logger.error(f"Error processing frame: {e}")
+            return None
 
     def exercise(self, source, show_video=False):
+        """
+        Analyze a video for pushup exercises
+        
+        Args:
+            source: Video source (file path or camera index)
+            show_video: Whether to display the video while processing
+            
+        Returns:
+            Number of pushups detected
+        """
         # Initialize variables
-        scount = 0
-        performedPushUp = False
+        pushup_count = 0
+        performing_pushup = False
         empty_frame_count = 0
         
-        # Initialize threaded camera
-        threaded_camera = ThreadedCamera(source)
+        # Initialize media capture
+        try:
+            threaded_camera = ThreadedCamera(source)
+            time.sleep(1)  # Allow camera to initialize
+        except Exception as e:
+            logger.error(f"Error initializing camera: {e}")
+            return 0
         
-        # Wait a bit for camera to initialize
-        time.sleep(1)
+        # Create pose detector with error handling
+        pose_detector = create_pose_detector(
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
+        )
         
-        # Initialize pose detection
-        pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+        if pose_detector is None:
+            logger.error("Failed to initialize pose detector. Cannot perform pushup detection.")
+            return 0
         
         # Print starting message
-        print("Analyzing pushups... Please wait.")
+        logger.info("Analyzing pushups... Please wait.")
         print("=" * 40)
         
         try:
@@ -83,30 +125,20 @@ class Pushup:
                 # Flip the image horizontally for a mirror effect
                 processed_image = cv2.flip(processed_image, 1)
                 
-                # Convert the BGR image to RGB
-                image_rgb = cv2.cvtColor(processed_image, cv2.COLOR_BGR2RGB)
+                # Process the image with MediaPipe
+                display_image, results = process_image(processed_image, pose_detector)
                 
-                # Process the image and detect poses
-                results = pose.process(image_rgb)
-                
-                # Only process further if we need to show video
-                if show_video:
-                    # Draw the pose annotations on the image
-                    processed_image.flags.writeable = True
-                    display_image = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+                if display_image is None or results is None:
+                    continue
                     
-                    if results.pose_landmarks:
-                        mp_drawing.draw_landmarks(
-                            display_image, 
-                            results.pose_landmarks, 
-                            mp_pose.POSE_CONNECTIONS,
-                            mp_drawing.DrawingSpec(thickness=5, circle_radius=2, color=(0, 0, 255)),
-                            mp_drawing.DrawingSpec(thickness=1, circle_radius=1, color=(0, 255, 0))
-                        )
+                # Draw pose landmarks if showing video
+                if show_video:
+                    display_image = draw_pose_landmarks(display_image, results)
                 
-                if results.pose_landmarks:
+                # Only proceed with landmark analysis if we have results
+                if results and results.pose_landmarks:
                     # Get landmark coordinates
-                    idx_to_coordinates = get_idx_to_coordinates(processed_image, results)
+                    idx_to_coordinates = get_landmark_coordinates(processed_image, results)
                     
                     # Dynamic threshold calculation based on image dimensions
                     # This helps with videos of different sizes/orientations
@@ -114,86 +146,106 @@ class Pushup:
                     pushup_threshold = height * 0.3  # 30% of image height
                     
                     try:
-                        # Count Number of Pushups
+                        # Use right or left shoulder depending on what's visible
+                        shoulder_coord = None
                         if 12 in idx_to_coordinates:
                             shoulder_coord = idx_to_coordinates[12]
-                        else:
+                        elif 11 in idx_to_coordinates:
                             shoulder_coord = idx_to_coordinates[11]
-
+                            
+                        # Use right or left ankle depending on what's visible
+                        ankle_coord = None
                         if 16 in idx_to_coordinates:
                             ankle_coord = idx_to_coordinates[16]
-                        else:
+                        elif 15 in idx_to_coordinates:
                             ankle_coord = idx_to_coordinates[15]
 
-                        # Calculate vertical distance between shoulder and ankle
-                        shoulder_ankle_distance = abs(shoulder_coord[1] - ankle_coord[1])
-                        
-                        # Check if in pushup position (shoulder close to ankle level)
-                        if shoulder_ankle_distance < pushup_threshold:
-                            if not performedPushUp:
-                                performedPushUp = True
+                        # Only proceed if we have both shoulder and ankle coordinates
+                        if shoulder_coord and ankle_coord:
+                            # Calculate vertical distance between shoulder and ankle
+                            shoulder_ankle_distance = abs(shoulder_coord[1] - ankle_coord[1])
+                            
+                            # Check if in pushup position (shoulder close to ankle level)
+                            if shoulder_ankle_distance < pushup_threshold:
+                                if not performing_pushup:
+                                    performing_pushup = True
+                                    if show_video:
+                                        # Draw indicator for down position
+                                        cv2.putText(display_image, "DOWN POSITION", (50, 150),
+                                                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
+                            
+                            # Check if completed pushup (shoulder far from ankle level while previously down)
+                            if shoulder_ankle_distance > pushup_threshold and performing_pushup:
+                                pushup_count += 1
+                                performing_pushup = False
+                                logger.info(f"Push-up count: {pushup_count}")
                                 if show_video:
-                                    # Draw indicator for down position
-                                    cv2.putText(display_image, "DOWN POSITION", (50, 150),
-                                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2, cv2.LINE_AA)
-                        
-                        # Check if completed pushup (shoulder far from ankle level while previously down)
-                        if shoulder_ankle_distance > pushup_threshold and performedPushUp:
-                            scount += 1
-                            performedPushUp = False
-                            print(f"Push-up count: {scount}")
-                            if show_video:
-                                # Draw indicator for pushup completion
-                                cv2.putText(display_image, "PUSHUP COMPLETE!", (50, 180),
-                                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
-
-                    except:
-                        pass
+                                    # Draw indicator for pushup completion
+                                    cv2.putText(display_image, "PUSHUP COMPLETE!", (50, 180),
+                                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2, cv2.LINE_AA)
+                    except Exception as e:
+                        logger.error(f"Error analyzing landmarks: {e}")
+                        continue
                     
                     # Display the count on the image if showing video
-                    if show_video and 0 in idx_to_coordinates:
-                        cv2.putText(display_image, "PUSHUPS: " + str(scount),
+                    if show_video and idx_to_coordinates:
+                        cv2.putText(display_image, "PUSHUPS: " + str(pushup_count),
                                   (50, 50),
                                   fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                                   fontScale=1, color=(0, 0, 0), thickness=2)
                 
                 # Display the resulting frame if show_video is True
                 if show_video:
-                    # Show with original aspect ratio
-                    cv2.imshow('Push-up Analysis', display_image)
-                    
-                    # Exit if ESC is pressed
-                    if cv2.waitKey(5) & 0xFF == 27:
-                        break
+                    try:
+                        # Show with original aspect ratio
+                        cv2.imshow('Push-up Analysis', display_image)
+                        
+                        # Exit if ESC is pressed
+                        if cv2.waitKey(5) & 0xFF == 27:
+                            break
+                    except Exception as e:
+                        logger.error(f"Error displaying video: {e}")
+                        show_video = False  # Disable video display if error occurs
+        except Exception as e:
+            logger.error(f"Error in exercise analysis: {e}")
         finally:
             # Clean up resources
-            pose.close()
-            if show_video:
-                cv2.destroyAllWindows()
-            threaded_camera.release()
+            try:
+                if pose_detector:
+                    pose_detector.close()
+                if show_video:
+                    cv2.destroyAllWindows()
+                threaded_camera.release()
+            except Exception as e:
+                logger.error(f"Error during cleanup: {e}")
+            
             print("=" * 40)
         
-        return scount
+        return pushup_count
 
 
 # Run this file directly with a hardcoded video path
 if __name__ == "__main__":
-    # Hardcoded video path - change this to your specific video file
-    video_path = "push1.mp4"
-    
-    # Check if the file exists
-    if not os.path.exists(video_path):
-        print(f"Error: Video file '{video_path}' not found.")
-        sys.exit(1)
-    
-    print(f"Analyzing push-up exercise from video: {video_path}")
-    
-    # Process the video - set show_video to False to disable video window
-    pushup = Pushup()
-    count = pushup.exercise(video_path, show_video=False)
-    
-    # Print the results
-    if count > 0:
-        print(f"Completed {count} push-ups in the video.")
-    else:
-        print("No push-ups detected in the video.") 
+    try:
+        # Hardcoded video path - change this to your specific video file
+        video_path = "push1.mp4"
+        
+        # Check if the file exists
+        if not os.path.exists(video_path):
+            logger.error(f"Video file '{video_path}' not found.")
+            sys.exit(1)
+        
+        logger.info(f"Analyzing push-up exercise from video: {video_path}")
+        
+        # Process the video - set show_video to False to disable video window
+        pushup = Pushup()
+        count = pushup.exercise(video_path, show_video=False)
+        
+        # Print the results
+        if count > 0:
+            logger.info(f"Completed {count} push-ups in the video.")
+        else:
+            logger.info("No push-ups detected in the video.")
+    except Exception as e:
+        logger.error(f"Unhandled exception in main: {e}")
+        sys.exit(1) 

@@ -37,10 +37,13 @@ export async function GET(request: NextRequest) {
       // Transform the backend data to the format expected by the frontend
       // Mark all doctors as available regardless of verification status
       const formattedDoctors = doctorsData.map((doctor: any) => ({
-        id: doctor._id,
+        id: String(doctor._id),
+        _id: String(doctor._id),
         name: doctor.fullName,
+        fullName: doctor.fullName,
         email: doctor.email,
         specialty: doctor.specialization,
+        specialization: doctor.specialization,
         yearsOfExperience: doctor.yearsOfExperience,
         rating: 4.5 + Math.random() * 0.5, // Simulated rating between 4.5-5.0
         reviews: Math.floor(50 + Math.random() * 150), // Random review count
@@ -60,9 +63,12 @@ export async function GET(request: NextRequest) {
       const fallbackDoctors = [
         {
           id: "1",
+          _id: "1",
           name: "Dr. Devanshu Sharma",
+          fullName: "Dr. Devanshu Sharma",
           email: "devanshu.sharma@mindguard.com",
           specialty: "Psychiatrist",
+          specialization: "Psychiatrist",
           yearsOfExperience: 8,
           rating: 4.9,
           reviews: 124,
@@ -72,9 +78,12 @@ export async function GET(request: NextRequest) {
         },
         {
           id: "2",
+          _id: "2",
           name: "Dr. Priyanshu Thapliyal",
+          fullName: "Dr. Priyanshu Thapliyal",
           email: "priyanshu.thapliyal@mindguard.com",
           specialty: "Therapist",
+          specialization: "Therapist",
           yearsOfExperience: 5,
           rating: 4.8,
           reviews: 98,

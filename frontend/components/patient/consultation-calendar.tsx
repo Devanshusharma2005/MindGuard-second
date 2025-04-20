@@ -8,12 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { ConsultationHistory } from "./consultation-history";
 import { DoctorInfoPopup } from "./doctor-info-popup";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/use-toast";
 
 interface Doctor {
-  id: number;
+  id: number | string;
+  _id?: string; // Optional MongoDB-style ID that might be present
   name: string;
+  fullName?: string; // Optional property from backend
   email: string;
   specialty: string;
+  specialization?: string; // Optional property from backend
   yearsOfExperience: number;
   rating: number;
   reviews: number;
@@ -57,6 +61,7 @@ export function ConsultationCalendar() {
         const data = await response.json();
         
         if (data.status === 'success' && Array.isArray(data.data)) {
+          console.log("Received doctors data:", data.data);
           setDoctors(data.data);
         } else {
           throw new Error('Invalid data format');
@@ -84,7 +89,39 @@ export function ConsultationCalendar() {
   const handleBooking = () => {
     if (selectedDoctor) {
       setLoading(true);
-      window.open(selectedDoctor.bookingLink, "_blank");
+      
+      // Use _id if available, otherwise fall back to id
+      const doctorIdToStore = selectedDoctor._id || String(selectedDoctor.id);
+      console.log("Storing doctor ID in localStorage:", doctorIdToStore);
+      
+      // Store the selected doctor ID in localStorage for the patient form
+      localStorage.setItem('scheduled_doctor_id', doctorIdToStore);
+      
+      // Get patient info from localStorage
+      const patientId = localStorage.getItem('mindguard_user_id');
+      const patientName = localStorage.getItem('username');
+      const patientEmail = localStorage.getItem('email');
+      
+      if (patientId && patientName && patientEmail) {
+        // Create and submit initial patient data record for the doctor
+        submitInitialPatientData(doctorIdToStore, patientId, patientName, patientEmail)
+          .then(() => {
+            // After successful data submission, open Cal.com
+            window.open(selectedDoctor.bookingLink, "_blank");
+          })
+          .catch(error => {
+            console.error("Error submitting initial patient data:", error);
+            // Open Cal.com anyway even if data submission fails
+            window.open(selectedDoctor.bookingLink, "_blank");
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      } else {
+        // If patient info is not available, just open Cal.com
+        window.open(selectedDoctor.bookingLink, "_blank");
+        setLoading(false);
+      }
 
       // Create a consultation entry
       const newConsultation: Consultation = {
@@ -102,7 +139,74 @@ export function ConsultationCalendar() {
       setBookedConsultations([...bookedConsultations, newConsultation]);
 
       setConfirmationMessage(`Booking initiated for ${selectedDoctor.name}. Please check your email for confirmation.`);
-      setLoading(false);
+    }
+  };
+  
+  // Function to submit initial patient data to the doctor
+  const submitInitialPatientData = async (doctorId: string, patientId: string, patientName: string, patientEmail: string) => {
+    try {
+      // Get auth token
+      const token = localStorage.getItem('token') || localStorage.getItem('mindguard_token');
+      
+      if (!token) {
+        throw new Error("Authentication token not found");
+      }
+      
+      // Format token properly with Bearer prefix if it doesn't have it
+      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      
+      // Prepare initial patient data
+      const patientData = {
+        doctorId,
+        patientId,
+        patientName,
+        patientEmail,
+        patientAge: '', // These will be filled in the patient profile form later
+        patientGender: '',
+        hasCompletedQuestionnaire: false,
+        mentalHealthConcern: 'Initial consultation',
+        appointmentRequestDate: new Date().toISOString(),
+        status: 'requested'
+      };
+      
+      console.log("Submitting initial patient data to doctor:", patientData);
+      
+      // Submit data to API
+      const response = await fetch('/api/extra-details-patients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authToken
+        },
+        body: JSON.stringify(patientData)
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to submit patient data');
+      }
+      
+      console.log("Initial patient data submitted successfully");
+      
+      // Also notify the patient they need to complete their profile
+      toast({
+        title: "Appointment Requested",
+        description: "Please complete your medical profile for the doctor after scheduling your appointment time.",
+        duration: 5000
+      });
+      
+      return true;
+    } catch (error) {
+      console.error("Error submitting initial patient data:", error);
+      
+      toast({
+        title: "Warning",
+        description: "We couldn't save your initial data. Please make sure to complete your profile after scheduling.",
+        variant: "destructive",
+        duration: 5000
+      });
+      
+      return false;
     }
   };
 

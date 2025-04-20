@@ -11,10 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, FileText, Heart } from "lucide-react";
+import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, FileText, Heart, Trash2 } from "lucide-react";
 import { userIdKey } from "@/lib/config";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -66,6 +67,9 @@ export function PatientList() {
   const [selectedPatient, setSelectedPatient] = useState<PatientDetails | null>(null);
   const [showFullProfile, setShowFullProfile] = useState(false);
   const [doctorId, setDoctorId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deletePatientId, setDeletePatientId] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   useEffect(() => {
     const storedDoctorId = localStorage.getItem(userIdKey);
@@ -97,7 +101,7 @@ export function PatientList() {
       console.log("Fetching extraDetailsPatients data for doctor ID:", id);
       
       // Make a direct API call to extraDetailsPatients
-      const response = await fetch(`/api/extra-details-patients?doctorId=${id}`, {
+      const response = await fetch(`/api/extra-details-patients/doctor/${id}`, {
         headers: {
           'Authorization': authToken
         },
@@ -290,6 +294,73 @@ export function PatientList() {
     ));
   };
 
+  // Function to delete a patient
+  const deletePatient = async (id: string) => {
+    try {
+      setIsDeleting(true);
+      
+      // Get auth token
+      const token = localStorage.getItem('mindguard_token');
+      
+      if (!token) {
+        toast({
+          title: "Error",
+          description: "Authentication token not found. Please log in again.",
+          variant: "destructive"
+        });
+        setIsDeleting(false);
+        return;
+      }
+      
+      // Format token properly with Bearer prefix
+      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      
+      const response = await fetch(`/api/extra-details-patients/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': authToken
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete patient record');
+      }
+      
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        // Remove the patient from the local state
+        setPatients(patients.filter(patient => patient._id !== id));
+        
+        toast({
+          title: "Success",
+          description: "Patient record deleted successfully",
+        });
+        
+        // Close the dialog if open
+        setShowDeleteDialog(false);
+      } else {
+        throw new Error(data.message || 'Failed to delete patient record');
+      }
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      toast({
+        title: "Error",
+        description: (error as Error).message || "Failed to delete patient record",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeletePatientId(null);
+    }
+  };
+  
+  // Add a function to confirm delete
+  const confirmDelete = (id: string) => {
+    setDeletePatientId(id);
+    setShowDeleteDialog(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -335,233 +406,177 @@ export function PatientList() {
         </Card>
       ) : (
         <div className="space-y-4">
+          {console.log("Rendering patients:", patients)}
           {patients.map((patient) => (
             <Card key={patient._id} className="overflow-hidden">
               <CardContent className="p-0">
-                <div className="p-4 flex items-center gap-4">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-primary text-primary-foreground">
-                      {patient.patientName.split(' ').map(name => name[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
+                <div className="p-4 flex flex-wrap items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Avatar className="h-10 w-10 border">
+                      <AvatarFallback className="bg-primary/10 text-primary">
+                        {patient.patientName.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
                       <h3 className="font-medium">{patient.patientName}</h3>
-                      {getStatusBadge(patient.status)}
-                    </div>
-                    
-                    <div className="flex items-center gap-6 text-sm text-muted-foreground mt-1">
-                      <div className="flex items-center gap-1">
-                        <Mail className="h-4 w-4" />
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                        <Mail className="h-3.5 w-3.5" />
                         <span>{patient.patientEmail}</span>
                       </div>
-                      {patient.patientAge && (
-                        <div className="flex items-center gap-1">
-                          <User className="h-4 w-4" />
-                          <span>{patient.patientAge} years, {patient.patientGender || 'Not specified'}</span>
-                        </div>
-                      )}
                     </div>
-                    
-                    {patient.mentalHealthConcern && (
-                      <div className="flex items-center gap-2 text-sm mt-2 text-primary">
-                        <Heart className="h-4 w-4" />
-                        <span className="font-medium">Mental Health Concern: {patient.mentalHealthConcern}</span>
-                      </div>
-                    )}
                   </div>
-                  
-                  <div className="flex gap-2">
-                    <Link href={`/doctor/patients/${patient._id}`}>
-                      <Button variant="default" size="sm">
-                        Full Profile
-                      </Button>
-                    </Link>
-                    
+                  <div className="flex items-center gap-2 mt-2 sm:mt-0">
+                    {getStatusBadge(patient.status)}
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => confirmDelete(patient._id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
+                    </Button>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button 
-                          variant="outline" 
+                          variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            setShowFullProfile(false);
-                          }}
+                          className="text-xs"
+                          onClick={() => setSelectedPatient(patient)}
                         >
-                          Quick View
+                          View Details
                         </Button>
                       </DialogTrigger>
-                      
-                      {selectedPatient && (
-                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                          {showFullProfile ? (
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => setShowFullProfile(false)}
-                                  className="flex items-center gap-1"
-                                >
-                                  ← Back to Details
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => {
-                                    // Close the dialog
-                                    const dialogElement = document.querySelector('[role="dialog"]');
-                                    if (dialogElement instanceof HTMLElement) {
-                                      dialogElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-                                    }
-                                  }}
-                                >
-                                  ✕ Close
-                                </Button>
+                      <DialogContent className="max-w-5xl">
+                        <DialogHeader>
+                          <DialogTitle>Patient Details</DialogTitle>
+                        </DialogHeader>
+                        {selectedPatient && selectedPatient._id === patient._id && (
+                          <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div>
+                                <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+                                <dl className="space-y-2">
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Full Name</dt>
+                                    <dd className="text-sm">{selectedPatient.patientName}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Email</dt>
+                                    <dd className="text-sm">{selectedPatient.patientEmail}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Age</dt>
+                                    <dd className="text-sm">{selectedPatient.patientAge || 'Not provided'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Gender</dt>
+                                    <dd className="text-sm">{selectedPatient.patientGender || 'Not provided'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Appointment Status</dt>
+                                    <dd className="text-sm">{selectedPatient.status || 'Not set'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Request Date</dt>
+                                    <dd className="text-sm">
+                                      {selectedPatient.appointmentRequestDate
+                                        ? new Date(selectedPatient.appointmentRequestDate).toLocaleString()
+                                        : 'Not provided'}
+                                    </dd>
+                                  </div>
+                                </dl>
                               </div>
-                              <PatientProfileView patientId={selectedPatient._id} />
+                              
+                              <div>
+                                <h3 className="text-lg font-semibold mb-4">Health Information</h3>
+                                <dl className="space-y-4">
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Mental Health Concern</dt>
+                                    <dd className="text-sm">{selectedPatient.mentalHealthConcern || 'Not provided'}</dd>
+                                  </div>
+                                  <div className="flex flex-col">
+                                    <dt className="text-sm font-medium text-muted-foreground">Completed Questionnaire</dt>
+                                    <dd className="text-sm">{selectedPatient.hasCompletedQuestionnaire ? 'Yes' : 'No'}</dd>
+                                  </div>
+                                </dl>
+                              </div>
                             </div>
-                          ) : (
-                            <>
-                              <DialogHeader>
-                                <DialogTitle className="flex items-center gap-2 text-xl">
-                                  <User className="h-5 w-5 text-primary" />
-                                  {selectedPatient.patientName}
-                                </DialogTitle>
-                                <DialogDescription>
-                                  Patient details and medical information
-                                </DialogDescription>
-                              </DialogHeader>
-                              
-                              <div className="space-y-5 my-4">
-                                {/* Mental Health Concern Section - Highlighted */}
-                                {selectedPatient.mentalHealthConcern && (
-                                  <div className="p-4 bg-primary/10 border-l-4 border-primary rounded-md">
-                                    <p className="text-sm font-medium text-primary mb-1">Mental Health Concern</p>
-                                    <p className="text-gray-700">{selectedPatient.mentalHealthConcern}</p>
-                                  </div>
-                                )}
-                                
-                                {/* Basic Information Section */}
-                                <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-md">
-                                  <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Age</p>
-                                    <p className="font-semibold">{selectedPatient.patientAge || 'Not specified'}</p>
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium text-muted-foreground">Gender</p>
-                                    <p className="font-semibold">{selectedPatient.patientGender || 'Not specified'}</p>
-                                  </div>
-                                </div>
-                                
-                                {/* Contact Information Section */}
-                                <div className="p-3 bg-gray-50 rounded-md">
-                                  <p className="text-sm font-medium text-muted-foreground mb-1">Contact</p>
-                                  <div className="flex items-center gap-2">
-                                    <Mail className="h-4 w-4 text-muted-foreground" />
-                                    <a href={`mailto:${selectedPatient.patientEmail}`} className="text-blue-500 hover:underline font-semibold">
-                                      {selectedPatient.patientEmail}
-                                    </a>
-                                  </div>
-                                  <div className="flex items-center gap-2 mt-2">
-                                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                                    <span className="text-sm">
-                                      Requested on {new Date(selectedPatient.createdAt || selectedPatient.appointmentRequestDate).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                </div>
-                                
-                                {/* Medical Info Preview Section */}
-                                {(selectedPatient.medicalHistory || selectedPatient.symptoms || 
-                                  (selectedPatient.currentMedications && selectedPatient.currentMedications.length > 0) || 
-                                  (selectedPatient.allergies && selectedPatient.allergies.length > 0)) && (
-                                  <div className="p-3 bg-gray-50 rounded-md">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <p className="text-sm font-medium text-muted-foreground">Medical Information</p>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="text-primary" 
-                                        onClick={() => setShowFullProfile(true)}
-                                      >
-                                        View Full Profile
-                                      </Button>
-                                    </div>
-                                    
-                                    {selectedPatient.medicalHistory && (
-                                      <div className="mb-2">
-                                        <p className="text-xs text-muted-foreground">Medical History:</p>
-                                        <p className="text-sm truncate">{selectedPatient.medicalHistory}</p>
-                                      </div>
-                                    )}
-                                    
-                                    {selectedPatient.symptoms && (
-                                      <div className="mb-2">
-                                        <p className="text-xs text-muted-foreground">Symptoms:</p>
-                                        <p className="text-sm truncate">{selectedPatient.symptoms}</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                                
-                                <div>
-                                  <p className="text-sm font-medium text-muted-foreground">Status</p>
-                                  <div className="mt-1">
-                                    {getStatusBadge(selectedPatient.status)}
-                                  </div>
-                                </div>
+                            
+                            <DialogFooter className="flex justify-between border-t pt-3">
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="outline"
+                                  onClick={() => setShowFullProfile(true)}
+                                >
+                                  <FileText className="h-4 w-4 mr-2" />
+                                  Full Medical Profile
+                                </Button>
+                                <Link href={`/doctor/patients/${selectedPatient._id}`}>
+                                  <Button variant="outline">
+                                    View Patient Page
+                                  </Button>
+                                </Link>
                               </div>
                               
-                              <DialogFooter className="flex justify-between border-t pt-3">
+                              {(!selectedPatient.status || selectedPatient.status === 'requested') && (
                                 <div className="flex gap-2">
-                                  <Button 
-                                    variant="outline"
-                                    onClick={() => setShowFullProfile(true)}
+                                  <Button
+                                    variant="destructive"
+                                    onClick={() => updatePatientStatus(selectedPatient._id, 'cancelled')}
                                   >
-                                    <FileText className="h-4 w-4 mr-2" />
-                                    Full Medical Profile
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancel
                                   </Button>
-                                  <Link href={`/doctor/patients/${selectedPatient._id}`}>
-                                    <Button variant="outline">
-                                      View Patient Page
-                                    </Button>
-                                  </Link>
-                                </div>
-                                
-                                {(!selectedPatient.status || selectedPatient.status === 'requested') && (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      variant="destructive"
-                                      onClick={() => updatePatientStatus(selectedPatient._id, 'cancelled')}
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Cancel
-                                    </Button>
-                                    <Button
-                                      variant="default"
-                                      onClick={() => updatePatientStatus(selectedPatient._id, 'confirmed')}
-                                    >
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Confirm
-                                    </Button>
-                                  </div>
-                                )}
-                                {selectedPatient.status === 'confirmed' && (
                                   <Button
                                     variant="default"
-                                    onClick={() => updatePatientStatus(selectedPatient._id, 'completed')}
+                                    onClick={() => updatePatientStatus(selectedPatient._id, 'confirmed')}
                                   >
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Mark as Completed
+                                    Confirm
                                   </Button>
-                                )}
-                              </DialogFooter>
-                            </>
-                          )}
-                        </DialogContent>
-                      )}
+                                </div>
+                              )}
+                            </DialogFooter>
+                          </>
+                        )}
+                      </DialogContent>
                     </Dialog>
+                  </div>
+                </div>
+                
+                <div className="border-t border-border p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center text-muted-foreground">
+                      <User className="h-3.5 w-3.5 mr-1" />
+                      <span>Age</span>
+                    </div>
+                    <span className="font-medium">{patient.patientAge || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center text-muted-foreground">
+                      <User className="h-3.5 w-3.5 mr-1" />
+                      <span>Gender</span>
+                    </div>
+                    <span className="font-medium">{patient.patientGender || 'N/A'}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center text-muted-foreground">
+                      <Calendar className="h-3.5 w-3.5 mr-1" />
+                      <span>Appointment Date</span>
+                    </div>
+                    <span className="font-medium">
+                      {patient.appointmentRequestDate ? new Date(patient.appointmentRequestDate).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center text-muted-foreground">
+                      <Heart className="h-3.5 w-3.5 mr-1" />
+                      <span>Concern</span>
+                    </div>
+                    <span className="font-medium line-clamp-1">
+                      {patient.mentalHealthConcern || 'N/A'}
+                    </span>
                   </div>
                 </div>
               </CardContent>
@@ -569,6 +584,46 @@ export function PatientList() {
           ))}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Delete Patient Record</DialogTitle>
+            <DialogDescription className="text-center">
+              Are you sure you want to delete this patient record? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center gap-4 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deletePatientId && deletePatient(deletePatientId)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
