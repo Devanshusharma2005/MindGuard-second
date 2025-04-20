@@ -6,7 +6,15 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "create-admin": "node scripts/createAdmin.js"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "create-admin": "node scripts/create-admin.js",
+    "verify": "node scripts/verify.js",
+    "debug-auth": "node scripts/debug-auth.js",
+    "rehash-passwords": "node scripts/rehash-passwords.js",
+    "rehash-doctor-passwords": "node scripts/rehash-doctor-passwords.js",
+    "debug-doctor-auth": "node scripts/debug-doctor-auth.js",
+    "reset-password": "node scripts/reset-password.js",
+    "check-dependencies": "node scripts/check-dependencies.js"
   },
   "keywords": [],
   "author": "",

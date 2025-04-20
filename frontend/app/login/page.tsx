@@ -11,44 +11,59 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setStatusMessage('Signing in...');
+    setIsLoading(true);
     
     try {
+      setStatusMessage('Connecting to server...');
+      
       const res = await fetch('http://localhost:5000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        credentials: 'include'
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        if (data.msg === 'User not found') {
-          throw new Error('User not found. Please register first.');
-        } else {
-          throw new Error(data.msg || 'Login failed');
-        }
+        throw new Error(data.msg || 'Invalid credentials. Please check your email and password.');
       }
 
-      // Store user information in localStorage
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('mindguard_token', data.token);
-      localStorage.setItem('mindguard_user_id', data.user.id);
-      localStorage.setItem('mindguard_user_type', 'patient');
-      localStorage.setItem('username', data.user.username);
-      localStorage.setItem('email', data.user.email);
-
-      document.cookie = `token=${data.token}; path=/`;
-
-      router.push('/patient');
+      // Login successful
+      handleSuccessfulLogin(data);
+      
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message);
+      setError(err.message || 'Login failed. Please check your credentials.');
+      setIsLoading(false);
+      setStatusMessage('');
     }
+  };
+  
+  // Helper to handle successful login
+  const handleSuccessfulLogin = (data: any) => {
+    // Store user information in localStorage
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('mindguard_token', data.token);
+    localStorage.setItem('mindguard_user_id', data.user.id);
+    localStorage.setItem('mindguard_user_type', 'patient');
+    localStorage.setItem('username', data.user.username);
+    localStorage.setItem('email', data.user.email);
+
+    document.cookie = `token=${data.token}; path=/; max-age=86400`; // 24 hours
+
+    setStatusMessage('Login successful! Redirecting...');
+    setTimeout(() => {
+      router.push('/patient');
+    }, 1000); // Short delay for feedback
   };
 
   return (
@@ -85,6 +100,20 @@ export default function LoginPage() {
             {error}
           </motion.div>
         )}
+        
+        {statusMessage && !error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-4 bg-primary/10 text-primary p-3 rounded-lg flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {statusMessage}
+          </motion.div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -97,6 +126,7 @@ export default function LoginPage() {
                 placeholder="Enter your email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -111,11 +141,13 @@ export default function LoginPage() {
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                disabled={isLoading}
               />
               <button
                 type="button"
                 className="absolute inset-y-0 right-3 flex items-center text-muted-foreground hover:text-foreground transition-colors duration-200"
                 onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
               >
                 {showPassword ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
               </button>
@@ -127,6 +159,7 @@ export default function LoginPage() {
               <input
                 type="checkbox"
                 className="h-4 w-4 text-primary border-input rounded focus:ring-ring"
+                disabled={isLoading}
               />
               <label className="ml-2 block text-sm text-foreground">
                 Remember me
@@ -138,13 +171,26 @@ export default function LoginPage() {
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: isLoading ? 1 : 1.02 }}
+            whileTap={{ scale: isLoading ? 1 : 0.98 }}
             type="submit"
-            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2"
+            className={`w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 rounded-lg transition-all duration-300 shadow-md flex items-center justify-center space-x-2 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+            disabled={isLoading}
           >
-            <LogIn size={20} />
-            <span>Sign In</span>
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Signing In...</span>
+              </>
+            ) : (
+              <>
+                <LogIn size={20} />
+                <span>Sign In</span>
+              </>
+            )}
           </motion.button>
         </form>
 

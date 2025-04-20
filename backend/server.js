@@ -14,8 +14,16 @@ const gameLogRoutes = require('./routes/gameLog');
 const memoriesRoutes = require('./routes/memories');
 const chatRoutes = require('./routes/chat');
 const debugRoutes = require('./routes/debug');
+const doctorsRoutes = require('./routes/doctors');
+const { router: appointmentsRoutes } = require('./routes/appointments');
+const patientDetailsRoutes = require('./routes/patientDetails');
+const extraDetailsPatientsRoutes = require('./routes/extraDetailsPatients');
+const consultationsRoutes = require('./routes/consultations');
 const { initializeWebSocket } = require('./services/websocketService');
 const testApiRoutes = require('./routes/test-api');
+const authRoutes = require('./routes/auth');
+const userInteractionRoutes = require('./routes/userInteraction');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 
@@ -49,26 +57,56 @@ app.use('/api/health-reports', require('./routes/healthReport'));
 app.use('/api/chat', chatRoutes);
 app.use('/api/debug', debugRoutes);
 app.use('/api/test', testApiRoutes);
+app.use('/api/doctors', doctorsRoutes);
+app.use('/api/appointments', appointmentsRoutes);
+app.use('/api/patient-details', patientDetailsRoutes);
+app.use('/api/extra-details-patients', extraDetailsPatientsRoutes);
+app.use('/api/consultations', consultationsRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/user-interactions', userInteractionRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// MongoDB Connection with error handling
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
-.then(() => {
-  console.log('✅ MongoDB Connected');
-  console.log('Database Name:', mongoose.connection.name);
-})
-.catch(err => {
-  console.error('MongoDB Connection Error:', err);
-  console.error('Connection string:', process.env.MONGODB_URI.replace(/:[^:@]+@/, ':****@'));
-  process.exit(1);
-});
+// MongoDB Connection with robust error handling
+const connectDB = async () => {
+  try {
+    // Fix any potential line breaks in the connection string
+    const mongoURI = process.env.MONGODB_URI.replace(/\s+/g, '');
+    console.log('Connecting to MongoDB...');
+    
+    await mongoose.connect(mongoURI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+    });
+    
+    console.log('✅ MongoDB Connected');
+    console.log('Database Name:', mongoose.connection.name);
+  } catch (err) {
+    console.error('MongoDB Connection Error:', err);
+    console.error('Connection string format issue. Please check your .env file');
+    
+    // Retry with a modified connection string if needed
+    try {
+      // Fall back to local MongoDB if available
+      console.log('Attempting to connect to local MongoDB...');
+      await mongoose.connect('mongodb://localhost:27017/mindguard', {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+      });
+      console.log('✅ Connected to local MongoDB');
+    } catch (localErr) {
+      console.error('Local MongoDB connection also failed:', localErr);
+      console.error('Application will continue, but database functionality will be limited');
+    }
+  }
+};
+
+// Connect to MongoDB
+connectDB();
 
 // Add connection event listeners
 mongoose.connection.on('error', err => {
@@ -77,6 +115,11 @@ mongoose.connection.on('error', err => {
 
 mongoose.connection.on('disconnected', () => {
   console.log('MongoDB disconnected');
+  // Attempt to reconnect after a delay
+  setTimeout(() => {
+    console.log('Attempting to reconnect to MongoDB...');
+    connectDB();
+  }, 5000);
 });
 
 // Import User model
@@ -109,8 +152,12 @@ app.post('/api/auth/signup', async (req, res) => {
     const newUser = new User({
       username,
       email,
-      password // Note: In production, hash the password
+      password
     });
+
+    // Hash the password before saving
+    const salt = await bcrypt.genSalt(10);
+    newUser.password = await bcrypt.hash(password, salt);
 
     await newUser.save();
 
@@ -164,11 +211,12 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Check password (simple check - in production use proper hashing)
-    if (password !== user.password) {
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
       return res.status(400).json({
         success: false,
-        msg: 'Invalid credentials'
+        msg: 'Invalid password'
       });
     }
 

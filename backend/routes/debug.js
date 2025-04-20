@@ -660,4 +660,73 @@ router.get('/game-logs-schema', async (req, res) => {
   }
 });
 
+// Add a new route for dumping collections
+router.get('/dump-collections', async (req, res) => {
+  try {
+    console.log('Debug: dump-collections endpoint called');
+    const doctorId = req.query.doctorId;
+    console.log('Debug: doctorId =', doctorId);
+    
+    // Get models
+    const ExtraDetailsPatients = mongoose.models.extradetailspatients;
+    const Appointment = mongoose.models.Appointment;
+    
+    // Query collections
+    let extradetailspatients = [];
+    try {
+      extradetailspatients = await ExtraDetailsPatients.find().limit(100);
+      console.log(`Debug: Found ${extradetailspatients.length} extradetailspatients documents`);
+    } catch (err) {
+      console.error('Debug: Error querying extradetailspatients:', err.message);
+    }
+    
+    let appointments = [];
+    try {
+      appointments = await Appointment.find().limit(100);
+      console.log(`Debug: Found ${appointments.length} appointment documents`);
+    } catch (err) {
+      console.error('Debug: Error querying appointments:', err.message);
+    }
+    
+    // Also check for documents with the specific doctorId
+    let doctorPatients = [];
+    if (doctorId) {
+      try {
+        // Try with different formats
+        const formats = [
+          doctorId,
+          doctorId.toString(),
+          new mongoose.Types.ObjectId(doctorId)
+        ];
+        
+        for (const format of formats) {
+          try {
+            const results = await ExtraDetailsPatients.find({ doctorId: format }).limit(100);
+            if (results.length > 0) {
+              doctorPatients = results;
+              console.log(`Debug: Found ${results.length} patients with doctorId=${format}`);
+              break;
+            }
+          } catch (err) {
+            console.log(`Debug: Error with doctorId=${format}:`, err.message);
+          }
+        }
+      } catch (err) {
+        console.error('Debug: Error querying for specific doctorId:', err.message);
+      }
+    }
+    
+    // Return all the data
+    res.json({
+      extradetailspatients,
+      appointments,
+      doctorPatients,
+      models: Object.keys(mongoose.models)
+    });
+  } catch (err) {
+    console.error('Debug dump-collections error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
