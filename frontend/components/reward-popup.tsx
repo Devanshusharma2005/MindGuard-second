@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Trophy } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import confetti from "canvas-confetti"
 
 interface RewardPopupProps {
@@ -12,74 +12,73 @@ interface RewardPopupProps {
 }
 
 export function RewardPopup({ points, onClose }: RewardPopupProps) {
-  const [isOpen, setIsOpen] = useState(true)
-  const [isChestOpened, setIsChestOpened] = useState(false)
+  const [timeRemaining, setTimeRemaining] = useState(10)
 
   useEffect(() => {
-    if (isChestOpened) {
-      // Trigger confetti when chest is opened
+    try {
       confetti({
-        particleCount: 100,
-        spread: 70,
+        particleCount: 150,
+        spread: 90,
         origin: { y: 0.6 },
       })
+    } catch (error) {
+      console.error("Error creating confetti:", error)
     }
-  }, [isChestOpened])
 
-  const handleClose = () => {
-    setIsOpen(false)
-    onClose()
-  }
+    return () => {
+      // Cleanup function
+    }
+  }, [])
 
-  const openChest = () => {
-    setIsChestOpened(true)
-  }
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      console.log("Auto-closing reward popup after timeout")
+      onClose()
+    }, 8000)
+
+    const countdownInterval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => {
+      clearTimeout(timeoutId)
+      clearInterval(countdownInterval)
+    }
+  }, [onClose])
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 to-pink-500">
-            Congratulations!
-          </DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col items-center text-center p-4">
-          <p className="mb-6">Your task is completed successfully.</p>
-
-          <div className="relative mb-6 cursor-pointer" onClick={!isChestOpened ? openChest : undefined}>
-            {!isChestOpened ? (
-              <div className="relative w-24 h-24 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg shadow-lg transform transition-all hover:scale-105 flex items-center justify-center">
-                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-r from-amber-700 to-yellow-800 rounded-t-lg" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-4 h-8 bg-amber-900 rounded-sm" />
-                </div>
-                <div className="absolute bottom-0 w-full text-xs text-amber-200 font-bold">CLICK TO OPEN</div>
-              </div>
-            ) : (
-              <div className="relative w-24 h-24 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg shadow-lg transform transition-all animate-bounce flex items-center justify-center">
-                <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-r from-amber-700 to-yellow-800 rounded-t-lg transform -translate-y-4 rotate-12" />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Trophy className="h-12 w-12 text-yellow-300 animate-pulse" />
-                </div>
-              </div>
-            )}
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50" onClick={onClose}>
+      <Card className="w-full max-w-md p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/40 dark:to-pink-950/40 border-2 border-purple-200 dark:border-purple-800 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-col items-center justify-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center">
+            <Sparkles className="h-8 w-8 text-white" />
           </div>
-
-          {isChestOpened && (
-            <div className="mb-6 animate-fade-in">
-              <div className="text-xl font-bold mb-2">You earned</div>
-              <div className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-yellow-500">
-                +{points} points
-              </div>
-            </div>
-          )}
-
-          <Button onClick={handleClose} className={isChestOpened ? "bg-gradient-to-r from-purple-500 to-pink-500" : ""}>
-            {isChestOpened ? "Continue Journey" : "Skip Reward"}
-          </Button>
+          <h2 className="text-2xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+            You've earned a reward!
+          </h2>
+          <p className="text-center text-muted-foreground">
+            Great job completing your task! You've earned:
+          </p>
+          <div className="text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
+            {points} points
+          </div>
+          <p className="text-sm text-center text-muted-foreground">
+            Keep up the good work to maintain your streak!
+          </p>
+          <div className="flex items-center gap-2">
+            <Button onClick={onClose} className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+              Continue ({timeRemaining}s)
+            </Button>
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </Card>
+    </div>
   )
 }
 
