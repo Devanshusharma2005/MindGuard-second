@@ -260,10 +260,6 @@ export default function TherapistsPage() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Therapist Management</h1>
-        <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Therapist
-        </Button>
       </div>
 
       <Tabs 
@@ -289,23 +285,6 @@ export default function TherapistsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Filter className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem>Specialty</DropdownMenuItem>
-                <DropdownMenuItem>Patient Count</DropdownMenuItem>
-                <DropdownMenuItem>Status</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="icon" onClick={() => fetchDoctors()}>
-              <Download className="h-4 w-4" />
-            </Button>
           </div>
         </div>
         

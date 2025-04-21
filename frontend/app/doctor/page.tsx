@@ -180,20 +180,27 @@ export default function DashboardPage() {
         
         // Get doctor name
         const storedDoctor = localStorage.getItem('doctor');
+        const storedUsername = localStorage.getItem('username');
+        
         if (storedDoctor) {
           try {
             const doctorData = JSON.parse(storedDoctor);
-            if (doctorData && doctorData.name) {
-              setDoctorName(doctorData.name.split(' ')[0] || "Doctor");
+            if (doctorData && (doctorData.name || doctorData.fullName)) {
+              // Use full name for the welcome message
+              setDoctorName(doctorData.name || doctorData.fullName || "Doctor");
+            } else if (storedUsername) {
+              // Fall back to username if available
+              setDoctorName(storedUsername);
             }
           } catch (err) {
             console.error('Error parsing doctor data:', err);
+            if (storedUsername) {
+              setDoctorName(storedUsername);
+            }
           }
-        } else {
-          const username = localStorage.getItem('username');
-          if (username) {
-            setDoctorName(username);
-          }
+        } else if (storedUsername) {
+          // Use username if doctor object isn't available
+          setDoctorName(storedUsername);
         }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -263,7 +270,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         <p className="text-muted-foreground">
-          Welcome back, Dr. {doctorName}. Here's an overview of your practice.
+          Welcome back, {doctorName.includes("Dr.") ? doctorName : `Dr. ${doctorName}`}. Here's an overview of your practice.
         </p>
       </div>
       

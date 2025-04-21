@@ -7,6 +7,12 @@ export const handleLogout = async (router: any) => {
     localStorage.removeItem('userType');
     localStorage.removeItem('doctor');
     localStorage.removeItem('admin');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
+    localStorage.removeItem('mindguard_token');
+    localStorage.removeItem('mindguard_user_id');
+    localStorage.removeItem('mindguard_user_type');
+    localStorage.removeItem('userData');
     
     // Use setTimeout to ensure state updates are completed before navigation
     setTimeout(() => {

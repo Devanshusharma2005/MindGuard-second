@@ -8,10 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { Download, Gamepad2, Clock, Activity, Users, CalendarDays, Hash, CheckCircle2, MoreVertical, MoreVerticalIcon } from 'lucide-react';
+import { Gamepad2, Clock, Activity, Users, CalendarDays, Hash, CheckCircle2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { apiUrl } from '@/lib/config';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Define game type colors
 const GAME_COLORS = {
@@ -96,52 +95,6 @@ async function fetchGameAnalytics(timeframe: string) {
     } else {
       console.warn('No authentication token found');
     }
-
-    // Test endpoint to check MongoDB connection first
-    try {
-      console.log(`Testing MongoDB connection with: ${apiUrl}/api/debug/mongo-status`);
-      const dbStatusResponse = await fetch(`${apiUrl}/api/debug/mongo-status`, { headers });
-      if (dbStatusResponse.ok) {
-        const dbStatus = await dbStatusResponse.json();
-        console.log('MongoDB status:', dbStatus);
-      } else {
-        console.warn('Could not check MongoDB status:', dbStatusResponse.status);
-      }
-    } catch (err) {
-      console.warn('Error checking MongoDB status:', err);
-    }
-    
-    // First try the direct logs API to see what collections are available
-    try {
-      console.log(`Checking available collections: ${apiUrl}/api/debug/collections`);
-      const collectionsResponse = await fetch(`${apiUrl}/api/debug/collections`, { headers });
-      if (collectionsResponse.ok) {
-        const collections = await collectionsResponse.json();
-        console.log('Available MongoDB collections:', collections);
-        
-        // Check if gameLog collection exists
-        const hasGameLogs = collections.some((col: string) => 
-          col.toLowerCase().includes('gamelog') || col.toLowerCase().includes('game_log')
-        );
-        console.log('GameLog collection exists:', hasGameLogs);
-
-        if (!hasGameLogs) {
-          console.error('GameLog collection does not exist in MongoDB');
-          return {
-            logs: [],
-            stats: {
-              totalGames: 0,
-              uniqueUsers: 0,
-              totalDuration: 0,
-              gameTypeBreakdown: [],
-              dailyActivity: []
-            }
-          };
-        }
-      }
-    } catch (err) {
-      console.warn('Could not check collections:', err);
-    }
     
     // Fetch logs with proper authentication
     console.log(`Fetching from: ${apiUrl}/api/game-logs/admin/logs?timeframe=${timeframe}`);
@@ -150,30 +103,13 @@ async function fetchGameAnalytics(timeframe: string) {
     });
     console.log('Logs response status:', logsResponse.status);
     
-    // Handle errors - try debug API if regular API fails
+    // Handle errors
     let gameLogs = [];
     
     if (logsResponse.ok) {
       gameLogs = await logsResponse.json();
-    } else if (logsResponse.status === 403) {
-      // Try direct debug API for logs
-      console.log('Authorization failed, trying debug API for logs');
-      try {
-        const debugResponse = await fetch(`/api/debug?endpoint=/api/game-logs/admin/logs?timeframe=${timeframe}`, { headers });
-        if (debugResponse.ok) {
-          const debugData = await debugResponse.json();
-          console.log('Debug logs response:', debugData);
-          // Only use debug data if it's a successful response with proper data
-          if (debugData.status === 200 && debugData.data && Array.isArray(debugData.data)) {
-            console.log('Using real logs data from debug response');
-            gameLogs = debugData.data;
-          } else {
-            console.warn('Debug API for logs returned invalid data format');
-          }
-        }
-      } catch (err) {
-        console.warn('Debug API for logs failed:', err);
-      }
+    } else {
+      console.error('Failed to fetch game logs:', logsResponse.status);
     }
     
     // Process MongoDB data format if needed
@@ -310,99 +246,6 @@ export default function GamificationPage() {
   const [analyticsData, setAnalyticsData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("4w");
-  const [debugInfo, setDebugInfo] = useState<any>(null);
-  const [isDebugging, setIsDebugging] = useState(false);
-  const [schemaInfo, setSchemaInfo] = useState<any>(null);
-  const [isCheckingSchema, setIsCheckingSchema] = useState(false);
-
-  // Debug the API and auth setup
-  const runDebugTests = async () => {
-    setIsDebugging(true);
-    setDebugInfo(null);
-    
-    const token = localStorage.getItem('token') || 
-                 localStorage.getItem('mindguard_token') ||
-                 sessionStorage.getItem('token');
-                 
-    try {
-      // Test debug API
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-        headers['x-auth-token'] = token;
-      }
-      
-      const results = {
-        mongoStatus: {},
-        collections: {},
-        authStatus: {},
-        adminAuth: {},
-        sampleGameLog: {}
-      };
-      
-      // Check MongoDB connection
-      const statusResponse = await fetch(`/api/debug?endpoint=/api/debug/mongo-status`, { headers });
-      results.mongoStatus = await statusResponse.json();
-      
-      // Check collections
-      const collectionsResponse = await fetch(`/api/debug?endpoint=/api/debug/collections`, { headers });
-      results.collections = await collectionsResponse.json();
-      
-      // Check auth status
-      const authResponse = await fetch(`/api/debug?endpoint=/api/debug/auth-status`, { headers });
-      results.authStatus = await authResponse.json();
-      
-      // Check admin auth
-      const adminAuthResponse = await fetch(`/api/debug?endpoint=/api/debug/admin-auth`, { headers });
-      results.adminAuth = await adminAuthResponse.json();
-      
-      // Try to get a sample GameLog
-      try {
-        const sampleResponse = await fetch(`/api/debug?endpoint=/api/debug/sample/gamelogs`, { headers });
-        results.sampleGameLog = await sampleResponse.json();
-      } catch (err) {
-        results.sampleGameLog = { error: String(err) };
-      }
-      
-      setDebugInfo(results);
-    } catch (error) {
-      setDebugInfo({
-        error: String(error)
-      });
-    } finally {
-      setIsDebugging(false);
-    }
-  };
-
-  // Check the MongoDB schema
-  const checkSchema = async () => {
-    setIsCheckingSchema(true);
-    setSchemaInfo(null);
-    
-    try {
-      const response = await fetch(`/api/debug/game-logs-schema`);
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Schema check response:', data);
-        setSchemaInfo(data);
-      } else {
-        console.error('Failed to check schema:', response.status, response.statusText);
-        setSchemaInfo({
-          error: `Failed to check schema: ${response.status} ${response.statusText}`
-        });
-      }
-    } catch (error) {
-      console.error('Error checking schema:', error);
-      setSchemaInfo({
-        error: String(error)
-      });
-    } finally {
-      setIsCheckingSchema(false);
-    }
-  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -475,18 +318,6 @@ export default function GamificationPage() {
     setTimeRange(value);
   };
 
-  const handleDownload = () => {
-    if (!analyticsData) return;
-    
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(analyticsData, null, 2));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `game_analytics_${timeRange}_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
-  };
-
   // Calculate total metrics
   const overview = {
     totalGames: analyticsData?.stats?.totalGames || 0,
@@ -506,150 +337,7 @@ export default function GamificationPage() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Gamification Analytics</h1>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-          <Select value={timeRange} onValueChange={handleTimeRangeChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Select period" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1w">Last week</SelectItem>
-              <SelectItem value="2w">Last 2 weeks</SelectItem>
-              <SelectItem value="4w">Last 4 weeks</SelectItem>
-              <SelectItem value="3m">Last 3 months</SelectItem>
-              <SelectItem value="6m">Last 6 months</SelectItem>
-              <SelectItem value="1y">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleDownload}>
-              <Download className="h-4 w-4" />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <MoreVerticalIcon className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={runDebugTests} disabled={isDebugging}>
-                  {isDebugging ? 'Testing...' : 'Debug'}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={checkSchema} disabled={isCheckingSchema}>
-                  {isCheckingSchema ? 'Checking...' : 'Check Schema'}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
       </div>
-
-      {schemaInfo && (
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>MongoDB Schema Information</CardTitle>
-            <CardDescription>Game logs collection details</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {schemaInfo.error ? (
-                <div className="p-2 bg-red-100 text-red-800 rounded-md">
-                  {schemaInfo.error}
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <h3 className="font-medium mb-1">Found Game-Related Collections:</h3>
-                    <div className="bg-muted p-2 rounded-md">
-                      {schemaInfo.gameLogCollections?.length > 0 ? (
-                        <ul className="list-disc pl-5">
-                          {schemaInfo.gameLogCollections.map((col: string) => (
-                            <li key={col} className={col === schemaInfo.bestMatch ? 'font-semibold text-primary' : ''}>
-                              {col} {col === schemaInfo.bestMatch ? '(Best Match)' : ''}
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p>No game-related collections found</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {schemaInfo.bestMatch && (
-                    <div>
-                      <h3 className="font-medium mb-1">Best Match Collection: {schemaInfo.bestMatch}</h3>
-                      <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-40">
-                        Fields: {schemaInfo.sampleDocs[schemaInfo.bestMatch]?.fields.join(', ')}
-                      </pre>
-                      <div className="mt-2">
-                        <h4 className="text-sm font-medium">Sample Document:</h4>
-                        <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-40">
-                          {JSON.stringify(schemaInfo.sampleDocs[schemaInfo.bestMatch]?.sample, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {schemaInfo.aggregateStats && (
-                    <div>
-                      <h3 className="font-medium mb-1">Aggregation Test Results:</h3>
-                      <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-40">
-                        {JSON.stringify(schemaInfo.aggregateStats, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {debugInfo && (
-        <Card className="mb-4">
-          <CardHeader>
-            <CardTitle>Debug Information</CardTitle>
-            <CardDescription>API and authentication status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-1">MongoDB Status:</h3>
-                <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-20">
-                  {JSON.stringify(debugInfo.mongoStatus, null, 2)}
-                </pre>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-1">Collections:</h3>
-                <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-20">
-                  {JSON.stringify(debugInfo.collections, null, 2)}
-                </pre>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-1">Auth Status:</h3>
-                <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-20">
-                  {JSON.stringify(debugInfo.authStatus, null, 2)}
-                </pre>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-1">Admin Auth:</h3>
-                <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-20">
-                  {JSON.stringify(debugInfo.adminAuth, null, 2)}
-                </pre>
-              </div>
-              
-              <div>
-                <h3 className="font-medium mb-1">Sample GameLog:</h3>
-                <pre className="bg-muted p-2 rounded-md text-xs overflow-auto max-h-20">
-                  {JSON.stringify(debugInfo.sampleGameLog, null, 2)}
-                </pre>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "./dashboard/header";
 import { Sidebar } from "./dashboard/sidebar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -14,13 +14,35 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState({
+    name: "Doctor",
+    email: "doctor@mindguard.com",
+  });
   
-  // Mock user data - in a real app, this would come from authentication
-  const user = {
-    name: "Dr. Jane Smith",
-    email: "jane.smith@mindguard.com",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=256&h=256&auto=format&fit=crop",
-  };
+  useEffect(() => {
+    // Get username from localStorage
+    const storedUsername = localStorage.getItem("username");
+    const storedEmail = localStorage.getItem("email");
+    
+    // Get doctor data
+    const doctorData = localStorage.getItem("doctor");
+    let doctorName = "";
+    
+    if (doctorData) {
+      try {
+        const parsedDoctor = JSON.parse(doctorData);
+        doctorName = parsedDoctor.name || parsedDoctor.fullName || "";
+      } catch (error) {
+        console.error("Error parsing doctor data:", error);
+      }
+    }
+    
+    // Use the doctor name from doctor object first, then fall back to username
+    setUser({
+      name: doctorName || storedUsername || "Doctor",
+      email: storedEmail || "doctor@mindguard.com",
+    });
+  }, []);
 
   return (
     <DoctorAuthMiddleware>

@@ -162,9 +162,6 @@ export default function AIAnalyticsPage() {
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent> */}
           </Select>
-          <Button variant="outline" size="icon" onClick={handleDownload}>
-            <Download className="h-4 w-4" />
-          </Button>
         </div>
       </div>
 

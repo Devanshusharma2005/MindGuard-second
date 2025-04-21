@@ -28,6 +28,7 @@ export function TopNav() {
   const { setTheme } = useTheme();
   const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
@@ -39,6 +40,12 @@ export function TopNav() {
       } catch (error) {
         console.error("Error parsing user data:", error);
       }
+    }
+    
+    // Get username directly from localStorage
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
     }
   }, []);
 
@@ -116,17 +123,17 @@ export function TopNav() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button variant="outline" size="icon">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notifications</span>
-        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
-              <Avatar>
-                <AvatarImage src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=256&h=256&auto=format&fit=crop" />
-                <AvatarFallback>
-                  {userData?.name ? userData.name.charAt(0).toUpperCase() : "DR"}
+              <Avatar className="h-9 w-9 border border-border">
+                <AvatarFallback 
+                  className="text-primary-foreground font-semibold"
+                  style={{ 
+                    backgroundColor: "hsl(162, 78%, 45%)" 
+                  }}
+                >
+                  {username ? username.charAt(0).toUpperCase() : "T"}
                 </AvatarFallback>
               </Avatar>
             </Button>

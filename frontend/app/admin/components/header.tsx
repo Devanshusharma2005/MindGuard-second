@@ -60,11 +60,6 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
               <Search className="h-5 w-5" />
             </Button>
             
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"></span>
-            </Button>
-            
             <Button
               variant="ghost"
               size="icon"
@@ -80,9 +75,15 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src="https://github.com/shadcn.png" alt="Admin" />
-                    <AvatarFallback>AD</AvatarFallback>
+                  <Avatar className="h-9 w-9 border border-border">
+                    <AvatarFallback 
+                      className="text-primary-foreground font-semibold"
+                      style={{ 
+                        backgroundColor: "hsl(162, 78%, 45%)" 
+                      }}
+                    >
+                      A
+                    </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>

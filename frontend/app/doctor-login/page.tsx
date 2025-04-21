@@ -71,6 +71,18 @@ export default function DoctorLoginPage() {
         console.error('Doctor ID missing from response!', data);
       }
       
+      // Store doctor name and email for profile display
+      if (data.doctor) {
+        // Extract and store doctor name
+        const doctorName = data.doctor.name || data.doctor.fullName || '';
+        localStorage.setItem('username', doctorName);
+        
+        // Store email for profile
+        localStorage.setItem('email', data.doctor.email || '');
+        
+        console.log('Stored doctor name for profile:', doctorName);
+      }
+      
       // Also store in sessionStorage as fallback
       sessionStorage.setItem('token', data.token);
       sessionStorage.setItem('doctor_token', data.token);
