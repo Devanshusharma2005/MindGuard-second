@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, Copy, Mail, Phone, Heart, Calendar, User, FileText, CheckCircle, XCircle, MessageSquare } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { apiUrl } from "@/lib/config";
 
 interface PatientProfile {
   _id: string;
@@ -28,22 +29,39 @@ interface PatientProfile {
 }
 
 interface PatientProfileViewProps {
-  patientId: string;
+  patientId?: string;
+  patient?: PatientProfile;
   onBack?: () => void;
 }
 
-export function PatientProfileView({ patientId, onBack }: PatientProfileViewProps) {
-  const [patient, setPatient] = useState<PatientProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+export function PatientProfileView({ patientId, patient: initialPatient, onBack }: PatientProfileViewProps) {
+  const [patient, setPatient] = useState<PatientProfile | null>(initialPatient || null);
+  const [loading, setLoading] = useState(!initialPatient && !!patientId);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If we already have a patient object, no need to fetch
+    if (initialPatient) {
+      setPatient(initialPatient);
+      setLoading(false);
+      return;
+    }
+    
+    // If no patientId, can't fetch anything
+    if (!patientId) {
+      setError("No patient ID provided");
+      setLoading(false);
+      return;
+    }
+
     const fetchPatientProfile = async () => {
       try {
         setLoading(true);
         
         // Get auth token
-        const token = localStorage.getItem('mindguard_token');
+        const token = localStorage.getItem('mindguard_token') || 
+                      localStorage.getItem('doctor_token') || 
+                      localStorage.getItem('token');
         
         if (!token) {
           setError("Authentication token not found. Please log in again.");
@@ -55,11 +73,10 @@ export function PatientProfileView({ patientId, onBack }: PatientProfileViewProp
         const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
         
         // Fetch patient profile data
-        const response = await fetch(`/api/extra-details-patients/${patientId}`, {
+        const response = await fetch(`${apiUrl}/api/extra-details-patients/${patientId}`, {
           headers: {
             'Authorization': authToken
-          },
-          cache: 'no-store'
+          }
         });
         
         if (!response.ok) {
@@ -89,7 +106,7 @@ export function PatientProfileView({ patientId, onBack }: PatientProfileViewProp
     if (patientId) {
       fetchPatientProfile();
     }
-  }, [patientId]);
+  }, [patientId, initialPatient]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {

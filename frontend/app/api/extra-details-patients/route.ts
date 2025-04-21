@@ -1,128 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiUrl } from '@/lib/config';
 
-export async function GET(request: NextRequest) {
+// Environment variables or constants
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+/**
+ * API handler for extra details patients
+ */
+export async function POST(request: NextRequest) {
   try {
-    // Get doctor ID from query params
-    const { searchParams } = new URL(request.url);
-    const doctorId = searchParams.get('doctorId');
-    const status = searchParams.get('status');
-
-    if (!doctorId) {
-      return NextResponse.json(
-        { status: 'error', message: 'Doctor ID is required' },
-        { status: 400 }
-      );
-    }
-
-    console.log("Extra-details-patients route called with doctorId:", doctorId, status ? `and status: ${status}` : '');
-
-    // Get auth token from request headers
-    const token = request.headers.get('authorization');
-    if (!token) {
-      return NextResponse.json(
-        { status: 'error', message: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    // Format token properly with Bearer prefix if it doesn't have it
-    const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-    const xAuthToken = token.startsWith('Bearer ') ? token.split(' ')[1] : token;
-
-    // Build the API URL with optional status filter
-    let apiEndpoint = `${apiUrl}/api/extra-details-patients/doctor/${doctorId}`;
-    if (status) {
-      apiEndpoint += `?status=${status}`;
-    }
-
-    // Make a direct request to the backend API with cache disabled
-    const response = await fetch(apiEndpoint, {
+    // Forward request to backend
+    const requestData = await request.json();
+    
+    // Extract auth token from request headers
+    const authHeader = request.headers.get('authorization');
+    
+    // Log the request for debugging
+    console.log('[API Route] POST /api/extra-details-patients', { 
+      patientName: requestData.patientName,
+      patientEmail: requestData.patientEmail 
+    });
+    
+    console.log('[API Route] Forwarding request to backend:', `${API_URL}/api/extra-details-patients`);
+    
+    // Make the request to the backend
+    const response = await fetch(`${API_URL}/api/extra-details-patients`, {
+      method: 'POST',
       headers: {
-        'Authorization': authToken,
-        'x-auth-token': xAuthToken
+        'Content-Type': 'application/json',
+        ...(authHeader ? { 'Authorization': authHeader } : {})
       },
-      cache: 'no-store'
+      body: JSON.stringify(requestData)
     });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      return NextResponse.json(
-        { status: 'error', message: errorData.message || 'Failed to fetch patient details' },
-        { status: response.status }
-      );
-    }
-
+    
+    // Parse response from backend
     const data = await response.json();
-    console.log("Raw data from backend:", data);
-
-    // Return the data directly
-    return NextResponse.json({
-      status: 'success',
-      data: data
-    });
+    
+    // If response is not ok, throw error
+    if (!response.ok) {
+      console.error('[API Route] Error from backend:', data);
+      throw new Error(data.message || data.msg || 'Error saving patient details');
+    }
+    
+    // Return successful response
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in extra-details-patients API route:', error);
+    console.error('[API Route] Error in extra-details-patients API:', error);
     return NextResponse.json(
-      { status: 'error', message: 'Internal server error' },
+      { 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to save patient details'
+      },
       { status: 500 }
     );
   }
 }
 
-export async function POST(request: NextRequest) {
+/**
+ * API handler for getting all patients
+ */
+export async function GET(request: NextRequest) {
   try {
-    console.log("Extra-details-patients POST route called");
+    // Extract query parameters
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get('status');
     
-    // Parse the request body
-    const body = await request.json();
-    console.log("Request body:", body);
-    
-    // Check for required fields
-    if (!body.doctorId || !body.patientName || !body.patientEmail) {
+    // Extract auth token from request headers
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader) {
       return NextResponse.json(
-        { status: 'error', message: 'Missing required fields' },
-        { status: 400 }
+        { success: false, message: 'Authorization required' },
+        { status: 401 }
       );
     }
     
-    // Get auth token from request headers
-    const token = request.headers.get('authorization');
+    // Construct the API URL with query parameters
+    let apiUrl = `${API_URL}/api/extra-details-patients`;
+    if (status) {
+      apiUrl += `?status=${status}`;
+    }
     
-    // Make a direct request to the backend API
-    const response = await fetch(`${apiUrl}/api/extra-details-patients`, {
-      method: 'POST',
+    // Make the request to the backend
+    const response = await fetch(apiUrl, {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-        ...(token && { 'Authorization': token })
-      },
-      body: JSON.stringify(body)
+        'Authorization': authHeader
+      }
     });
     
+    // Parse response from backend
     const data = await response.json();
-    console.log("Response from backend:", data);
     
+    // If response is not ok, throw error
     if (!response.ok) {
-      return NextResponse.json(
-        { 
-          status: 'error', 
-          message: data.msg || 'Failed to create patient details',
-          error: data.error
-        },
-        { status: response.status }
-      );
+      throw new Error(data.message || data.msg || 'Error fetching patients');
     }
     
-    // Return success response
-    return NextResponse.json({
-      status: 'success',
-      message: 'Patient details created successfully',
-      data: data.patientDetails
-    });
+    // Return successful response
+    return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in extra-details-patients POST route:', error);
+    console.error('[API Route] Error in extra-details-patients GET API:', error);
     return NextResponse.json(
-      { status: 'error', message: 'Internal server error' },
+      { 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to fetch patients'
+      },
       { status: 500 }
     );
   }

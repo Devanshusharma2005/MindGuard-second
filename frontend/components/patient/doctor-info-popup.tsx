@@ -5,42 +5,73 @@ import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Calendar, Mail, Briefcase, Star, Clock, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import { userIdKey, apiUrl } from "@/lib/config";
+import { toast } from "@/components/ui/use-toast";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/components/ui/use-toast";
-import { userIdKey } from "@/lib/config";
+
+// Form schema for validation
+const formSchema = z.object({
+  patientName: z.string().min(2, {
+    message: "Patient name must be at least 2 characters.",
+  }),
+  patientEmail: z.string().email({
+    message: "Please enter a valid email address.",
+  }).regex(/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, {
+    message: "Please enter a valid email address."
+  }),
+  patientAge: z.string().min(1, {
+    message: "Age is required.",
+  }),
+  patientGender: z.string().refine(val => ['male', 'female', 'other', 'prefer-not-to-say'].includes(val), {
+    message: "Please select a valid gender option."
+  }),
+  medicalHistory: z.string().optional().default(''),
+  currentMedications: z.string().optional().default(''),
+  allergies: z.string().optional().default(''),
+  symptoms: z.string().optional().default(''),
+  notes: z.string().optional().default('')
+});
+
+interface Doctor {
+  id: string | number;
+  _id?: string;
+  name: string;
+  fullName?: string;
+  email: string;
+  specialty: string;
+  specialization?: string;
+  yearsOfExperience: number;
+  rating: number;
+  reviews: number;
+  avatar: string;
+  available: boolean;
+  bookingLink: string;
+}
 
 interface DoctorInfoPopupProps {
-  doctor: {
-    id: number | string;
-    name: string;
-    email: string;
-    specialty: string;
-    yearsOfExperience: number;
-    rating: number;
-    reviews: number;
-    avatar: string;
-    available: boolean;
-    bookingLink: string;
-  };
+  doctor: Doctor;
   onClose: () => void;
-  onAppointmentBooked?: (doctor: any) => void;
+  onAppointmentBooked?: (doctor: Doctor) => void;
 }
 
 export function DoctorInfoPopup({ doctor, onClose, onAppointmentBooked }: DoctorInfoPopupProps) {
   const router = useRouter();
-  const [formData, setFormData] = useState({
-    fullName: "",
-    age: "",
-    gender: "",
-    email: "",
-    hasTestedQuestionnaire: false,
-    mentalProblem: ""
-  });
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [patientId, setPatientId] = useState<string | null>(null);
 
   // Get logged in patient ID
@@ -51,6 +82,22 @@ export function DoctorInfoPopup({ doctor, onClose, onAppointmentBooked }: Doctor
       setPatientId(storedPatientId);
     }
   }, []);
+
+  // Initialize form with react-hook-form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      patientName: "",
+      patientEmail: "",
+      patientAge: "",
+      patientGender: "",
+      medicalHistory: "",
+      currentMedications: "",
+      allergies: "",
+      symptoms: "",
+      notes: "",
+    },
+  });
 
   // Function to safely open Cal.com URL
   const openCalendarLink = useCallback((url: string) => {
@@ -73,182 +120,93 @@ export function DoctorInfoPopup({ doctor, onClose, onAppointmentBooked }: Doctor
     router.push("/patient/consultations?tab=chat");
   };
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = "Full name is required";
-    }
-    
-    if (!formData.age) {
-      newErrors.age = "Age is required";
-    } else if (isNaN(Number(formData.age)) || Number(formData.age) <= 0) {
-      newErrors.age = "Age must be a valid number";
-    }
-    
-    if (!formData.gender.trim()) {
-      newErrors.gender = "Gender is required";
-    }
-    
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid";
-    }
-    
-    if (!formData.hasTestedQuestionnaire && !formData.mentalProblem) {
-      newErrors.mentalProblem = "Please select a mental health concern or check the questionnaire box";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleScheduleMeeting = async () => {
-    if (!validateForm()) {
-      toast({
-        title: "Form Validation Error",
-        description: "Please fill in all required fields correctly.",
-        variant: "destructive"
-      });
-      return;
-    }
-    
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       setIsLoading(true);
-      
-      // Make sure doctorId is stored as string for consistent queries
-      const doctorIdString = String(doctor.id);
-      console.log("Scheduling with doctor ID:", doctorIdString);
-      
-      // Store the selected doctor ID in localStorage for the patient form if needed later
-      localStorage.setItem('scheduled_doctor_id', doctorIdString);
-      
-      // Prepare appointment data for backend
-      const appointmentData = {
-        doctorId: doctorIdString,
-        patientId: patientId, // From logged in user
-        patientName: formData.fullName,
-        patientAge: formData.age,
-        patientGender: formData.gender,
-        patientEmail: formData.email,
-        hasCompletedQuestionnaire: formData.hasTestedQuestionnaire,
-        mentalHealthConcern: formData.mentalProblem,
-        appointmentRequestDate: new Date().toISOString(),
-        status: 'requested',
-        doctorName: doctor.name,
-        doctorSpecialty: doctor.specialty
-      };
-      
-      console.log("Sending appointment data:", appointmentData);
-      
-      // Get auth token
-      const token = localStorage.getItem('token') || localStorage.getItem('mindguard_token');
-      
-      if (!token) {
-        throw new Error("Authentication token not found");
+
+      if (!patientId) {
+        throw new Error("Patient ID not found. Please log in again.");
       }
-      
-      // Format token properly with Bearer prefix if it doesn't have it
-      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      
-      // Save the appointment data 
-      const response = await fetch('/api/extra-details-patients', {
+
+      // Get auth token from localStorage
+      const authToken = localStorage.getItem('mindguard_token');
+      if (!authToken) {
+        throw new Error("Authentication token not found. Please log in again.");
+      }
+
+      // Prepare registration data
+      const registrationData = {
+        patientId: patientId.toString(), // Ensure string format for MongoDB ObjectId
+        doctorId: (doctor._id || doctor.id).toString(), // Use _id if available, otherwise id
+        doctorName: doctor.name,
+        doctorSpecialty: doctor.specialty,
+        ...values,
+        patientGender: values.patientGender === 'prefer-not-to-say' ? 'other' : values.patientGender, // Map to allowed enum values
+        currentMedications: values.currentMedications ? values.currentMedications.split(',').map(med => med.trim()).filter(Boolean) : [],
+        allergies: values.allergies ? values.allergies.split(',').map(allergy => allergy.trim()).filter(Boolean) : [],
+        registrationType: 'consultation_request',
+        status: 'pending'
+      };
+
+      console.log('Submitting registration data:', registrationData);
+
+      // Submit registration request
+      const response = await fetch(`${apiUrl}/api/patient-registrations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authToken
+          'Authorization': `Bearer ${authToken}`
         },
-        body: JSON.stringify(appointmentData),
+        body: JSON.stringify(registrationData)
       });
-      
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to save patient data');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Server error: ${response.status}`);
       }
-      
-      console.log("Patient data submitted successfully");
-      
-      // After successful save, open cal.com using our safe method
-      openCalendarLink(doctor.bookingLink);
-      
-      // Notify parent component about the booking if callback exists
-      if (onAppointmentBooked) {
-        onAppointmentBooked(doctor);
-      }
-      
-      // Close the popup
-      onClose();
-      
-      toast({
-        title: "Appointment Request Submitted",
-        description: "Your details have been saved. Complete your booking on the calendar page.",
-      });
-    } catch (error) {
-      console.error('Error submitting appointment request:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while saving your details",
-        variant: "destructive"
-      });
-      
-      // Try to open Cal.com anyway, even if the data submission failed
-      try {
-        openCalendarLink(doctor.bookingLink);
-        
-        // Still notify parent about booking attempt
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast({
+          title: "Registration Submitted",
+          description: "Your consultation request has been sent to the doctor.",
+        });
+
         if (onAppointmentBooked) {
           onAppointmentBooked(doctor);
         }
-      } catch (calError) {
-        console.error("Failed to open calendar as fallback:", calError);
+
+        // Open Cal.com calendar if available
+        if (doctor.bookingLink) {
+          toast({
+            title: "Opening Calendar",
+            description: "You will now be redirected to schedule your meeting time.",
+          });
+          setTimeout(() => {
+            openCalendarLink(doctor.bookingLink);
+            onClose();
+          }, 1500);
+        } else {
+          onClose();
+        }
+      } else {
+        throw new Error(data.message || "Failed to submit registration");
       }
+    } catch (error) {
+      console.error("Error submitting registration:", error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while submitting your registration",
+        variant: "destructive"
+      });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    // Only close if the click is directly on the overlay
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-  };
-
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData(prev => ({ 
-      ...prev, 
-      hasTestedQuestionnaire: checked,
-      mentalProblem: checked ? "" : prev.mentalProblem // Clear mental problem if questionnaire is checked
-    }));
-    // Clear error when user checks
-    if (errors.mentalProblem) {
-      setErrors(prev => ({ ...prev, mentalProblem: '' }));
-    }
-  };
-
-  const handleSelectChange = (value: string) => {
-    setFormData(prev => ({ ...prev, mentalProblem: value }));
-    // Clear error when user selects
-    if (errors.mentalProblem) {
-      setErrors(prev => ({ ...prev, mentalProblem: '' }));
-    }
-  };
+  }
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={handleOverlayClick}
-    >
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] relative flex flex-col overflow-hidden">
         <Button
           variant="ghost"
@@ -322,127 +280,194 @@ export function DoctorInfoPopup({ doctor, onClose, onAppointmentBooked }: Doctor
             {/* Patient Information Form */}
             <div className="space-y-4">
               <h4 className="text-lg font-medium">Patient Information</h4>
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="fullName">Full Name *</Label>
-                  <Input
-                    id="fullName"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    placeholder="Enter your full name"
-                    className={errors.fullName ? "border-red-500" : ""}
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="patientName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Patient Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="patientEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="patient@example.com" type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="patientAge"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Age</FormLabel>
+                          <FormControl>
+                            <Input placeholder="30" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name="patientGender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <FormControl>
+                            <Select
+                              value={field.value}
+                              onValueChange={field.onChange}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="medicalHistory"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Medical History</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter medical history"
+                            className="min-h-[80px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  {errors.fullName && <p className="text-sm text-red-500">{errors.fullName}</p>}
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="age">Age *</Label>
-                  <Input
-                    id="age"
-                    name="age"
-                    type="number"
-                    value={formData.age}
-                    onChange={handleInputChange}
-                    placeholder="Enter your age"
-                    className={errors.age ? "border-red-500" : ""}
+                  
+                  <FormField
+                    control={form.control}
+                    name="currentMedications"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Current Medications</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter medications separated by commas"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter medications separated by commas (e.g. Prozac, Lexapro)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  {errors.age && <p className="text-sm text-red-500">{errors.age}</p>}
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="gender">Gender *</Label>
-                  <Select
-                    value={formData.gender}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, gender: value }))}
-                  >
-                    <SelectTrigger id="gender" className={errors.gender ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select gender" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.gender && <p className="text-sm text-red-500">{errors.gender}</p>}
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="Enter your email"
-                    className={errors.email ? "border-red-500" : ""}
+                  
+                  <FormField
+                    control={form.control}
+                    name="allergies"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Allergies</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter allergies separated by commas"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter allergies separated by commas (e.g. Penicillin, Peanuts)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="questionnaire"
-                    checked={formData.hasTestedQuestionnaire}
-                    onCheckedChange={handleCheckboxChange}
+                  
+                  <FormField
+                    control={form.control}
+                    name="symptoms"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Symptoms</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter current symptoms"
+                            className="min-h-[80px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  <Label htmlFor="questionnaire">I have completed the mental health questionnaire</Label>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="mentalProblem">Mental Health Concern {!formData.hasTestedQuestionnaire && "*"}</Label>
-                  <Select
-                    value={formData.mentalProblem}
-                    onValueChange={handleSelectChange}
-                    disabled={formData.hasTestedQuestionnaire}
-                  >
-                    <SelectTrigger className={errors.mentalProblem ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select a mental health concern" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ptsd">PTSD</SelectItem>
-                      <SelectItem value="anxiety">Anxiety</SelectItem>
-                      <SelectItem value="depression">Depression</SelectItem>
-                      <SelectItem value="stress">Stress</SelectItem>
-                      <SelectItem value="trauma">Trauma</SelectItem>
-                      <SelectItem value="relationship-issues">Relationship Issues</SelectItem>
-                      <SelectItem value="other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.mentalProblem && <p className="text-sm text-red-500">{errors.mentalProblem}</p>}
-                </div>
-              </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Additional Notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Any additional notes or concerns"
+                            className="min-h-[80px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="flex gap-4">
+                    <Button 
+                      className="flex items-center gap-2 flex-1" 
+                      onClick={handleChat}
+                      type="button"
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                      Send Message
+                    </Button>
+                    <Button 
+                      className="flex items-center gap-2 flex-1"
+                      type="submit"
+                      disabled={isLoading}
+                    >
+                      <Calendar className="h-5 w-5" />
+                      {isLoading ? "Submitting..." : "Submit Registration"}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             </div>
-          </div>
-
-          {/* Action Buttons - Fixed at bottom */}
-          <div className="flex gap-4 p-6 border-t bg-background flex-shrink-0">
-            <Button 
-              className="flex-1" 
-              onClick={handleChat}
-            >
-              <MessageSquare className="mr-2 h-4 w-4" />
-              Start Chat
-            </Button>
-            <Button 
-              className="flex-1" 
-              variant="outline"
-              onClick={handleScheduleMeeting}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </div>
-              ) : (
-                <>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Schedule Meeting
-                </>
-              )}
-            </Button>
           </div>
         </CardContent>
       </Card>

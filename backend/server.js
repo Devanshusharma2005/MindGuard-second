@@ -10,6 +10,7 @@ const questionnaireRoutes = require('./routes/api/questionnaire');
 const { router: voiceRoutes, setupWebSocket } = require('./routes/voice');
 const doctorAuthRoutes = require('./routes/doctorAuth');
 const adminAuthRoutes = require('./routes/adminAuth');
+const adminDoctorsRoutes = require('./routes/adminDoctors');
 const gameLogRoutes = require('./routes/gameLog');
 const memoriesRoutes = require('./routes/memories');
 const chatRoutes = require('./routes/chat');
@@ -19,6 +20,7 @@ const { router: appointmentsRoutes } = require('./routes/appointments');
 const patientDetailsRoutes = require('./routes/patientDetails');
 const extraDetailsPatientsRoutes = require('./routes/extraDetailsPatients');
 const consultationsRoutes = require('./routes/consultations');
+const patientRegistrationsRoutes = require('./routes/patientRegistrations');
 const { initializeWebSocket } = require('./services/websocketService');
 const testApiRoutes = require('./routes/test-api');
 const authRoutes = require('./routes/auth');
@@ -37,9 +39,9 @@ app.use(session({
 
 // Middleware with specific CORS configuration
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow your frontend URL
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000'], // Allow your frontend URLs
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
 }));
 app.use(express.json());
@@ -49,6 +51,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/health-tracking', healthTrackingRoutes);
 app.use('/api/questionnaire', questionnaireRoutes);
 app.use('/voice', voiceRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/auth/doctor', doctorAuthRoutes);
 app.use('/api/auth/admin', adminAuthRoutes);
 app.use('/api/game-logs', gameLogRoutes);
@@ -62,8 +65,11 @@ app.use('/api/appointments', appointmentsRoutes);
 app.use('/api/patient-details', patientDetailsRoutes);
 app.use('/api/extra-details-patients', extraDetailsPatientsRoutes);
 app.use('/api/consultations', consultationsRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/patient-registrations', patientRegistrationsRoutes);
 app.use('/api/user-interactions', userInteractionRoutes);
+
+// Admin routes
+app.use('/api/admin/doctors', adminDoctorsRoutes);
 
 // Debug endpoint
 app.get('/api/health', (req, res) => {
@@ -129,7 +135,7 @@ const User = require('./models/User');
 app.post('/api/auth/signup', async (req, res) => {
   try {
     console.log('Signup request received:', req.body);
-    const { username, email, password } = req.body;
+    const { username, email, password, isPatientAccount, createdByDoctor } = req.body;
 
     // Validation
     if (!username || !email || !password) {
@@ -152,7 +158,10 @@ app.post('/api/auth/signup', async (req, res) => {
     const newUser = new User({
       username,
       email,
-      password
+      password,
+      // Add additional fields if this is a doctor-created patient account
+      isPatient: isPatientAccount === true,
+      createdByDoctor: createdByDoctor === true
     });
 
     // Hash the password before saving
@@ -175,7 +184,9 @@ app.post('/api/auth/signup', async (req, res) => {
       user: {
         id: newUser._id,
         username: newUser.username,
-        email: newUser.email
+        email: newUser.email,
+        isPatient: newUser.isPatient,
+        createdByDoctor: newUser.createdByDoctor
       }
     });
 

@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { PatientList } from "@/components/doctor/patient-list";
+import { PatientRegistrations } from "@/components/doctor/patient-registrations";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, RefreshCcw } from "lucide-react";
 import Link from "next/link";
@@ -36,8 +37,8 @@ export default function PatientsPage() {
         return;
       }
       
-      // Get auth token
-      const token = localStorage.getItem('mindguard_token');
+      // Get auth token - Check both keys
+      const token = localStorage.getItem('mindguard_token') || localStorage.getItem('token');
       if (!token) {
         toast({
           title: "Error",
@@ -50,19 +51,11 @@ export default function PatientsPage() {
       // Format token properly with Bearer prefix if it doesn't have it
       const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
       
-      // Fetch patient data directly from the API to force a cache refresh
-      const response = await fetch(`/api/extra-details-patients?doctorId=${doctorId}`, {
-        headers: {
-          'Authorization': authToken,
-        },
-        cache: 'no-store'
-      });
+      // For debugging
+      console.log('Using token for refresh:', authToken);
+      console.log('Doctor ID:', doctorId);
       
-      if (!response.ok) {
-        throw new Error("Failed to refresh patient data");
-      }
-      
-      // Trigger the PatientList to reload by updating refreshTrigger
+      // Update refreshTrigger to reload patient registrations component
       setRefreshTrigger(prev => prev + 1);
       
       toast({
@@ -118,10 +111,15 @@ export default function PatientsPage() {
 
       <Tabs defaultValue="appointments" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="appointments">Appointments</TabsTrigger>
+          <TabsTrigger value="registrations">Registration Requests</TabsTrigger>
+          <TabsTrigger value="appointments">Current Patients</TabsTrigger>
           <TabsTrigger value="legacy">Legacy Patients</TabsTrigger>
         </TabsList>
         
+        <TabsContent value="registrations" className="space-y-4">
+          <PatientRegistrations />
+        </TabsContent>
+
         <TabsContent value="appointments" className="space-y-4">
           <PatientList key={refreshTrigger} />
         </TabsContent>

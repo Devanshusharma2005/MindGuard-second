@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, User, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { userIdKey } from "@/lib/config";
+import { userIdKey, apiUrl } from "@/lib/config";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 
@@ -30,16 +30,56 @@ export function NewPatientSubmissions() {
       try {
         setLoading(true);
         
-        // Get doctor ID from localStorage
-        const doctorId = localStorage.getItem(userIdKey);
+        // Get doctor ID from multiple possible storage locations
+        const doctorId = localStorage.getItem('doctor_id') || 
+                        localStorage.getItem(userIdKey) || 
+                        localStorage.getItem('mindguard_user_id') ||
+                        localStorage.getItem('doctorId');
+                        
         if (!doctorId) {
+          // Try to extract from stored doctor object
+          const storedDoctorJSON = localStorage.getItem('doctor');
+          if (storedDoctorJSON) {
+            try {
+              const doctorData = JSON.parse(storedDoctorJSON);
+              if (doctorData && (doctorData.id || doctorData._id)) {
+                const extractedId = doctorData.id || doctorData._id;
+                console.log('Extracted doctor ID from stored doctor object:', extractedId);
+                
+                // Store for future use
+                localStorage.setItem('doctor_id', extractedId);
+                localStorage.setItem('mindguard_user_id', extractedId);
+                localStorage.setItem('doctorId', extractedId);
+                
+                // Continue with the extracted ID
+                fetchWithDoctorId(extractedId);
+                return;
+              }
+            } catch (err) {
+              console.error('Error parsing doctor JSON:', err);
+            }
+          }
+          
           setError("Doctor ID not found. Please log in again.");
           setLoading(false);
           return;
         }
         
-        // Get auth token
-        const token = localStorage.getItem('mindguard_token');
+        fetchWithDoctorId(doctorId);
+      } catch (error) {
+        console.error("Error fetching new patient submissions:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
+        setLoading(false);
+      }
+    };
+    
+    const fetchWithDoctorId = async (doctorId: string) => {
+      try {
+        // Get auth token from multiple possible storage locations
+        const token = localStorage.getItem('doctor_token') || 
+                     localStorage.getItem('mindguard_token') || 
+                     localStorage.getItem('token');
+                     
         if (!token) {
           setError("Authentication token not found. Please log in again.");
           setLoading(false);
@@ -49,28 +89,50 @@ export function NewPatientSubmissions() {
         // Format token properly with Bearer prefix if it doesn't have it
         const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
         
-        // Fetch the new patient submissions (requested status only)
-        const response = await fetch(`/api/extra-details-patients?doctorId=${doctorId}&status=requested`, {
+        console.log(`Making API request for pending registrations with doctorId: ${doctorId}`);
+        
+        // Use the patient-registrations endpoint directly with status=pending
+        const response = await fetch(`${apiUrl}/api/patient-registrations/doctor-patients?status=pending&doctorId=${doctorId}`, {
           headers: {
             'Authorization': authToken,
-          },
+            'Content-Type': 'application/json'
+          }
         });
         
         if (!response.ok) {
-          throw new Error("Failed to fetch new patient submissions");
+          console.error(`API request failed with status: ${response.status}`);
+          throw new Error(`Failed to fetch patient registrations: ${response.status}`);
         }
         
         const data = await response.json();
+        console.log('Pending registrations data:', data);
         
-        if (data.status === 'success' && data.data) {
-          const patientData = Array.isArray(data.data) ? data.data : [];
-          setSubmissions(patientData);
+        if (data.success && data.data && Array.isArray(data.data.registrations)) {
+          const pendingRegistrations = data.data.registrations;
+          // Convert to the format expected by the component
+          const formattedSubmissions = pendingRegistrations.map((reg: any) => ({
+            _id: reg._id,
+            patientName: reg.patientName,
+            patientEmail: reg.patientEmail,
+            appointmentRequestDate: reg.createdAt,
+            mentalHealthConcern: reg.symptoms,
+            status: 'pending'
+          }));
+          
+          setSubmissions(formattedSubmissions);
         } else {
-          console.error("Unexpected data format:", data);
+          setSubmissions([]);
         }
       } catch (error) {
-        console.error("Error fetching new patient submissions:", error);
+        console.error("Error in fetchWithDoctorId:", error);
         setError(error instanceof Error ? error.message : "An error occurred");
+        
+        // Show toast notification for any error
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load patient submissions",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
@@ -134,7 +196,7 @@ export function NewPatientSubmissions() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ClipboardList className="h-5 w-5" />
-          <span>New Patient Submissions</span>
+          <span>Pending Patient Registrations</span>
           {submissions.length > 0 && (
             <Badge className="ml-2 bg-primary">{submissions.length}</Badge>
           )}
@@ -144,7 +206,7 @@ export function NewPatientSubmissions() {
         {submissions.length === 0 ? (
           <div className="text-center py-6 text-muted-foreground">
             <User className="h-10 w-10 mx-auto mb-2 opacity-50" />
-            <p>No new patient submissions</p>
+            <p>No pending patient registrations</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -159,7 +221,7 @@ export function NewPatientSubmissions() {
                 <div className="flex-1 space-y-1">
                   <div className="flex items-center justify-between">
                     <p className="font-medium">{submission.patientName}</p>
-                    <Badge>New</Badge>
+                    <Badge>Pending</Badge>
                   </div>
                   
                   {submission.mentalHealthConcern && (
@@ -178,7 +240,7 @@ export function NewPatientSubmissions() {
             <div className="pt-2">
               <Link href="/doctor/patients">
                 <Button className="w-full" variant="outline">
-                  View All Patients
+                  Manage Patient Registrations
                 </Button>
               </Link>
             </div>
