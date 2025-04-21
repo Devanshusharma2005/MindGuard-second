@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { userIdKey } from "@/lib/config";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   patientName: z.string().min(2, {
@@ -30,8 +31,8 @@ const formSchema = z.object({
   patientAge: z.string().min(1, {
     message: "Age is required.",
   }),
-  patientGender: z.string().min(1, {
-    message: "Gender is required.",
+  patientGender: z.string().refine(val => ['male', 'female', 'other', 'prefer-not-to-say'].includes(val), {
+    message: "Please select a valid gender option."
   }),
   medicalHistory: z.string().optional(),
   currentMedications: z.string().optional(),
@@ -90,18 +91,20 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
       // Format token properly with Bearer prefix if it doesn't have it
       const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
       
-      // Format medications and allergies as arrays
+      // Format the data for the updated ExtraDetailsPatient API
       const formattedData = {
         ...values,
         doctorId,
         doctorName: "Dr. " + (localStorage.getItem('username') || "Doctor"),
         doctorSpecialty: "Mental Health Specialist",
-        currentMedications: values.currentMedications ? values.currentMedications.split(',').map(m => m.trim()) : [],
-        allergies: values.allergies ? values.allergies.split(',').map(a => a.trim()) : [],
+        patientGender: values.patientGender === 'prefer-not-to-say' ? 'other' : values.patientGender,
+        currentMedications: values.currentMedications ? values.currentMedications.split(',').map(m => m.trim()).filter(Boolean) : [],
+        allergies: values.allergies ? values.allergies.split(',').map(a => a.trim()).filter(Boolean) : []
       };
       
       console.log("Submitting patient data:", formattedData);
       
+      // Use the extra-details-patients endpoint directly
       const response = await fetch('/api/extra-details-patients', {
         method: 'POST',
         headers: {
@@ -113,10 +116,10 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
       
       const data = await response.json();
       
-      if (data.status === 'success') {
+      if (data.success) {
         toast({
           title: "Success",
-          description: "Patient details added successfully",
+          description: "Patient added successfully",
         });
         
         // Reset the form
@@ -130,13 +133,13 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
         // Refresh the page data
         router.refresh();
       } else {
-        throw new Error(data.message || 'Failed to add patient details');
+        throw new Error(data.message || 'Failed to add patient');
       }
     } catch (error) {
-      console.error('Error adding patient details:', error);
+      console.error('Error adding patient:', error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to add patient details",
+        description: error instanceof Error ? error.message : "Failed to add patient",
         variant: "destructive",
       });
     } finally {
@@ -197,7 +200,20 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
               <FormItem>
                 <FormLabel>Gender</FormLabel>
                 <FormControl>
-                  <Input placeholder="Male/Female/Other" {...field} />
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                      <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -271,7 +287,7 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
               <FormLabel>Symptoms</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Enter patient's symptoms"
+                  placeholder="Enter current symptoms"
                   className="min-h-[100px]"
                   {...field}
                 />
@@ -289,7 +305,7 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
               <FormLabel>Additional Notes</FormLabel>
               <FormControl>
                 <Textarea
-                  placeholder="Any additional notes about the patient"
+                  placeholder="Any additional notes or concerns"
                   className="min-h-[100px]"
                   {...field}
                 />
@@ -299,7 +315,7 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" disabled={isLoading} className="w-full">
           {isLoading ? "Adding Patient..." : "Add Patient"}
         </Button>
       </form>

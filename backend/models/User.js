@@ -59,6 +59,22 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
+  isPatient: {
+    type: Boolean,
+    default: false
+  },
+  isDoctor: {
+    type: Boolean,
+    default: false
+  },
+  isAdmin: {
+    type: Boolean,
+    default: false
+  },
+  createdByDoctor: {
+    type: Boolean,
+    default: false
+  },
   bookings: [bookingSchema]
 });
 

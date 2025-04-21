@@ -39,6 +39,50 @@ router.get('/profile', auth, async (req, res) => {
   }
 });
 
+// Get user by email - needed for doctor-initiated patient registration
+router.get('/by-email', auth, async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Email parameter is required' 
+      });
+    }
+    
+    // Check if the requester is a doctor (only doctors should be able to look up users by email)
+    if (!req.user.isDoctor && !req.user.isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only doctors or admins can look up users by email'
+      });
+    }
+    
+    // Find the user by email
+    const user = await User.findOne({ email: email.toLowerCase() }).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found with the provided email'
+      });
+    }
+    
+    res.json({
+      success: true,
+      user
+    });
+  } catch (err) {
+    console.error('Error finding user by email:', err.message);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: err.message
+    });
+  }
+});
+
 // Get user registrations for analytics dashboard
 router.get('/registrations', auth, async (req, res) => {
   try {

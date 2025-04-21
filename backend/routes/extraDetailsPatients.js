@@ -6,11 +6,7 @@ const doctorAuth = require('../middleware/doctorAuth');
 const ExtraDetailsPatient = require('../models/ExtraDetailsPatient');
 const { check, validationResult } = require('express-validator');
 
-// Get ExtraDetailsPatients model from patientDetails.js
-const ExtraDetailsPatients = mongoose.models.extradetailspatients;
-
-// Route to get all patients for a doctor
-// This route can be accessed from the frontend with query param
+// Get routes can still use the ExtraDetailsPatient model directly
 router.get('/', doctorAuth, async (req, res) => {
   try {
     const { status } = req.query;
@@ -28,7 +24,7 @@ router.get('/', doctorAuth, async (req, res) => {
     }
     
     // Find matching patients
-    const patients = await ExtraDetailsPatients.find(query)
+    const patients = await ExtraDetailsPatient.find(query)
       .sort({ appointmentRequestDate: -1 });
     
     console.log(`Query with doctorId: ${doctorId} returned ${patients.length} patients`);
@@ -43,8 +39,6 @@ router.get('/', doctorAuth, async (req, res) => {
       patientEmail: patient.patientEmail || '',
       patientAge: patient.patientAge || '',
       patientGender: patient.patientGender || '',
-      hasCompletedQuestionnaire: patient.hasCompletedQuestionnaire || false,
-      mentalHealthConcern: patient.mentalHealthConcern || '',
       appointmentRequestDate: patient.appointmentRequestDate || patient.createdAt,
       status: patient.status || 'pending',
       // Include medical details
@@ -87,7 +81,7 @@ router.get('/doctor/:doctorId', doctorAuth, async (req, res) => {
     }
     
     // Try with exact ID
-    let patients = await ExtraDetailsPatients.find(query)
+    let patients = await ExtraDetailsPatient.find(query)
       .sort({ appointmentRequestDate: -1 });
     
     console.log(`Query with doctorId: ${doctorId} returned ${patients.length} patients`);
@@ -230,8 +224,6 @@ router.post('/', async (req, res) => {
       patientEmail,
       patientAge,
       patientGender,
-      mentalHealthConcern,
-      hasCompletedQuestionnaire,
       medicalHistory,
       currentMedications,
       allergies,
@@ -248,8 +240,6 @@ router.post('/', async (req, res) => {
       patientEmail,
       patientAge,
       patientGender,
-      mentalHealthConcern,
-      hasCompletedQuestionnaire,
       medicalHistory,
       currentMedications,
       allergies,
@@ -257,7 +247,7 @@ router.post('/', async (req, res) => {
       notes
     });
     
-    // Check if we have the required values
+    // Validate required fields
     if (!doctorId) {
       console.error('Missing doctorId');
       return res.status(400).json({
@@ -282,76 +272,81 @@ router.post('/', async (req, res) => {
       });
     }
     
-    // Convert doctorId to string if it's not already
-    const doctorIdStr = String(doctorId);
-    console.log(`Converting doctorId from ${doctorId} to string: ${doctorIdStr}`);
-    
-    // Create a new patient details entry with default values for optional fields
-    console.log('Creating extradetailspatients document with data:', {
-      doctorId: doctorIdStr,
-      doctorName: doctorName || 'Doctor',
-      doctorSpecialty: doctorSpecialty || 'Specialist',
-      patientName,
-      patientEmail,
-      patientAge,
-      patientGender,
-      mentalHealthConcern,
-      medicalHistory,
-      currentMedications: Array.isArray(currentMedications) ? currentMedications : (currentMedications ? [currentMedications] : []),
-      allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
-      symptoms,
-      notes,
-      appointmentRequestDate: new Date()
-    });
-    
     // Try to convert doctorId to ObjectId if possible
-    let formattedDoctorId = doctorIdStr;
+    let formattedDoctorId = doctorId;
     try {
-      if (mongoose.Types.ObjectId.isValid(doctorIdStr)) {
-        formattedDoctorId = new mongoose.Types.ObjectId(doctorIdStr);
+      if (mongoose.Types.ObjectId.isValid(doctorId)) {
+        formattedDoctorId = new mongoose.Types.ObjectId(doctorId);
       }
     } catch (err) {
       console.log('Error converting doctorId to ObjectId, will use string value:', err.message);
     }
     
-    const patientDetails = new ExtraDetailsPatients({
+    // Check if a patient with the same email already exists under this doctor
+    const existingPatient = await ExtraDetailsPatient.findOne({
+      doctorId: formattedDoctorId,
+      patientEmail: patientEmail
+    });
+    
+    if (existingPatient) {
+      // If the patient already exists, update their record instead
+      console.log('Patient with email already exists for this doctor, updating record');
+      
+      existingPatient.patientName = patientName;
+      existingPatient.patientAge = patientAge || existingPatient.patientAge;
+      existingPatient.patientGender = patientGender || existingPatient.patientGender;
+      existingPatient.doctorName = doctorName || existingPatient.doctorName;
+      existingPatient.doctorSpecialty = doctorSpecialty || existingPatient.doctorSpecialty;
+      existingPatient.medicalHistory = medicalHistory || existingPatient.medicalHistory;
+      existingPatient.currentMedications = Array.isArray(currentMedications) 
+        ? currentMedications 
+        : (currentMedications ? [currentMedications] : existingPatient.currentMedications);
+      existingPatient.allergies = Array.isArray(allergies) 
+        ? allergies 
+        : (allergies ? [allergies] : existingPatient.allergies);
+      existingPatient.symptoms = symptoms || existingPatient.symptoms;
+      existingPatient.notes = notes || existingPatient.notes;
+      existingPatient.status = 'accepted'; // Set status to accepted for doctor-initiated update
+      
+      await existingPatient.save();
+      
+      console.log('Patient record updated successfully with status: accepted');
+      
+      return res.json({
+        success: true,
+        msg: 'Patient record updated successfully',
+        status: 'success',
+        patientDetails: existingPatient
+      });
+    }
+    
+    // Create a new patient record
+    const patientDetails = new ExtraDetailsPatient({
       doctorId: formattedDoctorId,
       doctorName: doctorName || 'Doctor',
       doctorSpecialty: doctorSpecialty || 'Specialist',
       patientName,
-      patientAge: patientAge || '',
-      patientGender: patientGender || '',
       patientEmail,
-      hasCompletedQuestionnaire: hasCompletedQuestionnaire || false,
-      mentalHealthConcern: mentalHealthConcern || '',
+      patientAge: patientAge || '',
+      patientGender: patientGender || 'other',
       medicalHistory: medicalHistory || '',
       currentMedications: Array.isArray(currentMedications) ? currentMedications : (currentMedications ? [currentMedications] : []),
       allergies: Array.isArray(allergies) ? allergies : (allergies ? [allergies] : []),
       symptoms: symptoms || '',
       notes: notes || '',
       appointmentRequestDate: new Date(),
-      status: 'requested'
+      status: 'accepted' // Set status to accepted for doctor-initiated creation
     });
     
-    console.log('Saving extradetailspatients document');
+    console.log('Saving new patient record');
     const savedPatientDetails = await patientDetails.save();
     console.log('Patient details saved successfully:', savedPatientDetails._id);
-    console.log('Patient details doctorId saved as:', savedPatientDetails.doctorId, 'type:', typeof savedPatientDetails.doctorId);
     
-    // Log the saved data for debugging
-    console.log('Saved patient data includes:', {
-      patientName: savedPatientDetails.patientName,
-      hasMentalHealthConcern: !!savedPatientDetails.mentalHealthConcern,
-      hasMedicalHistory: !!savedPatientDetails.medicalHistory,
-      medicationsCount: savedPatientDetails.currentMedications.length,
-      allergiesCount: savedPatientDetails.allergies.length,
-      hasSymptoms: !!savedPatientDetails.symptoms,
-      hasNotes: !!savedPatientDetails.notes
-    });
-    
+    // Return success response
     res.status(201).json({
       success: true,
       msg: 'Patient details created successfully',
+      status: 'success',
       patientDetails: savedPatientDetails
     });
   } catch (err) {
@@ -374,7 +369,7 @@ router.post('/', async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     // Find the patient record
-    const patient = await ExtraDetailsPatients.findById(req.params.id);
+    const patient = await ExtraDetailsPatient.findById(req.params.id);
     
     if (!patient) {
       return res.status(404).json({ message: 'Patient record not found' });
@@ -387,7 +382,7 @@ router.delete('/:id', auth, async (req, res) => {
     // }
 
     // Delete the patient record
-    await ExtraDetailsPatients.findByIdAndDelete(req.params.id);
+    await ExtraDetailsPatient.findByIdAndDelete(req.params.id);
     
     res.json({ 
       success: true,

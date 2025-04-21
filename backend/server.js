@@ -135,7 +135,7 @@ const User = require('./models/User');
 app.post('/api/auth/signup', async (req, res) => {
   try {
     console.log('Signup request received:', req.body);
-    const { username, email, password } = req.body;
+    const { username, email, password, isPatientAccount, createdByDoctor } = req.body;
 
     // Validation
     if (!username || !email || !password) {
@@ -158,7 +158,10 @@ app.post('/api/auth/signup', async (req, res) => {
     const newUser = new User({
       username,
       email,
-      password
+      password,
+      // Add additional fields if this is a doctor-created patient account
+      isPatient: isPatientAccount === true,
+      createdByDoctor: createdByDoctor === true
     });
 
     // Hash the password before saving
@@ -181,7 +184,9 @@ app.post('/api/auth/signup', async (req, res) => {
       user: {
         id: newUser._id,
         username: newUser.username,
-        email: newUser.email
+        email: newUser.email,
+        isPatient: newUser.isPatient,
+        createdByDoctor: newUser.createdByDoctor
       }
     });
 

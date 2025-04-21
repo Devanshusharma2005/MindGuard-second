@@ -59,7 +59,7 @@ const patientRegistrationSchema = new mongoose.Schema({
   },
   registrationType: {
     type: String,
-    enum: ['consultation_request'],
+    enum: ['consultation_request', 'doctor_initiated'],
     default: 'consultation_request'
   },
   status: {

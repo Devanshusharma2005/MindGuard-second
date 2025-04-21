@@ -15,7 +15,7 @@ import {
   DialogClose
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, FileText, Heart, Trash2, RefreshCw, Loader2 } from "lucide-react";
+import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, FileText, Heart, Trash2, RefreshCw, Loader2, Users } from "lucide-react";
 import { userIdKey, apiUrl } from "@/lib/config";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
@@ -42,6 +42,7 @@ interface PatientDetails {
   notes?: string;
   createdAt?: string;
   updatedAt?: string;
+  source?: string;
 }
 
 interface PatientRegistration {
@@ -73,6 +74,12 @@ export function PatientList() {
   const [deletePatientId, setDeletePatientId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedPatientSource, setSelectedPatientSource] = useState<string | null>(null);
+  const [patientSourceCounts, setPatientSourceCounts] = useState({
+    registrations: 0,
+    extraDetails: 0,
+    total: 0
+  });
 
   const fetchDoctorId = useCallback(() => {
     // Try multiple localStorage keys for doctor ID
@@ -88,7 +95,7 @@ export function PatientList() {
       return storedDoctorId;
     }
     
-    setError("Doctor ID not found. Please log in again.");
+      setError("Doctor ID not found. Please log in again.");
     return null;
   }, []);
 
@@ -114,57 +121,120 @@ export function PatientList() {
       
       const authToken = getAuthToken();
       
-      // Fetch approved registrations
+      // 1. Fetch approved registrations from patient-registrations API
       console.log('Fetching approved registrations for doctor ID:', id);
       
       // Use the patient-registrations endpoint with status=approved filter
-      const response = await fetch(`${apiUrl}/api/patient-registrations/doctor-patients?status=approved&doctorId=${id}`, {
+      const registrationsResponse = await fetch(`${apiUrl}/api/patient-registrations/doctor-patients?status=approved&doctorId=${id}`, {
         headers: {
           'Authorization': authToken,
           'Content-Type': 'application/json'
         }
       });
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch approved registrations: ${response.status}`);
-      }
+      // 2. Fetch patients from extra-details-patients API
+      console.log('Fetching extra details patients for doctor ID:', id);
+      const extraDetailsResponse = await fetch(`${apiUrl}/api/extra-details-patients/doctor/${id}`, {
+        headers: {
+          'Authorization': authToken,
+          'Content-Type': 'application/json'
+        }
+      });
       
-      const data = await response.json();
-      console.log('Approved registrations data:', data);
-      
-      if (data.success && data.data && Array.isArray(data.data.registrations)) {
-        // Convert registrations to patient details format
-        const patientDetails: PatientDetails[] = data.data.registrations.map((reg: PatientRegistration) => ({
-          _id: reg._id,
-          doctorId: reg.doctorId,
-          doctorName: reg.doctorName || '',
-          doctorSpecialty: reg.doctorSpecialty || '',
-          patientName: reg.patientName,
-          patientEmail: reg.patientEmail,
-          patientAge: reg.patientAge,
-          patientGender: reg.patientGender,
-          mentalHealthConcern: reg.symptoms,
-          medicalHistory: reg.medicalHistory,
-          currentMedications: reg.currentMedications,
-          allergies: reg.allergies,
-          status: reg.status,
-          hasCompletedQuestionnaire: false,
-          appointmentRequestDate: reg.createdAt,
-          createdAt: reg.createdAt
-        }));
+      // Process registrations data
+      let registrationsData: PatientDetails[] = [];
+      if (registrationsResponse.ok) {
+        const data = await registrationsResponse.json();
+        console.log('Approved registrations data:', data);
         
-        console.log('Converted to patient details:', patientDetails);
-        setPatients(patientDetails);
+        if (data.success && data.data && Array.isArray(data.data.registrations)) {
+          // Convert registrations to patient details format
+          registrationsData = data.data.registrations.map((reg: PatientRegistration) => ({
+            _id: reg._id,
+            doctorId: reg.doctorId,
+            doctorName: reg.doctorName || '',
+            doctorSpecialty: reg.doctorSpecialty || '',
+            patientName: reg.patientName,
+            patientEmail: reg.patientEmail,
+            patientAge: reg.patientAge,
+            patientGender: reg.patientGender,
+            mentalHealthConcern: reg.symptoms,
+            medicalHistory: reg.medicalHistory,
+            currentMedications: reg.currentMedications,
+            allergies: reg.allergies,
+            status: reg.status,
+            hasCompletedQuestionnaire: false,
+            appointmentRequestDate: reg.createdAt,
+            createdAt: reg.createdAt,
+            source: 'patient-registrations'  // Mark the source for reference
+          }));
+        }
       } else {
-        console.log('No approved registrations found');
-        setPatients([]);
+        console.log('Failed to fetch approved registrations:', registrationsResponse.status);
       }
-    } catch (error) {
-      console.error('Error fetching approved registrations:', error);
-      setError('Unable to load approved patients. Please try again later.');
       
-      // Fall back to other methods
-      fetchExtraDetailsPatientsData(id);
+      // Process extra details data
+      let extraDetailsData: PatientDetails[] = [];
+      if (extraDetailsResponse.ok) {
+        const data = await extraDetailsResponse.json();
+        console.log('Extra details patients data:', data);
+        
+        // Filter for approved patients only
+        if (Array.isArray(data)) {
+          // The data is directly an array
+          extraDetailsData = data
+            .filter((p: PatientDetails) => p.status === 'accepted')
+            .map((p: PatientDetails) => ({
+              ...p,
+              source: 'extra-details-patients' // Mark the source for reference
+            }));
+        } else if (data.status === 'success' && Array.isArray(data.data)) {
+          // The data is nested in a data property
+          extraDetailsData = data.data
+            .filter((p: PatientDetails) => p.status === 'accepted')
+            .map((p: PatientDetails) => ({
+              ...p,
+              source: 'extra-details-patients' // Mark the source for reference
+            }));
+        }
+      } else {
+        console.log('Failed to fetch extra details patients:', extraDetailsResponse.status);
+      }
+      
+      // Merge data from both sources
+      // Create a map to avoid duplicates based on email
+      const emailMap = new Map<string, PatientDetails>();
+      
+      // First add all registration patients (they take priority)
+      registrationsData.forEach(patient => {
+        if (patient.patientEmail) {
+          emailMap.set(patient.patientEmail, patient);
+        }
+      });
+      
+      // Then add extra details patients if they don't already exist
+      extraDetailsData.forEach(patient => {
+        if (patient.patientEmail && !emailMap.has(patient.patientEmail)) {
+          emailMap.set(patient.patientEmail, patient);
+        }
+      });
+      
+      // Convert map back to array
+      const mergedPatients = Array.from(emailMap.values());
+      console.log('Merged patients data:', mergedPatients);
+      
+      // Update source counts for stats
+      setPatientSourceCounts({
+        registrations: registrationsData.length,
+        extraDetails: extraDetailsData.length,
+        total: mergedPatients.length
+      });
+      
+      setPatients(mergedPatients);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching patient data:', error);
+      setError('Unable to load patient data. Please try again later.');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -204,6 +274,14 @@ export function PatientList() {
       }
       
       console.log("Filtered approved patients:", patientList);
+      
+      // Update patient source counts
+      setPatientSourceCounts({
+        registrations: 0,
+        extraDetails: patientList.length,
+        total: patientList.length
+      });
+      
       setPatients(patientList);
       setError(null);
     } catch (error) {
@@ -256,11 +334,11 @@ export function PatientList() {
       
       // Refresh the data to get updated list
       refreshData();
-      
-      toast({
-        title: "Success",
-        description: `Patient status updated to ${status}`,
-      });
+        
+        toast({
+          title: "Success",
+          description: `Patient status updated to ${status}`,
+        });
     } catch (error) {
       console.error('Error updating patient status:', error);
       toast({
@@ -277,6 +355,8 @@ export function PatientList() {
         return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors">Pending</Badge>;
       case 'approved':
         return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200 transition-colors">Active</Badge>;
+      case 'accepted':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200 transition-colors">Active</Badge>;
       case 'active':
         return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200 transition-colors">Active</Badge>;
       case 'rejected':
@@ -291,8 +371,8 @@ export function PatientList() {
   const renderSkeletons = () => {
     return Array(3).fill(0).map((_, i) => (
       <Card key={i} className="p-4">
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
           <div className="space-y-2">
             <Skeleton className="h-4 w-[250px]" />
             <Skeleton className="h-4 w-[200px]" />
@@ -302,14 +382,40 @@ export function PatientList() {
     ));
   };
 
-  const deletePatient = async (id: string) => {
+  const deletePatient = async (id: string, source?: string) => {
     try {
       setIsDeleting(true);
       
       // Get auth token
       const authToken = getAuthToken();
       
-      const response = await fetch(`${apiUrl}/api/extra-details-patients/${id}`, {
+      // Handle deletion based on source
+      let endpoint = '';
+      if (source === 'patient-registrations') {
+        endpoint = `${apiUrl}/api/patient-registrations/${id}/status`;
+        
+        // For patient registrations, we just update status to 'rejected' instead of deleting
+        const response = await fetch(endpoint, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authToken
+          },
+          body: JSON.stringify({ 
+            status: 'rejected',
+            doctorId 
+          })
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+          throw new Error(errorData.message || 'Failed to deactivate patient');
+        }
+      } else {
+        // Default to extraDetailsPatients endpoint
+        endpoint = `${apiUrl}/api/extra-details-patients/${id}`;
+        
+        const response = await fetch(endpoint, {
         method: 'DELETE',
         headers: {
           'Authorization': authToken
@@ -317,8 +423,9 @@ export function PatientList() {
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-        throw new Error(errorData.message || 'Failed to delete patient');
+          const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+          throw new Error(errorData.message || 'Failed to delete patient');
+        }
       }
       
       // Update the local state by removing the deleted patient
@@ -326,9 +433,9 @@ export function PatientList() {
       
       // Close the dialog
       setShowDeleteDialog(false);
-      
-      toast({
-        title: "Success",
+        
+        toast({
+          title: "Success",
         description: "Patient has been removed successfully",
       });
     } catch (error) {
@@ -341,16 +448,18 @@ export function PatientList() {
     } finally {
       setIsDeleting(false);
       setDeletePatientId(null);
+      setSelectedPatientSource(null);
     }
   };
-
-  const confirmDelete = (id: string) => {
+  
+  const confirmDelete = (id: string, source?: string) => {
     setDeletePatientId(id);
+    setSelectedPatientSource(source || null);
     setShowDeleteDialog(true);
   };
 
   if (error) {
-    return (
+  return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center p-8">
           <AlertCircle className="h-10 w-10 text-destructive mb-4" />
@@ -371,7 +480,19 @@ export function PatientList() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Current Patients</h2>
+        <div>
+          <h2 className="text-xl font-semibold">Current Patients</h2>
+          <div className="flex items-center text-muted-foreground text-sm mt-1">
+            <Users className="h-4 w-4 mr-1" />
+            <span>Total: {patientSourceCounts.total} patients</span>
+            {/* Uncomment if you want to show detailed counts
+            <span className="mx-2">|</span>
+            <span>From Registrations: {patientSourceCounts.registrations}</span>
+            <span className="mx-2">|</span>
+            <span>From Extra Details: {patientSourceCounts.extraDetails}</span>
+            */}
+          </div>
+        </div>
         
         <Button 
           variant="outline" 
@@ -384,7 +505,7 @@ export function PatientList() {
           Refresh
         </Button>
       </div>
-      
+
       {loading ? (
         renderSkeletons()
       ) : patients.length > 0 ? (
@@ -409,6 +530,11 @@ export function PatientList() {
                         <Badge variant="outline" className="hidden sm:inline-flex text-xs">
                           Patient ID: {typeof patient._id === 'string' ? patient._id.substring(0, 8) : ''}
                         </Badge>
+                        {patient.source && (
+                          <Badge variant="outline" className="text-xs" title={`Data source: ${patient.source}`}>
+                            {patient.source === 'patient-registrations' ? 'Registration' : 'Details'}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -418,14 +544,14 @@ export function PatientList() {
                       variant="ghost" 
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => confirmDelete(patient._id)}
+                      onClick={() => confirmDelete(patient._id, patient.source)}
                     >
                       <Trash2 className="h-4 w-4" />
                       <span className="sr-only">Delete</span>
                     </Button>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button
+                        <Button 
                           variant="outline"
                           size="sm"
                           className="text-xs"
@@ -445,7 +571,7 @@ export function PatientList() {
                     </Dialog>
                   </div>
                 </div>
-
+                
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
                   <div className="flex items-center gap-2">
                     <User className="h-4 w-4 text-muted-foreground" />
@@ -475,8 +601,8 @@ export function PatientList() {
                       <Heart className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm truncate max-w-[200px]" title={patient.mentalHealthConcern}>
                         {patient.mentalHealthConcern}
-                      </span>
-                    </div>
+                    </span>
+                  </div>
                   )}
                 </div>
               </CardContent>
@@ -515,7 +641,7 @@ export function PatientList() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => deletePatientId && deletePatient(deletePatientId)}
+              onClick={() => deletePatientId && deletePatient(deletePatientId, selectedPatientSource || undefined)}
               disabled={isDeleting}
             >
               {isDeleting ? (
