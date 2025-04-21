@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeOffIcon, LogIn } from 'lucide-react';
 import Image from 'next/image';
+import { apiUrl } from '@/lib/config';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -24,7 +25,7 @@ export default function LoginPage() {
     try {
       setStatusMessage('Connecting to server...');
       
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

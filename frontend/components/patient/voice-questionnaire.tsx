@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Mic, MicOff, Volume2, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { apiUrl } from '@/lib/config';
 
 interface QuestionnaireResponse {
   
@@ -244,7 +245,7 @@ export function VoiceQuestionnaire({ onComplete }: VoiceQuestionnaireProps) {
         message: 'Processing responses and generating insights...'
       });
 
-      const response = await fetch('http://localhost:5000/api/health-tracking', {
+      const response = await fetch(`${apiUrl}/api/health-tracking`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

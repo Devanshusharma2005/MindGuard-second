@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiUrl } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Call backend API
-    const backendUrl = `http://localhost:5000/api/memories/${userId}`;
+    const backendUrl = `${apiUrl}/api/memories/${userId}`;
     
     const response = await fetch(backendUrl, {
       headers: {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Call backend API
-    const backendUrl = `http://localhost:5000/api/memories`;
+    const backendUrl = `${apiUrl}/api/memories`;
     
     const response = await fetch(backendUrl, {
       method: 'POST',

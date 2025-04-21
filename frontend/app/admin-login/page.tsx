@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeOffIcon, LogIn, Shield } from 'lucide-react';
 import Image from 'next/image';
+import { apiUrl } from '@/lib/config';
 
 export default function AdminLoginPage() {
   const [formData, setFormData] = useState({
@@ -19,7 +20,7 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:5000/api/auth/admin/login', {
+      const res = await fetch(`${apiUrl}/api/auth/admin/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiUrl } from '@/lib/config';
 
 export async function GET(
   request: NextRequest,
@@ -15,7 +16,7 @@ export async function GET(
     }
     
     // Call backend API
-    const backendUrl = `http://localhost:5000/api/consultations/upcoming/${userId}`;
+    const backendUrl = `${apiUrl}/api/consultations/upcoming/${userId}`;
     
     const response = await fetch(backendUrl, {
       headers: {

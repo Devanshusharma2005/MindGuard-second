@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiUrl } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Call backend API to get user profile
-    const backendUrl = `http://localhost:5000/api/user/profile${userId ? `?userId=${userId}` : ''}`;
+    const backendUrl = `${apiUrl}/api/user/profile${userId ? `?userId=${userId}` : ''}`;
     
     // Add token to request headers if available
     const headers: HeadersInit = {

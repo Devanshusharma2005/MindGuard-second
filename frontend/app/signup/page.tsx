@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeOffIcon, UserPlus } from 'lucide-react';
 import Image from 'next/image';
+import { apiUrl } from '@/lib/config';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -27,7 +28,7 @@ export default function SignupPage() {
     
     try {
       // First create the user account
-      const res = await fetch('http://localhost:5000/api/auth/signup', {
+      const res = await fetch(`${apiUrl}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -43,7 +44,7 @@ export default function SignupPage() {
       setStatusMessage('Account created! Logging you in...');
 
       // Then log in with the new credentials
-      const loginRes = await fetch('http://localhost:5000/api/auth/login', {
+      const loginRes = await fetch(`${apiUrl}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

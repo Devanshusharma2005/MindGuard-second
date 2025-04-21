@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiUrl } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Call backend API
-    const backendUrl = `http://localhost:5000/api/game-logs/${userId}/stats`;
+    const backendUrl = `${apiUrl}/api/game-logs/${userId}/stats`;
     
     const response = await fetch(backendUrl, {
       headers: {

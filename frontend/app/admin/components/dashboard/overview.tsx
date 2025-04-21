@@ -92,8 +92,8 @@ export function Overview() {
 
       // Fetch both users and doctors data
       const [usersResponse, doctorsResponse] = await Promise.all([
-        fetch('http://localhost:5000/api/test/users', { headers }),
-        fetch('http://localhost:5000/api/test/doctors', { headers })
+        fetch(`${apiUrl}/api/test/users`, { headers }),
+        fetch(`${apiUrl}/api/test/doctors`, { headers })
       ]);
 
       if (!usersResponse.ok || !doctorsResponse.ok) {

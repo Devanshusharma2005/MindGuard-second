@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeOffIcon, LogIn } from 'lucide-react';
 import Image from 'next/image';
+import { apiUrl } from '@/lib/config';
 
 export default function DoctorLoginPage() {
   const [formData, setFormData] = useState({
@@ -26,7 +27,7 @@ export default function DoctorLoginPage() {
     
     try {
       setStatusMessage('Connecting to server...');
-      const res = await fetch('http://localhost:5000/api/auth/doctor/login', {
+      const res = await fetch(`${apiUrl}/api/auth/doctor/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

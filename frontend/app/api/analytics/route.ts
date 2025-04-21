@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiUrl } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   try {
     // Get timeframe from the request's search params
     const timeframe = request.nextUrl.searchParams.get('timeframe') || '4w';
     
-    const backendUrl = `http://localhost:5000/api/debug/analytics?timeframe=${timeframe}`;
+    const backendUrl = `${apiUrl}/api/debug/analytics?timeframe=${timeframe}`;
     const response = await fetch(backendUrl, {
       headers: {
         'Content-Type': 'application/json'
