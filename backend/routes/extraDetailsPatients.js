@@ -347,8 +347,8 @@ router.post('/', async (req, res) => {
       patientName: savedPatientDetails.patientName,
       hasMentalHealthConcern: !!savedPatientDetails.mentalHealthConcern,
       hasMedicalHistory: !!savedPatientDetails.medicalHistory,
-      medicationsCount: savedPatientDetails.currentMedications.length,
-      allergiesCount: savedPatientDetails.allergies.length,
+      medicationsCount: savedPatientDetails.currentMedications?.length || 0,
+      allergiesCount: savedPatientDetails.allergies?.length || 0,
       hasSymptoms: !!savedPatientDetails.symptoms,
       hasNotes: !!savedPatientDetails.notes
     });

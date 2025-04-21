@@ -45,7 +45,8 @@ export async function GET(
       const response = await fetch(apiEndpoint, {
         headers: {
           'Authorization': authToken,
-          'x-auth-token': xAuthToken
+          'x-auth-token': xAuthToken,
+          'Content-Type': 'application/json'
         },
         cache: 'no-store'
       });
