@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ClipboardList, User, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { userIdKey } from "@/lib/config";
+import { userIdKey, apiUrl } from "@/lib/config";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 
@@ -30,16 +30,56 @@ export function NewPatientSubmissions() {
       try {
         setLoading(true);
         
-        // Get doctor ID from localStorage
-        const doctorId = localStorage.getItem(userIdKey);
+        // Get doctor ID from multiple possible storage locations
+        const doctorId = localStorage.getItem('doctor_id') || 
+                        localStorage.getItem(userIdKey) || 
+                        localStorage.getItem('mindguard_user_id') ||
+                        localStorage.getItem('doctorId');
+                        
         if (!doctorId) {
+          // Try to extract from stored doctor object
+          const storedDoctorJSON = localStorage.getItem('doctor');
+          if (storedDoctorJSON) {
+            try {
+              const doctorData = JSON.parse(storedDoctorJSON);
+              if (doctorData && (doctorData.id || doctorData._id)) {
+                const extractedId = doctorData.id || doctorData._id;
+                console.log('Extracted doctor ID from stored doctor object:', extractedId);
+                
+                // Store for future use
+                localStorage.setItem('doctor_id', extractedId);
+                localStorage.setItem('mindguard_user_id', extractedId);
+                localStorage.setItem('doctorId', extractedId);
+                
+                // Continue with the extracted ID
+                fetchWithDoctorId(extractedId);
+                return;
+              }
+            } catch (err) {
+              console.error('Error parsing doctor JSON:', err);
+            }
+          }
+          
           setError("Doctor ID not found. Please log in again.");
           setLoading(false);
           return;
         }
         
-        // Get auth token
-        const token = localStorage.getItem('mindguard_token');
+        fetchWithDoctorId(doctorId);
+      } catch (error) {
+        console.error("Error fetching new patient submissions:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
+        setLoading(false);
+      }
+    };
+    
+    const fetchWithDoctorId = async (doctorId: string) => {
+      try {
+        // Get auth token from multiple possible storage locations
+        const token = localStorage.getItem('doctor_token') || 
+                     localStorage.getItem('mindguard_token') || 
+                     localStorage.getItem('token');
+                     
         if (!token) {
           setError("Authentication token not found. Please log in again.");
           setLoading(false);
@@ -49,28 +89,72 @@ export function NewPatientSubmissions() {
         // Format token properly with Bearer prefix if it doesn't have it
         const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
         
-        // Fetch the new patient submissions (requested status only)
-        const response = await fetch(`/api/extra-details-patients?doctorId=${doctorId}&status=requested`, {
+        console.log(`Making API request with doctorId: ${doctorId}`);
+        
+        // Use the Next.js API route instead of calling the backend directly
+        const response = await fetch(`/api/extra-details-patients`, {
+          method: 'GET',
           headers: {
             'Authorization': authToken,
           },
         });
         
         if (!response.ok) {
-          throw new Error("Failed to fetch new patient submissions");
+          console.error(`API request failed with status: ${response.status}`);
+          let errorText = await response.text();
+          
+          try {
+            // Try to parse as JSON
+            const errorData = JSON.parse(errorText);
+            console.error('Error details:', errorData);
+            
+            // Show toast notification for better user feedback
+            toast({
+              title: "Error loading patient data",
+              description: errorData.error || errorData.message || "Failed to fetch submissions",
+              variant: "destructive",
+            });
+            
+            throw new Error(errorData.error || errorData.message || "Failed to fetch submissions");
+          } catch (e) {
+            // If not JSON, use the raw text
+            console.error('Raw error response:', errorText);
+            toast({
+              title: "Error loading patient data",
+              description: "Failed to fetch new patient submissions",
+              variant: "destructive",
+            });
+            
+            throw new Error("Failed to fetch new patient submissions");
+          }
         }
         
         const data = await response.json();
+        console.log('API response:', data);
         
-        if (data.status === 'success' && data.data) {
-          const patientData = Array.isArray(data.data) ? data.data : [];
-          setSubmissions(patientData);
-        } else {
-          console.error("Unexpected data format:", data);
+        // Filter for "requested" status submissions
+        let submissionData = data;
+        
+        // If data is wrapped in a data property, extract it
+        if (data && data.data && Array.isArray(data.data)) {
+          submissionData = data.data;
         }
+        
+        const filteredData = Array.isArray(submissionData) ? 
+          submissionData.filter((item: PatientSubmission) => item.status === 'requested') : 
+          [];
+        
+        setSubmissions(filteredData);
       } catch (error) {
-        console.error("Error fetching new patient submissions:", error);
+        console.error("Error in fetchWithDoctorId:", error);
         setError(error instanceof Error ? error.message : "An error occurred");
+        
+        // Show toast notification for any error
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load patient submissions",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }

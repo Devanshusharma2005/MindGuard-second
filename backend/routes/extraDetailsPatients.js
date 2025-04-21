@@ -2,32 +2,22 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth');
+const doctorAuth = require('../middleware/doctorAuth');
 const ExtraDetailsPatient = require('../models/ExtraDetailsPatient');
 const { check, validationResult } = require('express-validator');
 
 // Get ExtraDetailsPatients model from patientDetails.js
 const ExtraDetailsPatients = mongoose.models.extradetailspatients;
 
-// @route   GET /api/extra-details-patients/doctor/:doctorId
-// @desc    Get all patients from extraDetailsPatients collection for a specific doctor
-// @access  Private
-router.get('/doctor/:doctorId', auth, async (req, res) => {
+// Route to get all patients for a doctor
+// This route can be accessed from the frontend with query param
+router.get('/', doctorAuth, async (req, res) => {
   try {
-    const doctorId = req.params.doctorId;
     const { status } = req.query;
+    // Get doctorId from auth middleware
+    const doctorId = req.user.id;
     
     console.log('Looking up patients for doctor ID:', doctorId, status ? `with status: ${status}` : '');
-    
-    // Get all patients for debugging
-    const allPatients = await ExtraDetailsPatients.find().limit(10);
-    console.log('Sample of all patients in extradetailspatients collection:', 
-      allPatients.map(p => ({
-        id: p._id, 
-        doctorId: p.doctorId, 
-        name: p.patientName,
-        doctorName: p.doctorName
-      }))
-    );
     
     // Build the query
     let query = { doctorId: doctorId };
@@ -37,64 +27,70 @@ router.get('/doctor/:doctorId', auth, async (req, res) => {
       query.status = status;
     }
     
-    // Try a fuzzy query to handle different doctorId formats
-    console.log('Running direct query for doctor ID:', doctorId, 'with query:', query);
+    // Find matching patients
+    const patients = await ExtraDetailsPatients.find(query)
+      .sort({ appointmentRequestDate: -1 });
     
-    // First try with exact ID
+    console.log(`Query with doctorId: ${doctorId} returned ${patients.length} patients`);
+    
+    // Ensure all patients have the complete data structure
+    const formattedPatients = patients.map(patient => ({
+      _id: patient._id,
+      doctorId: patient.doctorId,
+      doctorName: patient.doctorName || '',
+      doctorSpecialty: patient.doctorSpecialty || '',
+      patientName: patient.patientName || '',
+      patientEmail: patient.patientEmail || '',
+      patientAge: patient.patientAge || '',
+      patientGender: patient.patientGender || '',
+      hasCompletedQuestionnaire: patient.hasCompletedQuestionnaire || false,
+      mentalHealthConcern: patient.mentalHealthConcern || '',
+      appointmentRequestDate: patient.appointmentRequestDate || patient.createdAt,
+      status: patient.status || 'pending',
+      // Include medical details
+      medicalHistory: patient.medicalHistory || '',
+      currentMedications: patient.currentMedications || [],
+      allergies: patient.allergies || [],
+      symptoms: patient.symptoms || '',
+      notes: patient.notes || '',
+      createdAt: patient.createdAt,
+      updatedAt: patient.updatedAt
+    }));
+    
+    res.json(formattedPatients);
+  } catch (err) {
+    console.error('Error in doctor patients route:', err.message);
+    res.status(500).json({
+      success: false,
+      msg: 'Server error',
+      error: err.message
+    });
+  }
+});
+
+// @route   GET /api/extra-details-patients/doctor/:doctorId
+// @desc    Get all patients from extraDetailsPatients collection for a specific doctor
+// @access  Private
+router.get('/doctor/:doctorId', doctorAuth, async (req, res) => {
+  try {
+    const doctorId = req.params.doctorId;
+    const { status } = req.query;
+    
+    console.log('Looking up patients for doctor ID:', doctorId, status ? `with status: ${status}` : '');
+    
+    // Build the query
+    let query = { doctorId: doctorId };
+    
+    // Add status filter if provided
+    if (status) {
+      query.status = status;
+    }
+    
+    // Try with exact ID
     let patients = await ExtraDetailsPatients.find(query)
       .sort({ appointmentRequestDate: -1 });
     
-    console.log(`Direct query with doctorId: ${doctorId} returned ${patients.length} patients`);
-    
-    // If no results, try with different formats
-    if (patients.length === 0) {
-      try {
-        // Try as ObjectId
-        const objectIdQuery = { 
-          doctorId: new mongoose.Types.ObjectId(doctorId),
-          ...(status && { status })
-        };
-        console.log('Trying ObjectId query:', objectIdQuery);
-        patients = await ExtraDetailsPatients.find(objectIdQuery)
-          .sort({ appointmentRequestDate: -1 });
-        console.log(`ObjectId query returned ${patients.length} patients`);
-      } catch (err) {
-        console.log('ObjectId query failed:', err.message);
-      }
-    }
-    
-    // If still no results, try with string
-    if (patients.length === 0) {
-      try {
-        // Try as string explicitly
-        const stringQuery = { 
-          doctorId: doctorId.toString(),
-          ...(status && { status })
-        };
-        console.log('Trying string query:', stringQuery);
-        patients = await ExtraDetailsPatients.find(stringQuery)
-          .sort({ appointmentRequestDate: -1 });
-        console.log(`String query returned ${patients.length} patients`);
-      } catch (err) {
-        console.log('String query failed:', err.message);
-      }
-    }
-    
-    // Try fuzzy match if still no results
-    if (patients.length === 0) {
-      try {
-        console.log('Trying regex query');
-        patients = await ExtraDetailsPatients.find({ 
-          doctorId: { $regex: new RegExp(doctorId, 'i') },
-          ...(status && { status })
-        }).sort({ appointmentRequestDate: -1 });
-        console.log(`Regex query returned ${patients.length} patients`);
-      } catch (err) {
-        console.log('Regex query failed:', err.message);
-      }
-    }
-    
-    console.log(`Returning ${patients.length} patients total`);
+    console.log(`Query with doctorId: ${doctorId} returned ${patients.length} patients`);
     
     // Ensure all patients have the complete data structure
     const formattedPatients = patients.map(patient => ({

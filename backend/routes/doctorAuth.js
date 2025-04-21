@@ -5,6 +5,7 @@ const multer = require('multer');
 const path = require('path');
 const Doctor = require('../models/Doctor');
 const auth = require('../middleware/auth');
+const doctorAuth = require('../middleware/doctorAuth');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -128,36 +129,39 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ msg: 'Invalid credentials' });
     }
 
-    // Create JWT token
+    // Create JWT token with consistent format
     const token = jwt.sign(
-      { id: doctor._id, role: 'doctor' },
+      { id: doctor._id.toString(), role: 'doctor' },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
+    // Add consistent response format
     res.json({
+      success: true,
       token,
       doctor: {
-        id: doctor._id,
+        id: doctor._id.toString(),
         fullName: doctor.fullName,
         email: doctor.email,
         isVerified: doctor.isVerified
       }
     });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    console.error('Doctor login error:', err.message);
+    res.status(500).json({
+      success: false,
+      msg: 'Server error during login',
+      error: err.message
+    });
   }
 });
 
 // Get doctor profile
-router.get('/profile', auth, async (req, res) => {
+router.get('/profile', doctorAuth, async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.user.id).select('-password');
-    if (!doctor) {
-      return res.status(404).json({ msg: 'Doctor not found' });
-    }
-    res.json(doctor);
+    // No need to query again since middleware already populated req.user
+    res.json(req.user);
   } catch (err) {
     console.error(err.message);
     res.status(500).send('Server error');

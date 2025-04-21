@@ -41,25 +41,44 @@ export default function DoctorLoginPage() {
 
       setStatusMessage('Login successful! Preparing your dashboard...');
 
-      // Store token and doctor info using multiple storage methods for compatibility
+      console.log('Doctor login response:', data);
+
+      // Ensure we have a token
+      if (!data.token) {
+        throw new Error('No token received from server. Please try again.');
+      }
+
+      // Store token consistently with all possible naming conventions
       localStorage.setItem('token', data.token);
       localStorage.setItem('mindguard_token', data.token);
+      localStorage.setItem('doctor_token', data.token); // Add specific doctor token
+
+      // Store user type
       localStorage.setItem('userType', 'doctor');
       localStorage.setItem('mindguard_user_type', 'doctor');
+      
+      // Store the whole doctor object
       localStorage.setItem('doctor', JSON.stringify(data.doctor));
       
-      // Store doctor ID for API calls
+      // Store doctor ID in multiple formats for compatibility
       if (data.doctor && data.doctor.id) {
         localStorage.setItem('mindguard_user_id', data.doctor.id);
+        localStorage.setItem('doctor_id', data.doctor.id);
+        localStorage.setItem('doctorId', data.doctor.id);
+        console.log('Stored doctor ID in localStorage:', data.doctor.id);
+      } else {
+        console.error('Doctor ID missing from response!', data);
       }
       
       // Also store in sessionStorage as fallback
       sessionStorage.setItem('token', data.token);
+      sessionStorage.setItem('doctor_token', data.token);
       
       // Set cookie for additional compatibility
       document.cookie = `token=${data.token}; path=/; max-age=86400`; // 24 hours
+      document.cookie = `doctor_token=${data.token}; path=/; max-age=86400`; // 24 hours
       
-      console.log('Doctor login successful, token stored');
+      console.log('Doctor login successful, token and ID stored in multiple formats');
       
       // Short delay for better UX
       setTimeout(() => {

@@ -1,70 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiUrl } from '@/lib/config';
+
+// Environment variables or constants
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get doctor ID from query params
-    const { searchParams } = new URL(request.url);
-    const doctorId = searchParams.get('doctorId');
-    const status = searchParams.get('status');
-
-    if (!doctorId) {
+    // Get the authorization header from the incoming request
+    const authHeader = request.headers.get('authorization');
+    console.log('[API Route] Authorization header:', authHeader?.substring(0, 20) + '...');
+    
+    if (!authHeader) {
+      console.log('[API Route] No authorization header provided');
       return NextResponse.json(
-        { status: 'error', message: 'Doctor ID is required' },
-        { status: 400 }
-      );
-    }
-
-    console.log("Extra-details-patients route called with doctorId:", doctorId, status ? `and status: ${status}` : '');
-
-    // Get auth token from request headers
-    const token = request.headers.get('authorization');
-    if (!token) {
-      return NextResponse.json(
-        { status: 'error', message: 'Unauthorized' },
+        { error: 'Authorization header is required' },
         { status: 401 }
       );
     }
 
-    // Format token properly with Bearer prefix if it doesn't have it
-    const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-    const xAuthToken = token.startsWith('Bearer ') ? token.split(' ')[1] : token;
+    // Log request details for debugging
+    console.log('[API Route] Forwarding request to backend:', `${API_URL}/api/extra-details-patients`);
 
-    // Build the API URL with optional status filter
-    let apiEndpoint = `${apiUrl}/api/extra-details-patients/doctor/${doctorId}`;
-    if (status) {
-      apiEndpoint += `?status=${status}`;
-    }
-
-    // Make a direct request to the backend API with cache disabled
-    const response = await fetch(apiEndpoint, {
+    // Forward the request to the backend API
+    const response = await fetch(`${API_URL}/api/extra-details-patients`, {
       headers: {
-        'Authorization': authToken,
-        'x-auth-token': xAuthToken
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
       },
-      cache: 'no-store'
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      return NextResponse.json(
-        { status: 'error', message: errorData.message || 'Failed to fetch patient details' },
-        { status: response.status }
-      );
-    }
+    console.log('[API Route] Backend responded with status:', response.status);
 
+    // Get the response data
     const data = await response.json();
-    console.log("Raw data from backend:", data);
+    console.log('[API Route] Response data sample:', Array.isArray(data) ? `${data.length} items` : 'Not an array');
 
-    // Return the data directly
-    return NextResponse.json({
-      status: 'success',
-      data: data
-    });
+    // Return the data with the appropriate status
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Error in extra-details-patients API route:', error);
+    console.error('[API Route] Error:', error);
     return NextResponse.json(
-      { status: 'error', message: 'Internal server error' },
+      { error: 'Failed to proxy request to backend' },
       { status: 500 }
     );
   }
@@ -72,57 +47,29 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Extra-details-patients POST route called");
-    
-    // Parse the request body
+    // Get the authorization header and body from the incoming request
+    const authHeader = request.headers.get('authorization');
     const body = await request.json();
-    console.log("Request body:", body);
-    
-    // Check for required fields
-    if (!body.doctorId || !body.patientName || !body.patientEmail) {
-      return NextResponse.json(
-        { status: 'error', message: 'Missing required fields' },
-        { status: 400 }
-      );
-    }
-    
-    // Get auth token from request headers
-    const token = request.headers.get('authorization');
-    
-    // Make a direct request to the backend API
-    const response = await fetch(`${apiUrl}/api/extra-details-patients`, {
+
+    // Forward the request to the backend API
+    const response = await fetch(`${API_URL}/api/extra-details-patients`, {
       method: 'POST',
       headers: {
+        'Authorization': authHeader || '',
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': token })
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
     });
-    
+
+    // Get the response data
     const data = await response.json();
-    console.log("Response from backend:", data);
-    
-    if (!response.ok) {
-      return NextResponse.json(
-        { 
-          status: 'error', 
-          message: data.msg || 'Failed to create patient details',
-          error: data.error
-        },
-        { status: response.status }
-      );
-    }
-    
-    // Return success response
-    return NextResponse.json({
-      status: 'success',
-      message: 'Patient details created successfully',
-      data: data.patientDetails
-    });
+
+    // Return the data with the appropriate status
+    return NextResponse.json(data, { status: response.status });
   } catch (error) {
-    console.error('Error in extra-details-patients POST route:', error);
+    console.error('API route error:', error);
     return NextResponse.json(
-      { status: 'error', message: 'Internal server error' },
+      { error: 'Failed to proxy request to backend' },
       { status: 500 }
     );
   }
