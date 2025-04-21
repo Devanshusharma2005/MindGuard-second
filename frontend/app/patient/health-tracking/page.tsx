@@ -10,6 +10,7 @@ import { HealthInsights } from "@/components/patient/health-insights";
 import { ProgressCharts } from "@/components/patient/progress-charts";
 import Recommendations from "@/components/patient/recommendations";
 import { ReportSubmission } from "@/components/patient/report-submission";
+import { apiUrl } from '@/lib/config';
 
 interface HealthData {
   insights: {
@@ -154,7 +155,7 @@ export default function HealthTracking() {
   const fetchHealthHistory = async (userId: string) => {
     try {
       console.log("Fetching health history for user:", userId);
-      const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+      const response = await fetch(`${apiUrl}/api/health-tracking/${userId}`);
       console.log("Health history response status:", response.status);
       
       if (!response.ok) {
@@ -188,7 +189,7 @@ export default function HealthTracking() {
       const userId = localStorage.getItem("mindguard_user_id");
       console.log("Submitting questionnaire data:", { ...data, userId });
       
-      const response = await fetch("http://localhost:5000/api/health-tracking", {
+      const response = await fetch(`${apiUrl}/api/health-tracking`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +212,12 @@ export default function HealthTracking() {
       console.log("Questionnaire submission result:", result);
       
       // Refresh health data after submission
-      await fetchHealthHistory(userId);
+      if (userId) {
+        await fetchHealthHistory(userId);
+      } else {
+        console.error("No user ID found in localStorage");
+        setError("Failed to refresh health data: No user ID found");
+      }
       setActiveTab("insights"); // Switch to insights tab after submission
     } catch (err) {
       console.error("Error submitting questionnaire:", err);

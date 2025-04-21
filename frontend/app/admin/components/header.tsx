@@ -34,7 +34,7 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
     <header className="sticky top-0 z-40 border-b bg-background">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
@@ -55,7 +55,11 @@ export default function Header({ sidebarOpen, setSidebarOpen }: HeaderProps) {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <Button variant="ghost" size="icon" className="md:hidden">
+              <Search className="h-5 w-5" />
+            </Button>
+            
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive"></span>

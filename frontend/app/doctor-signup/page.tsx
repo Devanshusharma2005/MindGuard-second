@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { EyeIcon, EyeOffIcon, UserPlus, Upload, FileText, Award, Building2, Phone, MapPin } from 'lucide-react';
 import Image from 'next/image';
+import { apiUrl } from '@/lib/config';
 
 export default function DoctorSignupPage() {
   const [formData, setFormData] = useState({
@@ -70,7 +71,7 @@ export default function DoctorSignupPage() {
         formDataToSend.append('documents[idProofFile]', formData.documents.idProofFile);
       }
 
-      const res = await fetch('http://localhost:5000/api/auth/doctor/register', {
+      const res = await fetch(`${apiUrl}/api/auth/doctor/register`, {
         method: 'POST',
         body: formDataToSend,
       });

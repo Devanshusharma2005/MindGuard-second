@@ -488,7 +488,10 @@ export default function ReportsPage() {
                           outerRadius={80}
                           fill="#8884d8"
                           dataKey="count"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) => {
+                            const label = `${name} ${(percent * 100).toFixed(0)}%`;
+                            return label.length > 15 ? `${name.slice(0, 12)}... ${(percent * 100).toFixed(0)}%` : label;
+                          }}
                         >
                           {emotionData.map((entry: EmotionData, index: number) => (
                             <Cell key={`cell-${index}`} fill={entry.fill} />

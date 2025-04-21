@@ -10,6 +10,7 @@ import { Loader2, Upload, FileText, AlertCircle, CheckCircle } from "lucide-reac
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useRouter } from 'next/navigation';
+import { apiUrl } from '@/lib/config';
 
 export default function ReportUploadPage() {
   const { toast } = useToast();
@@ -122,7 +123,7 @@ export default function ReportUploadPage() {
       setProgress(30);
       
       // Use the full API endpoint URL that matches your backend
-      const response = await fetch('http://localhost:5000/api/health-tracking/pdf-analysis', {
+      const response = await fetch(`${apiUrl}/api/health-tracking/pdf-analysis`, {
         method: 'POST',
         body: formData,
       });

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
+import { apiUrl } from '@/lib/config';
 
 interface EngagementData {
   dailyActive: number;
@@ -45,7 +46,7 @@ export function EngagementMetrics() {
         headers['x-auth-token'] = token;
       }
 
-      const response = await fetch('http://localhost:5000/api/test/users', { headers });
+      const response = await fetch(`${apiUrl}/api/test/users`, { headers });
 
       if (!response.ok) {
         throw new Error('Failed to fetch user data');

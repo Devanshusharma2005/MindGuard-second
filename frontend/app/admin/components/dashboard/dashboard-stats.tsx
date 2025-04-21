@@ -55,7 +55,7 @@ export function DashboardCardStats() {
       }
       
       // Use the exact same endpoint that the therapist page is using successfully
-      const response = await fetch(`http://localhost:5000/api/test/doctors`, { headers });
+      const response = await fetch(`${apiUrl}/api/test/doctors`, { headers });
       
       if (!response.ok) {
         throw new Error(`Failed to fetch therapists: ${response.status}`);

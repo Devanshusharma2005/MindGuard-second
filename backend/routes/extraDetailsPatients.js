@@ -337,10 +337,19 @@ router.post('/', async (req, res) => {
       appointmentRequestDate: new Date(),
       status: 'accepted' // Set status to accepted for doctor-initiated creation
     });
+
+    console.log('Patient details doctorId saved as:', savedPatientDetails.doctorId, 'type:', typeof savedPatientDetails.doctorId);
     
-    console.log('Saving new patient record');
-    const savedPatientDetails = await patientDetails.save();
-    console.log('Patient details saved successfully:', savedPatientDetails._id);
+    // Log the saved data for debugging
+    console.log('Saved patient data includes:', {
+      patientName: savedPatientDetails.patientName,
+      hasMentalHealthConcern: !!savedPatientDetails.mentalHealthConcern,
+      hasMedicalHistory: !!savedPatientDetails.medicalHistory,
+      medicationsCount: savedPatientDetails.currentMedications?.length || 0,
+      allergiesCount: savedPatientDetails.allergies?.length || 0,
+      hasSymptoms: !!savedPatientDetails.symptoms,
+      hasNotes: !!savedPatientDetails.notes
+    });
     
     // Return success response
     res.status(201).json({

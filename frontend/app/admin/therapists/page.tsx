@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Filter, MoreHorizontal, UserPlus, Download, Trash2, Edit, Eye, Ban, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { apiUrl } from '@/lib/config';
 
 interface Doctor {
   _id: string;
@@ -68,7 +69,7 @@ export default function TherapistsPage() {
       
       try {
         // Direct API endpoint to fetch real doctors from MongoDB with full URL matching the patient implementation
-        const response = await fetch(`http://localhost:5000/api/test/doctors`, { headers });
+        const response = await fetch(`${apiUrl}/api/test/doctors`, { headers });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch doctors: ${response.status}`);
@@ -270,8 +271,8 @@ export default function TherapistsPage() {
         className="space-y-4"
         onValueChange={setActiveTab}
       >
-        <div className="flex justify-between items-center">
-          <TabsList>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <TabsList className='w-full sm:w-auto overflow-x-auto'>
             <TabsTrigger value="all">All Therapists</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>

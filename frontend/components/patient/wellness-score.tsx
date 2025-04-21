@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { apiUrl } from '@/lib/config';
 
 interface HealthReport {
   timestamp: string;
@@ -37,7 +38,7 @@ export function WellnessScore() {
           return;
         }
 
-        const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+        const response = await fetch(`${apiUrl}/api/health-tracking/${userId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch wellness data');
         }

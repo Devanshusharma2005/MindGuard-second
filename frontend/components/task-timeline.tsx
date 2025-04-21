@@ -36,6 +36,11 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
   const [analysisMessage, setAnalysisMessage] = useState<string | null>(null)
   const [analysisHistory, setAnalysisHistory] = useState<any[]>([])
   const [showFailurePopup, setShowFailurePopup] = useState(false)
+  const [isPlankVideoPlaying, setIsPlankVideoPlaying] = useState(false)
+  const [activePlankTask, setActivePlankTask] = useState<string | null>(null)
+  const [plankVideoRef, setPlankVideoRef] = useState<HTMLVideoElement | null>(null)
+  const [plankAnalysis, setPlankAnalysis] = useState<any>(null)
+  const [showPlankUpload, setShowPlankUpload] = useState<boolean>(false)
 
   // Initialize animated progress values
   useEffect(() => {
@@ -138,13 +143,17 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
 
   const fetchAnalysisHistory = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8001/analysis-history')
+      const response = await fetch('http://127.0.0.1:8004/analysis-history')
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
       const data = await response.json()
       if (data.history) {
         setAnalysisHistory(data.history)
       }
     } catch (error) {
       console.error('Error fetching analysis history:', error)
+      // Don't show error to user as this is not critical functionality
     }
   }
 
@@ -156,59 +165,208 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
     const file = event.target.files?.[0]
     if (file) {
       try {
+        console.log("Starting video upload...", {
+          name: file.name,
+          type: file.type,
+          size: file.size
+        })
         setIsLoading(true)
         setVideoError(null)
         
         const formData = new FormData()
         formData.append('video', file)
         
-        const response = await fetch('http://127.0.0.1:8001/analyze', {
+        console.log("Sending request to server...")
+        const response = await fetch('http://127.0.0.1:8004/analyze', {
           method: 'POST',
-          body: formData
+          body: formData,
+          headers: {
+            'Accept': 'application/json'
+          }
         })
 
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to upload video')
+        console.log("Server response status:", response.status)
+        const responseText = await response.text()
+        console.log("Raw server response:", responseText)
+        
+        let data
+        try {
+          data = JSON.parse(responseText)
+        } catch (e) {
+          console.error("Error parsing server response:", e)
+          throw new Error("Invalid server response: " + responseText)
         }
 
-        const data = await response.json()
-        console.log('Server response:', data)
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to upload video')
+        }
 
         if (data.success) {
-          setWalkingPercentage(data.walking_percentage)
-          setIsWalkingVideoPlaying(true)
-          setActiveWalkingTask(tasks[currentTaskIndex].id)
+          // Make API call to update task completion
+          try {
+            const taskId = tasks[currentTaskIndex].id
+            const apiResponse = await fetch('/api/tasks/complete', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                taskId,
+                videoPath: data.video_path || '',
+                walkingPercentage: data.walking_percentage
+              })
+            })
 
-          // Check walking percentage and show appropriate popup
-          if (data.walking_percentage >= 35) {
-            // Show success message and reward
-            setCurrentReward(tasks[currentTaskIndex].reward)
-            setShowRewardsPopup(true)
-            
-            // Complete task after showing reward
-            setTimeout(() => {
-              onCompleteTask(tasks[currentTaskIndex].id)
-              setShowRewardsPopup(false)
-              setCurrentReward(null)
-            }, 3000)
-          } else {
-            // Show failure popup
-            setShowFailurePopup(true)
-            // Hide failure popup after 3 seconds
-            setTimeout(() => {
-              setShowFailurePopup(false)
-            }, 3000)
+            if (!apiResponse.ok) {
+              throw new Error('Failed to update task completion status')
+            }
+
+            const apiData = await apiResponse.json()
+            console.log('Task completion updated:', apiData)
+
+            setWalkingPercentage(data.walking_percentage)
+            setIsWalkingVideoPlaying(true)
+            setActiveWalkingTask(tasks[currentTaskIndex].id)
+
+            // Check walking percentage and show appropriate popup
+            if (data.walking_percentage >= 35) {
+              // Show success message and reward
+              setCurrentReward(tasks[currentTaskIndex].reward)
+              setShowRewardsPopup(true)
+              
+              // Complete task after showing reward
+              setTimeout(() => {
+                onCompleteTask(tasks[currentTaskIndex].id)
+                setShowRewardsPopup(false)
+                setCurrentReward(null)
+              }, 3000)
+            } else {
+              // Show failure popup
+              setShowFailurePopup(true)
+              // Hide failure popup after 3 seconds
+              setTimeout(() => {
+                setShowFailurePopup(false)
+              }, 3000)
+            }
+          } catch (apiError) {
+            console.error('Error updating task completion:', apiError)
+            throw new Error('Failed to update task completion status')
           }
         } else {
           throw new Error(data.error || 'Analysis failed')
         }
 
       } catch (error) {
-        console.error('Error:', error)
-        setVideoError(error instanceof Error ? error.message : 'Failed to process video')
+        console.error('Error in handleVideoUpload:', error)
+        setVideoError(error instanceof Error ? error.message : 'Failed to process video. Please ensure the server is running.')
         setIsWalkingVideoPlaying(false)
         setActiveWalkingTask(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
+  const handlePlankVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      try {
+        console.log("Starting plank video upload...", {
+          name: file.name,
+          type: file.type,
+          size: file.size
+        })
+        setIsLoading(true)
+        setVideoError(null)
+        
+        const formData = new FormData()
+        formData.append('video', file)
+        
+        console.log("Sending request to server...")
+        const response = await fetch('http://127.0.0.1:8004/analyze-plank', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            // Don't set Content-Type header, let the browser set it with the boundary
+          }
+        })
+
+        console.log("Server response status:", response.status)
+        const responseText = await response.text()
+        console.log("Server response:", responseText)
+        
+        let data
+        try {
+          data = JSON.parse(responseText)
+        } catch (e) {
+          console.error("Error parsing server response:", e)
+          throw new Error("Invalid server response")
+        }
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to upload video')
+        }
+
+        if (data.success) {
+          // Make API call to update task completion
+          try {
+            const taskId = tasks[currentTaskIndex].id
+            const apiResponse = await fetch('/api/tasks/complete-plank', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                taskId,
+                videoPath: data.video_path || '',
+                duration: data.duration,
+                treasureAwarded: data.treasureAwarded
+              })
+            })
+
+            if (!apiResponse.ok) {
+              throw new Error('Failed to update plank task completion status')
+            }
+
+            const apiData = await apiResponse.json()
+            console.log('Plank task completion updated:', apiData)
+
+            setPlankAnalysis(data)
+            setIsPlankVideoPlaying(true)
+            setActivePlankTask(tasks[currentTaskIndex].id)
+
+            // Only show reward popup and complete task if treasure was awarded
+            if (data.treasureAwarded) {
+              // Show success message and reward
+              setCurrentReward(tasks[currentTaskIndex].reward)
+              setShowRewardsPopup(true)
+              
+              // Complete task after showing reward
+              setTimeout(() => {
+                onCompleteTask(tasks[currentTaskIndex].id)
+                setShowRewardsPopup(false)
+                setCurrentReward(null)
+              }, 3000)
+            } else {
+              // Show failure message if no treasure was awarded
+              setShowFailurePopup(true)
+              setTimeout(() => {
+                setShowFailurePopup(false)
+              }, 3000)
+            }
+          } catch (apiError) {
+            console.error('Error updating plank task completion:', apiError)
+            throw new Error('Failed to update plank task completion status')
+          }
+        } else {
+          throw new Error(data.error || 'Analysis failed')
+        }
+
+      } catch (error) {
+        console.error('Error in handlePlankVideoUpload:', error)
+        setVideoError(error instanceof Error ? error.message : 'Failed to process video. Please ensure the plank analysis server is running.')
+        setIsPlankVideoPlaying(false)
+        setActivePlankTask(null)
       } finally {
         setIsLoading(false)
       }
@@ -221,7 +379,6 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
         setIsLoading(true);
         console.log("Starting walking task...");
         setVideoError(null);
-        // Instead of immediately playing video, show upload button
         setShowVideoUpload(true);
       } catch (error) {
         console.error("Task start error:", error);
@@ -234,12 +391,10 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
       try {
         setIsLoading(true);
         console.log("Starting meditation task...");
-        
         setVideoError(null);
         setIsVideoPlaying(true);
         setIsAudioPlaying(true);
         setActiveVideoTask(task.id);
-        
       } catch (error) {
         console.error("Task start error:", error);
         setVideoError("Failed to start meditation");
@@ -253,16 +408,27 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
       try {
         setIsLoading(true);
         console.log("Starting hydration task...");
-        
         setVideoError(null);
         setIsHydrationVideoPlaying(true);
         setActiveHydrationTask(task.id);
-        
       } catch (error) {
         console.error("Task start error:", error);
         setVideoError("Failed to start hydration task");
         setIsHydrationVideoPlaying(false);
         setActiveHydrationTask(null);
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank") {
+      try {
+        setIsLoading(true);
+        console.log("Starting plank exercise...");
+        setVideoError(null);
+        setShowPlankUpload(true);
+      } catch (error) {
+        console.error("Task start error:", error);
+        setVideoError("Failed to start plank exercise");
+        setShowPlankUpload(false);
       } finally {
         setIsLoading(false);
       }
@@ -428,6 +594,17 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
 
               {/* Task description */}
               <p className="text-sm text-muted-foreground">{task.description}</p>
+
+              {/* Add plank image for plank task */}
+              {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  <img
+                    src="/plank.gif"
+                    alt="Plank exercise demonstration"
+                    className="w-full rounded-lg"
+                  />
+                </div>
+              )}
 
               {/* Video player for walking tasks */}
               {task.category.toLowerCase() === "walk" && !isWalkingVideoPlaying && isCurrent && (
@@ -604,6 +781,69 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                 </div>
               )}
 
+              {/* Video player for plank tasks */}
+              {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && !isPlankVideoPlaying && isCurrent && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  {showPlankUpload ? (
+                    <div className="flex flex-col gap-2">
+                      <Button 
+                        onClick={() => document.getElementById('plankVideoUpload')?.click()}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? "Analyzing..." : "Upload Plank Video"}
+                      </Button>
+                      <input
+                        id="plankVideoUpload"
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={handlePlankVideoUpload}
+                        disabled={isLoading}
+                      />
+                      
+                      {videoError && (
+                        <div className="text-red-500 text-sm mt-1 bg-red-50 border border-red-200 rounded px-4 py-2">
+                          {videoError}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <p>Upload a video of your plank exercise for analysis.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && isPlankVideoPlaying && activePlankTask === task.id && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  {plankAnalysis && (
+                    <div className={`p-4 ${plankAnalysis.treasureAwarded ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-lg`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className={`font-medium ${plankAnalysis.treasureAwarded ? 'text-green-800' : 'text-red-800'}`}>
+                            {plankAnalysis.treasureAwarded ? 'Plank Analysis Complete!' : 'Plank Analysis Failed'}
+                          </h4>
+                          <p className={`text-sm ${plankAnalysis.treasureAwarded ? 'text-green-600' : 'text-red-600'}`}>
+                            Duration: {plankAnalysis.duration} seconds
+                          </p>
+                          <p className={`text-sm ${plankAnalysis.treasureAwarded ? 'text-green-600' : 'text-red-600'}`}>
+                            {plankAnalysis.message}
+                          </p>
+                        </div>
+                        <div className={`h-10 w-10 ${plankAnalysis.treasureAwarded ? 'bg-green-100' : 'bg-red-100'} rounded-full flex items-center justify-center`}>
+                          {plankAnalysis.treasureAwarded ? (
+                            <CheckCircle className="h-6 w-6 text-green-500" />
+                          ) : (
+                            <XCircle className="h-6 w-6 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Task progress */}
               <div className="mt-2">
@@ -658,7 +898,7 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                               : isHydrationVideoPlaying && activeHydrationTask === task.id
                                 ? "Hydration in Progress..."
                                 : "Start Hydration"
-                            : "Complete Task"
+                            : "Upload Video"
                       : "bg-muted text-muted-foreground",
                 )}
                 disabled={
@@ -668,7 +908,15 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                   (isHydrationVideoPlaying && activeHydrationTask === task.id) ||
                   (task.category.toLowerCase() === "walk" && showVideoUpload)
                 }
-                onClick={() => handleStartTask(task)}
+                onClick={() => {
+                  if (task.category.toLowerCase() !== "walk" && 
+                      task.category.toLowerCase() !== "meditation" && 
+                      task.category.toLowerCase() !== "hydration") {
+                    document.getElementById('videoUpload')?.click();
+                  } else {
+                    handleStartTask(task);
+                  }
+                }}
               >
                 {isCompleted 
                   ? "Completed" 
@@ -693,9 +941,19 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                         : isHydrationVideoPlaying && activeHydrationTask === task.id
                           ? "Hydration in Progress..."
                           : "Start Hydration"
-                      : "Complete Task"
+                    : "Upload Video"
                     : "Locked"}
               </Button>
+
+              {/* Hidden file input for video upload */}
+              <input
+                id="videoUpload"
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleVideoUpload}
+                disabled={isLoading}
+              />
             </div>
 
             {/* Status circle */}

@@ -8,6 +8,7 @@ import { Upload, FileText, CheckCircle2, AlertCircle, Loader2 } from "lucide-rea
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
 import { Progress } from "@/components/ui/progress";
+import { apiUrl } from '@/lib/config';
 
 export function ReportSubmission() {
   const { toast } = useToast();
@@ -96,8 +97,8 @@ export function ReportSubmission() {
       setProgress(30);
       
       // Use the full API endpoint URL that matches your backend
-      console.log('Sending request to:', 'http://localhost:5000/api/health-tracking/pdf-analysis');
-      const response = await fetch('http://localhost:5000/api/health-tracking/pdf-analysis', {
+      console.log('Sending request to:', `${apiUrl}/api/health-tracking/pdf-analysis`);
+      const response = await fetch(`${apiUrl}/api/health-tracking/pdf-analysis`, {
         method: 'POST',
         body: formData,
       });
@@ -128,7 +129,7 @@ export function ReportSubmission() {
       console.log('PDF analysis response:', data);
       
       // Fetch updated health data to show in console
-      const healthDataResponse = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+      const healthDataResponse = await fetch(`${apiUrl}/api/health-tracking/${userId}`);
       if (healthDataResponse.ok) {
         const healthData = await healthDataResponse.json();
         console.log('=== UPDATED HEALTH DATA ===');
@@ -138,7 +139,7 @@ export function ReportSubmission() {
       }
       
       // Fetch interaction history to confirm the report was saved
-      const historyResponse = await fetch(`http://localhost:5000/api/health-tracking/history/${userId}?type=report&limit=1`);
+      const historyResponse = await fetch(`${apiUrl}/api/health-tracking/history/${userId}?type=report&limit=1`);
       if (historyResponse.ok) {
         const historyData = await historyResponse.json();
         console.log('=== REPORT SAVED IN HISTORY ===');
