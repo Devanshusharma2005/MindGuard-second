@@ -18,7 +18,10 @@ export default function PatientLayout({
       <div className="flex min-h-screen flex-col">
         <TopNav />
         <div className="flex flex-1">
-          <SideNav isOpen={false} />
+          {/* Desktop SideNav - hidden on mobile */}
+          <div className="hidden md:block">
+            <SideNav isOpen={true} />
+          </div>
           <main className="flex-1 p-6 md:p-8 bg-gray-100 dark:bg-gray-900">{children}</main>
         </div>
       </div>

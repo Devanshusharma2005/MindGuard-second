@@ -12,8 +12,6 @@ import {
   Bot,
   Trophy,
   Music,
-  Settings,
-  HelpCircle,
   Home,
   Gamepad2,
   History,
@@ -91,8 +89,7 @@ export function SideNav({ isOpen }: { isOpen: boolean }) {
     <div
       className={cn(
         "border-r bg-background transition-all duration-300",
-        isOpen ? "block absolute z-50 h-screen w-64 sm:w-72" : "hidden",
-        "md:block md:relative md:h-auto md:w-64 lg:w-72"
+        "md:h-[calc(100vh-4rem)] md:w-64 lg:w-72"
       )}
     >
       <ScrollArea className="h-[calc(100vh-4rem)] py-4">
@@ -223,34 +220,6 @@ export function SideNav({ isOpen }: { isOpen: boolean }) {
               >
                 <Gamepad2 className="mr-2 h-4 w-4" />
                 Gamification
-              </Button>
-            </Link>
-          </div>
-        </div>
-        
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
-            SYSTEM
-          </h2>
-          <div className="space-y-1">
-            <Link href="/patient/settings">
-              <Button 
-                variant={pathname === '/patient/settings' ? 'secondary' : 'ghost'} 
-                size="sm" 
-                className="w-full justify-start"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
-              </Button>
-            </Link>
-            <Link href="/patient/help">
-              <Button 
-                variant={pathname === '/patient/help' ? 'secondary' : 'ghost'} 
-                size="sm" 
-                className="w-full justify-start"
-              >
-                <HelpCircle className="mr-2 h-4 w-4" />
-                Help & Support
               </Button>
             </Link>
           </div>

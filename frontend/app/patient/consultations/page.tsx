@@ -8,6 +8,8 @@ import { ConsultationCalendar } from "@/components/patient/consultation-calendar
 import { ConsultationHistory } from "@/components/patient/consultation-history";
 import { SecureChat } from "@/components/patient/secure-chat";
 import { RoomBookingProvider } from "@/lib/hooks/use-room-booking";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 export default function Consultations() {
   const [activeTab, setActiveTab] = useState("book");
@@ -26,44 +28,80 @@ export default function Consultations() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          {/* Mobile Dropdown View */}
+          <div className="md:hidden w-full mb-4">
+            <Select
+              value={activeTab}
+              onValueChange={setActiveTab}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select option" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="book">Book Appointment</SelectItem>
+                <SelectItem value="history">History</SelectItem>
+                <SelectItem value="chat">Secure Chat</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {/* Desktop Tabs View */}
+          <TabsList className="grid w-full grid-cols-3 hidden md:grid">
             <TabsTrigger value="book">Book Appointment</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="chat">Secure Chat</TabsTrigger>
           </TabsList>
+          
           <TabsContent value="book">
             <Card>
               <CardHeader>
-                <CardTitle>Schedule a Consultation</CardTitle>
-                <CardDescription>
-                  Choose between virtual or in-person appointments with our licensed professionals
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Schedule a Consultation</CardTitle>
+                    <CardDescription>
+                      Choose between virtual or in-person appointments with our licensed professionals
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="md:hidden">{activeTab === 'book' ? 'Book Appointment' : ''}</Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <ConsultationCalendar />
               </CardContent>
             </Card>
           </TabsContent>
+          
           <TabsContent value="history">
             <Card>
               <CardHeader>
-                <CardTitle>Consultation History</CardTitle>
-                <CardDescription>
-                  View your past appointments, prescriptions, and diagnoses
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Consultation History</CardTitle>
+                    <CardDescription>
+                      View your past appointments, prescriptions, and diagnoses
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="md:hidden">{activeTab === 'history' ? 'History' : ''}</Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <ConsultationHistory />
               </CardContent>
             </Card>
           </TabsContent>
+          
           <TabsContent value="chat">
             <Card>
               <CardHeader>
-                <CardTitle>Secure Messaging</CardTitle>
-                <CardDescription>
-                  Follow up with your healthcare providers in a secure environment
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Secure Messaging</CardTitle>
+                    <CardDescription>
+                      Follow up with your healthcare providers in a secure environment
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="md:hidden">{activeTab === 'chat' ? 'Secure Chat' : ''}</Badge>
+                </div>
               </CardHeader>
               <CardContent>
                 <SecureChat />

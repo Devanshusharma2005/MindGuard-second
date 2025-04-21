@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown } from "lucide-react";
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -191,7 +193,25 @@ export default function HistoryPage() {
       </p>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'chat' | 'questionnaire' | 'report')} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
+        {/* Mobile Dropdown View */}
+        <div className="md:hidden w-full mb-4">
+          <Select
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as 'chat' | 'questionnaire' | 'report')}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select history type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="chat">Chat History</SelectItem>
+              <SelectItem value="questionnaire">Questionnaire History</SelectItem>
+              <SelectItem value="report">Report History</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* Desktop Tabs View */}
+        <TabsList className="grid w-full grid-cols-3 h-auto hidden md:grid">
           <TabsTrigger value="chat" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             Chat History
           </TabsTrigger>
@@ -206,8 +226,13 @@ export default function HistoryPage() {
         <TabsContent value="chat">
           <Card>
             <CardHeader>
-              <CardTitle>Chat Conversations</CardTitle>
-              <CardDescription>Your conversations with the AI assistant</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Chat Conversations</CardTitle>
+                  <CardDescription>Your conversations with the AI assistant</CardDescription>
+                </div>
+                <Badge variant="outline" className="md:hidden">{activeTab === 'chat' ? 'Chat' : ''}</Badge>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -266,8 +291,13 @@ export default function HistoryPage() {
         <TabsContent value="questionnaire">
           <Card>
             <CardHeader>
-              <CardTitle>Questionnaire Responses</CardTitle>
-              <CardDescription>Your health assessment responses over time</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Questionnaire Responses</CardTitle>
+                  <CardDescription>Your health assessment responses over time</CardDescription>
+                </div>
+                <Badge variant="outline" className="md:hidden">{activeTab === 'questionnaire' ? 'Questionnaire' : ''}</Badge>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -291,18 +321,18 @@ export default function HistoryPage() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead>Question</TableHead>
-                              <TableHead className="w-[200px]">Response</TableHead>
+                              <TableHead className="w-[60%] md:w-auto">Question</TableHead>
+                              <TableHead className="w-[40%] md:w-[200px]">Response</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
                             {interaction.questionnaireResponses.map((response) => (
                               <TableRow key={response.questionId}>
-                                <TableCell className="font-medium">
+                                <TableCell className="font-medium text-xs md:text-sm">
                                   {response.questionText}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge className={getSeverityColor(response.response)}>
+                                  <Badge className={`${getSeverityColor(response.response)} text-xs md:text-sm`}>
                                     {getResponseDisplay(response.response)}
                                   </Badge>
                                 </TableCell>
@@ -322,8 +352,13 @@ export default function HistoryPage() {
         <TabsContent value="report">
           <Card>
             <CardHeader>
-              <CardTitle>Report History</CardTitle>
-              <CardDescription>Your uploaded health reports and analysis results</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Report History</CardTitle>
+                  <CardDescription>Your uploaded health reports and analysis results</CardDescription>
+                </div>
+                <Badge variant="outline" className="md:hidden">{activeTab === 'report' ? 'Report' : ''}</Badge>
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -344,6 +379,7 @@ export default function HistoryPage() {
                           <Button 
                             variant="outline" 
                             size="sm"
+                            className="text-xs md:text-sm whitespace-nowrap"
                             onClick={() => handleViewReport(interaction._id)}
                           >
                             View PDF
@@ -361,18 +397,18 @@ export default function HistoryPage() {
                             <Table>
                               <TableHeader>
                                 <TableRow>
-                                  <TableHead>Metric</TableHead>
-                                  <TableHead className="w-[200px]">Value</TableHead>
+                                  <TableHead className="w-[60%] md:w-auto">Metric</TableHead>
+                                  <TableHead className="w-[40%] md:w-[200px]">Value</TableHead>
                                 </TableRow>
                               </TableHeader>
                               <TableBody>
                                 {interaction.questionnaireResponses.map((response) => (
                                   <TableRow key={response.questionId}>
-                                    <TableCell className="font-medium">
+                                    <TableCell className="font-medium text-xs md:text-sm">
                                       {response.questionText}
                                     </TableCell>
                                     <TableCell>
-                                      <Badge className={getSeverityColor(response.response)}>
+                                      <Badge className={`${getSeverityColor(response.response)} text-xs md:text-sm`}>
                                         {getResponseDisplay(response.response)}
                                       </Badge>
                                     </TableCell>
