@@ -134,12 +134,18 @@ export function PatientList() {
       
       // 2. Fetch patients from extra-details-patients API
       console.log('Fetching extra details patients for doctor ID:', id);
-      const extraDetailsResponse = await fetch(`${apiUrl}/api/extra-details-patients/doctor/${id}`, {
-        headers: {
-          'Authorization': authToken,
-          'Content-Type': 'application/json'
-        }
-      });
+      let extraDetailsResponse: Response | null = null;
+      try {
+        extraDetailsResponse = await fetch(`${apiUrl}/api/extra-details-patients/doctor/${id}`, {
+          headers: {
+            'Authorization': authToken,
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('Extra details response status:', extraDetailsResponse.status);
+      } catch (error) {
+        console.error('Error fetching extra details patients:', error);
+      }
       
       // Process registrations data
       let registrationsData: PatientDetails[] = [];
@@ -175,31 +181,73 @@ export function PatientList() {
       
       // Process extra details data
       let extraDetailsData: PatientDetails[] = [];
-      if (extraDetailsResponse.ok) {
-        const data = await extraDetailsResponse.json();
-        console.log('Extra details patients data:', data);
-        
-        // Filter for approved patients only
-        if (Array.isArray(data)) {
-          // The data is directly an array
-          extraDetailsData = data
-            .filter((p: PatientDetails) => p.status === 'accepted')
-            .map((p: PatientDetails) => ({
-              ...p,
-              source: 'extra-details-patients' // Mark the source for reference
-            }));
-        } else if (data.status === 'success' && Array.isArray(data.data)) {
-          // The data is nested in a data property
-          extraDetailsData = data.data
-            .filter((p: PatientDetails) => p.status === 'accepted')
-            .map((p: PatientDetails) => ({
-              ...p,
-              source: 'extra-details-patients' // Mark the source for reference
-            }));
+      if (extraDetailsResponse && extraDetailsResponse.ok) {
+        try {
+          const data = await extraDetailsResponse.json();
+          console.log('Extra details patients data:', data);
+          
+          // Filter for approved/accepted patients - handle both status terms
+          if (Array.isArray(data)) {
+            // The data is directly an array
+            extraDetailsData = data
+              .filter((p: PatientDetails) => 
+                p.status === 'accepted' || p.status === 'approved' || p.status === 'active'
+              )
+              .map((p: PatientDetails) => ({
+                ...p,
+                source: 'extra-details-patients' // Mark the source for reference
+              }));
+          } else if (data.status === 'success' && Array.isArray(data.data)) {
+            // The data is nested in a data property
+            extraDetailsData = data.data
+              .filter((p: PatientDetails) => 
+                p.status === 'accepted' || p.status === 'approved' || p.status === 'active'
+              )
+              .map((p: PatientDetails) => ({
+                ...p,
+                source: 'extra-details-patients' // Mark the source for reference
+              }));
+          }
+        } catch (error) {
+          console.error('Error parsing extra details patients response:', error);
         }
       } else {
-        console.log('Failed to fetch extra details patients:', extraDetailsResponse.status);
+        // If extraDetailsResponse is not available or not OK, try direct route
+        console.log('Failed to fetch extra details patients or response not available. Trying direct route...');
+        try {
+          const directResponse = await fetch(`${apiUrl}/api/extra-details-patients`, {
+            headers: {
+              'Authorization': authToken,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (directResponse.ok) {
+            const data = await directResponse.json();
+            console.log('Extra details patients data from direct route:', data);
+            
+            // Filter for doctor's patients
+            if (Array.isArray(data)) {
+              extraDetailsData = data
+                .filter((p: PatientDetails) => 
+                  (p.doctorId === id || String(p.doctorId) === id) && 
+                  (p.status === 'accepted' || p.status === 'approved' || p.status === 'active')
+                )
+                .map((p: PatientDetails) => ({
+                  ...p,
+                  source: 'extra-details-patients'
+                }));
+            }
+          } else {
+            console.log('Failed to fetch extra details patients from direct route:', directResponse.status);
+          }
+        } catch (directError) {
+          console.error('Error fetching extra details patients from direct route:', directError);
+        }
       }
+      
+      // Log counts before merging
+      console.log(`Source counts: Registrations: ${registrationsData.length}, ExtraDetails: ${extraDetailsData.length}`);
       
       // Merge data from both sources
       // Create a map to avoid duplicates based on email
@@ -264,16 +312,26 @@ export function PatientList() {
       const data = await response.json();
       console.log("Received extraDetailsPatients data:", data);
       
-      // Filter for approved patients only
+      // Filter for approved patients only - handle multiple valid status terms
       let patientList: PatientDetails[] = [];
       
       if (data.status === 'success' && data.data && Array.isArray(data.data)) {
-        patientList = data.data.filter((p: PatientDetails) => p.status === 'approved');
+        patientList = data.data.filter((p: PatientDetails) => 
+          p.status === 'approved' || p.status === 'accepted' || p.status === 'active'
+        ).map((p: PatientDetails) => ({
+          ...p,
+          source: 'extra-details-patients'
+        }));
       } else if (Array.isArray(data)) {
-        patientList = data.filter((p: PatientDetails) => p.status === 'approved');
+        patientList = data.filter((p: PatientDetails) => 
+          p.status === 'approved' || p.status === 'accepted' || p.status === 'active'
+        ).map((p: PatientDetails) => ({
+          ...p,
+          source: 'extra-details-patients'
+        }));
       }
       
-      console.log("Filtered approved patients:", patientList);
+      console.log("Filtered approved patients:", patientList, `(count: ${patientList.length})`);
       
       // Update patient source counts
       setPatientSourceCounts({
@@ -485,12 +543,16 @@ export function PatientList() {
           <div className="flex items-center text-muted-foreground text-sm mt-1">
             <Users className="h-4 w-4 mr-1" />
             <span>Total: {patientSourceCounts.total} patients</span>
-            {/* Uncomment if you want to show detailed counts
             <span className="mx-2">|</span>
-            <span>From Registrations: {patientSourceCounts.registrations}</span>
+            <span className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-blue-500 mr-1"></span>
+              Registration: {patientSourceCounts.registrations}
+            </span>
             <span className="mx-2">|</span>
-            <span>From Extra Details: {patientSourceCounts.extraDetails}</span>
-            */}
+            <span className="flex items-center">
+              <span className="inline-block w-3 h-3 rounded-full bg-green-500 mr-1"></span>
+              Extra Details: {patientSourceCounts.extraDetails}
+            </span>
           </div>
         </div>
         
