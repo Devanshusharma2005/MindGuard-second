@@ -17,7 +17,6 @@ import {
   AlertTriangle, 
   Award, 
   FileText, 
-  Settings, 
   Menu, 
   X,
   MessageCircle
@@ -189,24 +188,6 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
               >
                 <Award className="mr-2 h-4 w-4" />
                 Gamification
-              </Button>
-            </Link>
-          </div>
-        </div>
-        
-        <div className="px-3 py-2">
-          <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
-            SYSTEM
-          </h2>
-          <div className="space-y-1">
-            <Link href="/admin/settings">
-              <Button 
-                variant={pathname === '/admin/settings' ? 'secondary' : 'ghost'} 
-                size="sm" 
-                className="w-full justify-start"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                Settings
               </Button>
             </Link>
           </div>

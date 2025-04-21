@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { MusicSessions } from "@/components/patient/music-sessions";
 import { TherapyBooking } from "@/components/patient/therapy-booking";
-import { TherapyPlaylists } from "@/components/patient/therapy-playlist";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function MusicTherapy() {
   const [activeTab, setActiveTab] = useState("sessions");
@@ -18,18 +23,30 @@ export default function MusicTherapy() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Music Therapy</h1>
           <p className="text-muted-foreground">
-            Professional-led music therapy sessions and curated playlists
+            Professional-led music therapy sessions
           </p>
           <Badge variant="outline" className="mt-2">Premium Feature</Badge>
         </div>
-        <Button>Upgrade to Premium</Button>
       </div>
       
+      {/* Mobile dropdown for small screens */}
+      <div className="md:hidden w-full">
+        <Select value={activeTab} onValueChange={setActiveTab}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select option" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="sessions">Therapy Sessions</SelectItem>
+            <SelectItem value="booking">Book 1-on-1</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      {/* Desktop tabs for medium screens and above */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2 hidden md:grid">
           <TabsTrigger value="sessions">Therapy Sessions</TabsTrigger>
           <TabsTrigger value="booking">Book 1-on-1</TabsTrigger>
-          <TabsTrigger value="playlists">Curated Playlists</TabsTrigger>
         </TabsList>
         <TabsContent value="sessions">
           <Card>
@@ -54,19 +71,6 @@ export default function MusicTherapy() {
             </CardHeader>
             <CardContent>
               <TherapyBooking />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="playlists">
-          <Card>
-            <CardHeader>
-              <CardTitle>Therapeutic Playlists</CardTitle>
-              <CardDescription>
-                Curated music for relaxation, meditation, and stress relief
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <TherapyPlaylists />
             </CardContent>
           </Card>
         </TabsContent>

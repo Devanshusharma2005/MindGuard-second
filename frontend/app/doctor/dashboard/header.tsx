@@ -51,7 +51,6 @@ export function Header({ user }: HeaderProps) {
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>Profile</DropdownMenuItem>
-              <DropdownMenuItem>Settings</DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleLogout(router)}>Log out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

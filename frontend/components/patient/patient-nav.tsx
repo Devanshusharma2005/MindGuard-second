@@ -4,7 +4,10 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Menu } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface NavItem {
   title: string;
@@ -22,6 +25,7 @@ export function PatientDashboardNav({
   ...props
 }: PatientDashboardNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   
   const defaultItems = [
     {
@@ -49,29 +53,58 @@ export function PatientDashboardNav({
   ];
 
   const navItems = items || defaultItems;
+  
+  const handleNavChange = (value: string) => {
+    router.push(value);
+  };
 
   return (
-    <nav
-      className={cn("flex items-center space-x-4 lg:space-x-6", className)}
-      {...props}
-    >
-      {navItems.map((item) => (
-        <Link
-          key={item.href}
-          href={item.href}
-          className={cn(
-            "flex items-center text-sm font-medium transition-colors hover:text-primary",
-            pathname === item.href
-              ? "text-primary"
-              : "text-muted-foreground"
-          )}
+    <>
+      {/* Mobile Dropdown Navigation */}
+      <div className={cn("block md:hidden w-full", className)} {...props}>
+        <Select
+          value={pathname}
+          onValueChange={handleNavChange}
         >
-          {item.icon && (
-            <item.icon className="mr-2 h-4 w-4" />
-          )}
-          {item.title}
-        </Link>
-      ))}
-    </nav>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Navigate to" />
+          </SelectTrigger>
+          <SelectContent>
+            {navItems.map((item) => (
+              <SelectItem key={item.href} value={item.href}>
+                <span className="flex items-center">
+                  {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                  {item.title}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Desktop Navigation */}
+      <nav
+        className={cn("hidden md:flex items-center space-x-4 lg:space-x-6", className)}
+        {...props}
+      >
+        {navItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex items-center text-sm font-medium transition-colors hover:text-primary",
+              pathname === item.href
+                ? "text-primary"
+                : "text-muted-foreground"
+            )}
+          >
+            {item.icon && (
+              <item.icon className="mr-2 h-4 w-4" />
+            )}
+            {item.title}
+          </Link>
+        ))}
+      </nav>
+    </>
   );
 } 

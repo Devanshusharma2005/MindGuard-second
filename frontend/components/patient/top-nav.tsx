@@ -25,7 +25,7 @@ interface UserData {
 }
 
 export function TopNav() {
-  const { setTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [username, setUsername] = useState<string | null>(null);
@@ -55,6 +55,11 @@ export function TopNav() {
     router.push("/login");
   };
 
+  const handleThemeToggle = () => {
+    // Simple toggle between light and dark only
+    setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
   return (
     <header className="sticky top-0 z-50 flex h-16 items-center justify-between border-b bg-background px-4 md:px-6">
       <div className="flex items-center gap-2">
@@ -65,7 +70,7 @@ export function TopNav() {
               <span className="sr-only">Toggle menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0">
+          <SheetContent side="left" className="p-0 [&>button]:hidden">
             <div className="flex h-16 items-center justify-between px-4 border-b">
               <Link href="/" className="flex items-center space-x-2">
                 <Image 
@@ -80,13 +85,13 @@ export function TopNav() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => setSidebarOpen(!sidebarOpen)}
+                onClick={() => setSidebarOpen(false)}
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
             <div className="px-2 py-6">
-              <SideNav isOpen={sidebarOpen} />
+              <SideNav isOpen={true} />
             </div>
           </SheetContent>
         </Sheet>
@@ -103,26 +108,26 @@ export function TopNav() {
       </div>
       
       <div className="flex items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setTheme("light")}>
-              Light
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("dark")}>
-              Dark
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setTheme("system")}>
-              System
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button 
+          variant="outline" 
+          size="icon"
+          onClick={handleThemeToggle}
+          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+        >
+          <Sun 
+            className={`h-[1.2rem] w-[1.2rem] transition-all ${
+              theme === 'light' ? 'rotate-0 scale-100' : 'rotate-90 scale-0'
+            }`} 
+          />
+          <Moon 
+            className={`absolute h-[1.2rem] w-[1.2rem] transition-all ${
+              theme === 'dark' ? 'rotate-0 scale-100' : 'rotate-90 scale-0'
+            }`}
+          />
+          <span className="sr-only">
+            {theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+          </span>
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -133,7 +138,7 @@ export function TopNav() {
                     backgroundColor: "hsl(162, 78%, 45%)" 
                   }}
                 >
-                  {username ? username.charAt(0).toUpperCase() : "P"}
+                  {userData?.name ? userData.name.charAt(0).toUpperCase() : (username ? username.charAt(0).toUpperCase() : "JD")}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -142,7 +147,6 @@ export function TopNav() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>Subscription</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
