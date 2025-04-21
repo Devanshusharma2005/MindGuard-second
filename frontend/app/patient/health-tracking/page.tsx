@@ -212,7 +212,12 @@ export default function HealthTracking() {
       console.log("Questionnaire submission result:", result);
       
       // Refresh health data after submission
-      await fetchHealthHistory(userId);
+      if (userId) {
+        await fetchHealthHistory(userId);
+      } else {
+        console.error("No user ID found in localStorage");
+        setError("Failed to refresh health data: No user ID found");
+      }
       setActiveTab("insights"); // Switch to insights tab after submission
     } catch (err) {
       console.error("Error submitting questionnaire:", err);

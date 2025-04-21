@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { Download, Gamepad2, Clock, Activity, Users, CalendarDays, Hash, CheckCircle2 } from 'lucide-react';
+import { Download, Gamepad2, Clock, Activity, Users, CalendarDays, Hash, CheckCircle2, MoreVertical, MoreVerticalIcon } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { apiUrl } from '@/lib/config';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Define game type colors
 const GAME_COLORS = {
@@ -503,11 +504,11 @@ export default function GamificationPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Gamification Analytics</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Gamification Analytics</h1>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
           <Select value={timeRange} onValueChange={handleTimeRangeChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
@@ -519,15 +520,26 @@ export default function GamificationPage() {
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={handleDownload}>
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={runDebugTests} disabled={isDebugging}>
-            {isDebugging ? 'Testing...' : 'Debug'}
-          </Button>
-          <Button variant="outline" size="sm" onClick={checkSchema} disabled={isCheckingSchema}>
-            {isCheckingSchema ? 'Checking...' : 'Check Schema'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handleDownload}>
+              <Download className="h-4 w-4" />
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreVerticalIcon className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={runDebugTests} disabled={isDebugging}>
+                  {isDebugging ? 'Testing...' : 'Debug'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={checkSchema} disabled={isCheckingSchema}>
+                  {isCheckingSchema ? 'Checking...' : 'Check Schema'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

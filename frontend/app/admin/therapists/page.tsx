@@ -271,8 +271,8 @@ export default function TherapistsPage() {
         className="space-y-4"
         onValueChange={setActiveTab}
       >
-        <div className="flex justify-between items-center">
-          <TabsList>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <TabsList className='w-full sm:w-auto overflow-x-auto'>
             <TabsTrigger value="all">All Therapists</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="pending">Pending</TabsTrigger>

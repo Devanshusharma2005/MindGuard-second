@@ -39,12 +39,8 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
   if (!mounted) return null;
 
   return (
-    <div className={cn(
-      "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r border-border transition-transform duration-300 ease-in-out",
-      sidebarOpen ? "translate-x-0" : "-translate-x-full",
-      "md:translate-x-0"
-    )}>
-      <div className="flex h-16 items-center justify-between px-10   border-b">
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 items-center justify-between px-4 border-b">
         <Link href="/" className="flex items-center space-x-2">
           <Image 
             src="/mindguard_logo.png" 
@@ -53,7 +49,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
             height={32} 
             className="h-6 sm:h-8 w-auto"
           />
-          <span className="font-bold text-xl sm:text-2xl hidden sm:inline">MindGuard</span>
+          <span className="font-bold text-lg sm:text-xl">MindGuard</span>
         </Link>
         <Button 
           variant="ghost" 
@@ -65,7 +61,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
         </Button>
       </div>
       
-      <ScrollArea className="h-[calc(100vh-4rem)] py-4">
+      <ScrollArea className="flex-1 px-3 py-2">
         <div className="px-3 py-2">
           <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
             MAIN
@@ -137,7 +133,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
                 AI Analytics
               </Button>
             </Link>
-            <Link href="/admin/content-moderation">
+            {/* <Link href="/admin/content-moderation">
               <Button 
                 variant={pathname === '/admin/content-moderation' ? 'secondary' : 'ghost'} 
                 size="sm" 
@@ -146,7 +142,7 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, pathname }: Sideb
                 <Shield className="mr-2 h-4 w-4" />
                 Content Moderation
               </Button>
-            </Link>
+            </Link> */}
             <Link href="/admin/subscriptions">
               <Button 
                 variant={pathname === '/admin/subscriptions' ? 'secondary' : 'ghost'} 

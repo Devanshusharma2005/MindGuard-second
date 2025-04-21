@@ -262,7 +262,7 @@ export default function UsersPage() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">User Management</h1>
-        <Button>
+        <Button size="sm">
           <UserPlus className="mr-2 h-4 w-4" />
           Add User
         </Button>
@@ -273,20 +273,20 @@ export default function UsersPage() {
         className="space-y-4"
         onValueChange={setActiveTab}
       >
-        <div className="flex justify-between items-center">
-          <TabsList>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <TabsList className="w-full sm:w-auto overflow-x-auto">
             <TabsTrigger value="all">All Users</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="inactive">Inactive</TabsTrigger>
             <TabsTrigger value="suspended">Suspended</TabsTrigger>
           </TabsList>
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:flex-none">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Search users..."
-                className="w-[250px] pl-8"
+                className="w-full sm:w-[250px] pl-8"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -313,7 +313,7 @@ export default function UsersPage() {
         
         <TabsContent value="all" className="space-y-4">
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -421,7 +421,7 @@ export default function UsersPage() {
         
         <TabsContent value="active" className="space-y-4">
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -525,7 +525,7 @@ export default function UsersPage() {
         
         <TabsContent value="inactive" className="space-y-4">
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -629,7 +629,7 @@ export default function UsersPage() {
         
         <TabsContent value="suspended" className="space-y-4">
           <Card>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>

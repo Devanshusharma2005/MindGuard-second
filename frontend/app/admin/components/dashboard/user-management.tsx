@@ -20,10 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Search, Filter, MoreVertical, RefreshCw } from "lucide-react"
+import { Search, Filter, MoreVertical, RefreshCw, ChevronDown } from "lucide-react"
 import { apiUrl } from "@/lib/config"
 import { useToast } from "@/components/ui/use-toast"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { SlidersHorizontal } from "lucide-react"
 
 interface User {
   id: string
@@ -295,22 +304,87 @@ export function UserManagement() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-1 items-center space-x-2">
-          <div className="relative flex-1 max-w-sm">
+      <div className="flex flex-col gap-4">
+        {/* Responsive Search Bar */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          {/* Search Section */}
+          <div className="flex-1 flex items-center gap-2">
+            <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search users..."
-              className="pl-8"
+                className="pl-8 w-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" size="icon" onClick={fetchAllUsers}>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={fetchAllUsers}
+              className="shrink-0"
+            >
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex items-center gap-2">
+
+          {/* Mobile Filters Button */}
+          <div className="sm:hidden w-full">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  <span className="flex items-center gap-2">
+                    <SlidersHorizontal className="h-4 w-4" />
+                    Filters
+                  </span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent 
+                className="w-screen max-w-[calc(100vw-2rem)] sm:w-80" 
+                align="end"
+                side="bottom"
+              >
+                <DropdownMenuLabel>Filter Options</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                
+                <div className="p-2 space-y-2">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Role</label>
+                    <Select value={roleFilter} onValueChange={setRoleFilter}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Roles</SelectItem>
+                        <SelectItem value="ADMIN">Admin</SelectItem>
+                        <SelectItem value="THERAPIST">Therapist</SelectItem>
+                        <SelectItem value="PATIENT">Patient</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium">Status</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Status</SelectItem>
+                        <SelectItem value="ACTIVE">Active</SelectItem>
+                        <SelectItem value="INACTIVE">Inactive</SelectItem>
+                        <SelectItem value="PENDING">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Desktop Filters */}
+          <div className="hidden sm:flex items-center gap-2">
           <Select value={roleFilter} onValueChange={setRoleFilter}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Role" />
@@ -333,18 +407,21 @@ export function UserManagement() {
               <SelectItem value="PENDING">Pending</SelectItem>
             </SelectContent>
           </Select>
+          </div>
         </div>
       </div>
 
+      {/* Table */}
       <div className="rounded-md border">
+        <div className="overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead>Last Active</TableHead>
+                <TableHead className="min-w-[200px]">User</TableHead>
+                <TableHead className="min-w-[100px]">Role</TableHead>
+                <TableHead className="min-w-[100px]">Status</TableHead>
+                <TableHead className="min-w-[120px]">Joined</TableHead>
+                <TableHead className="min-w-[120px]">Last Active</TableHead>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -396,6 +473,7 @@ export function UserManagement() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
     </div>
   )
