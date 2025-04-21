@@ -14,6 +14,7 @@ module.exports = async function(req, res, next) {
   
   // Get token from various possible sources
   const token = 
+    req.header('x-auth-token') ||
     req.header('Authorization')?.replace('Bearer ', '') || 
     req.cookies?.token ||
     req.body?.token || 
