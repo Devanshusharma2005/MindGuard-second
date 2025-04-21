@@ -445,7 +445,16 @@ export function PatientList() {
       setIsDeleting(true);
       
       // Get auth token
-      const authToken = getAuthToken();
+      const token = localStorage.getItem('doctor_token') || 
+                  localStorage.getItem('mindguard_token') || 
+                  localStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error("Authentication token not found. Please log in again.");
+      }
+      
+      // Format token properly with Bearer prefix if it doesn't have it
+      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
       
       // Handle deletion based on source
       let endpoint = '';
@@ -455,9 +464,9 @@ export function PatientList() {
         // For patient registrations, we just update status to 'rejected' instead of deleting
         const response = await fetch(endpoint, {
           method: 'PATCH',
-          headers: {
+        headers: {
             'Content-Type': 'application/json',
-            'Authorization': authToken
+          'Authorization': authToken
           },
           body: JSON.stringify({ 
             status: 'rejected',
@@ -473,10 +482,14 @@ export function PatientList() {
         // Default to extraDetailsPatients endpoint
         endpoint = `${apiUrl}/api/extra-details-patients/${id}`;
         
+        console.log('Deleting patient with endpoint:', endpoint);
+        console.log('Using auth token:', authToken.substring(0, 20) + '...');
+        
         const response = await fetch(endpoint, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': authToken
+          method: 'DELETE',
+          headers: {
+            'Authorization': authToken,
+            'Content-Type': 'application/json'
         }
       });
       

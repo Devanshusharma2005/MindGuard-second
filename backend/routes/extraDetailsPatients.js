@@ -337,6 +337,10 @@ router.post('/', async (req, res) => {
       appointmentRequestDate: new Date(),
       status: 'accepted' // Set status to accepted for doctor-initiated creation
     });
+    
+    console.log('Saving new patient record');
+    const savedPatientDetails = await patientDetails.save();
+    console.log('Patient details saved successfully:', savedPatientDetails._id);
 
     console.log('Patient details doctorId saved as:', savedPatientDetails.doctorId, 'type:', typeof savedPatientDetails.doctorId);
     
@@ -374,24 +378,37 @@ router.post('/', async (req, res) => {
 
 // @route   DELETE api/extra-details-patients/:id
 // @desc    Delete a patient record
-// @access  Private
-router.delete('/:id', auth, async (req, res) => {
+// @access  Private (Doctors only)
+router.delete('/:id', doctorAuth, async (req, res) => {
   try {
     // Find the patient record
     const patient = await ExtraDetailsPatient.findById(req.params.id);
     
     if (!patient) {
-      return res.status(404).json({ message: 'Patient record not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Patient record not found' 
+      });
     }
 
     // Check if the doctor is authorized to delete this patient
-    // Optional: Verify that the doctor is the owner of this patient record
-    // if (patient.doctorId.toString() !== req.user.id.toString()) {
-    //   return res.status(401).json({ message: 'Not authorized to delete this patient record' });
-    // }
+    const doctorId = req.user.id;
+    console.log(`Doctor ${doctorId} attempting to delete patient ${req.params.id}`);
+    
+    if (patient.doctorId && patient.doctorId.toString() !== doctorId.toString()) {
+      console.log('Authorization failed: Doctor IDs do not match');
+      console.log('Patient doctorId:', patient.doctorId);
+      console.log('Request doctorId:', doctorId);
+      return res.status(401).json({ 
+        success: false,
+        message: 'Not authorized to delete this patient record' 
+      });
+    }
 
     // Delete the patient record
     await ExtraDetailsPatient.findByIdAndDelete(req.params.id);
+    
+    console.log(`Patient ${req.params.id} deleted successfully by doctor ${doctorId}`);
     
     res.json({ 
       success: true,
@@ -400,7 +417,10 @@ router.delete('/:id', auth, async (req, res) => {
   } catch (err) {
     console.error('Error deleting patient record:', err.message);
     if (err.kind === 'ObjectId') {
-      return res.status(404).json({ message: 'Patient record not found' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Patient record not found' 
+      });
     }
     res.status(500).json({
       success: false,

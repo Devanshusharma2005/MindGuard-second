@@ -197,9 +197,12 @@ export async function DELETE(
       );
     }
     
+    console.log(`Attempting to delete patient ID: ${patientId}`);
+    
     // Get auth token from request headers
     const token = request.headers.get('authorization');
     if (!token) {
+      console.log('No authorization token found in request headers');
       return NextResponse.json(
         { status: 'error', message: 'Unauthorized' },
         { status: 401 }
@@ -210,22 +213,36 @@ export async function DELETE(
     const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
     const xAuthToken = token.startsWith('Bearer ') ? token.split(' ')[1] : token;
     
+    console.log(`Making delete request to backend: ${apiUrl}/api/extra-details-patients/${patientId}`);
+    console.log(`Auth token begins with: ${authToken.substring(0, 15)}...`);
+    
     // Delete patient from backend
     const response = await fetch(`${apiUrl}/api/extra-details-patients/${patientId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': authToken,
-        'x-auth-token': xAuthToken
+        'x-auth-token': xAuthToken,
+        'Content-Type': 'application/json'
       }
     });
     
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorMessage = 'Failed to delete patient';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+        console.error(`Error from backend: ${response.status}`, errorData);
+      } catch (e: unknown) {
+        console.error(`Error parsing error response: ${e instanceof Error ? e.message : String(e)}`);
+      }
+      
       return NextResponse.json(
-        { status: 'error', message: errorData.message || 'Failed to delete patient' },
+        { status: 'error', message: errorMessage },
         { status: response.status }
       );
     }
+    
+    console.log(`Successfully deleted patient ID: ${patientId}`);
     
     // Return success response
     return NextResponse.json({
@@ -236,7 +253,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Error in extra-details-patients/[id] DELETE route:', error);
     return NextResponse.json(
-      { status: 'error', message: 'Internal server error' },
+      { status: 'error', message: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
   }

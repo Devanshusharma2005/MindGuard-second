@@ -18,7 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { userIdKey } from "@/lib/config";
+import { userIdKey, apiUrl } from "@/lib/config";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
@@ -105,7 +105,7 @@ export function PatientForm({ onSuccess }: { onSuccess?: () => void }) {
       console.log("Submitting patient data:", formattedData);
       
       // Use the extra-details-patients endpoint directly
-      const response = await fetch('/api/extra-details-patients', {
+      const response = await fetch(`${apiUrl}/api/extra-details-patients`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
