@@ -25,6 +25,7 @@ const { initializeWebSocket } = require('./services/websocketService');
 const testApiRoutes = require('./routes/test-api');
 const authRoutes = require('./routes/auth');
 const userInteractionRoutes = require('./routes/userInteraction');
+const exerciseRoutes = require('./routes/exercise');
 const bcrypt = require('bcryptjs');
 
 const app = express();
@@ -67,6 +68,7 @@ app.use('/api/extra-details-patients', extraDetailsPatientsRoutes);
 app.use('/api/consultations', consultationsRoutes);
 app.use('/api/patient-registrations', patientRegistrationsRoutes);
 app.use('/api/user-interactions', userInteractionRoutes);
+app.use('/api/exercise', exerciseRoutes);
 
 // Admin routes
 app.use('/api/admin/doctors', adminDoctorsRoutes);

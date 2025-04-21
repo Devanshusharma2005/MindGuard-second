@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar"
 import { TaskTimeline } from "@/components/task-timeline"
 import { RewardPopup } from "@/components/reward-popup"
 import { WalkProgress } from "@/components/walk-progress"
+import { ExerciseVideoUpload } from "@/components/patient/exercise-video-upload"
 import type { Task, UserStats } from "@/types"
 import { tasks as initialTasks } from "@/data/tasks"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,9 @@ export default function ChallengesList() {
   const [walkStartTime, setWalkStartTime] = useState<Date | null>(null)
   const [stepCount, setStepCount] = useState(0)
   const initialStepCountRef = useRef<number | null>(null)
+  // State for exercise videos
+  const [showExerciseUpload, setShowExerciseUpload] = useState(false)
+  const [currentExerciseType, setCurrentExerciseType] = useState<"plank" | "pushup" | "squats" | "bicepcurls" | null>(null)
 
   // Load user stats from localStorage on initial render
   useEffect(() => {
@@ -154,6 +158,16 @@ export default function ChallengesList() {
     });
   };
 
+  // Helper function to determine exercise type
+  const getExerciseType = (taskTitle: string): "plank" | "pushup" | "squats" | "bicepcurls" | null => {
+    const title = taskTitle.toLowerCase();
+    if (title.includes("plank")) return "plank";
+    if (title.includes("push-up") || title.includes("pushup")) return "pushup";
+    if (title.includes("squat")) return "squats";
+    if (title.includes("bicep curl")) return "bicepcurls";
+    return null;
+  };
+
   const completeTask = (taskId: string) => {
     // Find the task index
     const taskIndex = tasks.findIndex((t) => t.id === taskId)
@@ -166,8 +180,10 @@ export default function ChallengesList() {
       return
     }
 
+    const currentTask = tasks[taskIndex];
+
     // Check if it's the afternoon walk task
-    const isAfternoonWalk = tasks[taskIndex].title === "Afternoon Walk";
+    const isAfternoonWalk = currentTask.title === "Afternoon Walk";
     if (isAfternoonWalk) {
       if (!walkStartTime) {
         startWalk();
@@ -191,6 +207,123 @@ export default function ChallengesList() {
       setWalkStartTime(null);
     }
 
+    // Check if it's an exercise task that needs video upload
+    const exerciseType = getExerciseType(currentTask.title);
+    if (exerciseType) {
+      try {
+        setCurrentExerciseType(exerciseType);
+        setShowExerciseUpload(true);
+        
+        // Add task completion safety timer
+        // If the video upload/analysis takes too long or fails, we'll still complete the task
+        const safetyTimer = setTimeout(() => {
+          // First check if this task has already been completed
+          const currentTasks = JSON.parse(localStorage.getItem("mindTrackTasks") || "[]");
+          const currentTask = currentTasks[taskIndex];
+          
+          // Only complete the task if it hasn't been completed already
+          if (currentTaskIndex === taskIndex && currentTask && !currentTask.completed) {
+            console.log("Safety timer triggered - completing task automatically");
+            completeTaskWithReward(taskIndex);
+            setShowExerciseUpload(false);
+            setCurrentExerciseType(null);
+            toast({
+              title: "Task Completed",
+              description: "We've automatically completed your task after a delay.",
+            });
+          } else {
+            console.log("Safety timer triggered but task already completed - skipping");
+          }
+        }, 30000); // 30 second safety timer (reduced from 60)
+        
+        // Store the safety timer ID to clear it if normal completion happens
+        window.sessionStorage.setItem("taskSafetyTimer", safetyTimer.toString());
+        
+        return;
+      } catch (error) {
+        // If there's any error in the exercise process, complete the task anyway
+        console.error("Error in exercise task:", error);
+        completeTaskWithReward(taskIndex);
+        return;
+      }
+    }
+
+    // For other tasks, complete immediately
+    completeTaskWithReward(taskIndex);
+  }
+
+  // Function to handle exercise completion
+  const handleExerciseComplete = (duration: number) => {
+    // Find the current task index
+    const taskIndex = currentTaskIndex;
+    
+    // Log successful completion for debugging
+    console.log(`Exercise completed with duration: ${duration}. Completing task at index ${taskIndex}`);
+    
+    // Store the current task for reference
+    const currentTask = tasks[taskIndex];
+    console.log(`Task details: ID=${currentTask.id}, Title=${currentTask.title}`);
+    
+    // Update UI state first before completing the task
+    // This helps avoid race conditions where the UI doesn't update properly
+    setShowExerciseUpload(false);
+    setCurrentExerciseType(null);
+    
+    // Show immediate feedback to the user
+    toast({
+      title: "Exercise Completed",
+      description: `Great job! You've completed the ${currentTask.title} exercise.`,
+    });
+    
+    // Use a short timeout to ensure state updates have time to propagate
+    // before we modify more state with task completion
+    setTimeout(() => {
+      // Complete the task and give reward
+      completeTaskWithReward(taskIndex);
+      
+      console.log("Task completion and reward process initiated");
+    }, 100);
+  };
+
+  // Function to handle exercise upload errors
+  const handleExerciseError = (error: string) => {
+    console.error(`Exercise analysis error: ${error}`);
+    
+    // Clear UI state immediately
+    setShowExerciseUpload(false);
+    setCurrentExerciseType(null);
+    
+    // Show feedback to user
+    toast({
+      title: "Exercise Recorded",
+      description: "We've recorded your exercise completion. Analysis had issues but we've moved you forward.",
+      variant: "default",
+    });
+    
+    // Use timeout to ensure UI updates before more state changes
+    setTimeout(() => {
+      // Still complete the task even if the analysis fails
+      // This ensures users don't get stuck
+      const taskIndex = currentTaskIndex;
+      completeTaskWithReward(taskIndex);
+    }, 100);
+  };
+
+  // Function to complete a task and give reward
+  const completeTaskWithReward = (taskIndex: number) => {
+    // Clear any existing safety timer
+    const safetyTimerId = window.sessionStorage.getItem("taskSafetyTimer");
+    if (safetyTimerId) {
+      clearTimeout(parseInt(safetyTimerId));
+      window.sessionStorage.removeItem("taskSafetyTimer");
+    }
+
+    // Add debug logging
+    console.log("=== TASK COMPLETION DEBUG ===");
+    console.log(`Current task index: ${currentTaskIndex}`);
+    console.log(`Completing task at index: ${taskIndex}`);
+    console.log(`Total tasks: ${tasks.length}`);
+
     // Update the task as completed
     const updatedTasks = [...tasks]
     updatedTasks[taskIndex] = {
@@ -199,7 +332,9 @@ export default function ChallengesList() {
       progress: 100,
     }
 
-    setTasks(updatedTasks)
+    console.log(`Task marked as completed: ${updatedTasks[taskIndex].title}`);
+    // We need to setTasks first as a separate operation to ensure state is updated
+    setTasks(updatedTasks);
 
     // Generate random reward points (10-50)
     const points = Math.floor(Math.random() * 41) + 10
@@ -207,6 +342,7 @@ export default function ChallengesList() {
 
     // Only show reward popup if enabled
     if (showRewardPopups) {
+      console.log(`Showing reward popup with ${points} points`);
       setShowReward(true)
     } else {
       // If popups are disabled, just update the points directly
@@ -225,13 +361,66 @@ export default function ChallengesList() {
     }
 
     // Update current task index if there are more tasks
-    if (currentTaskIndex < tasks.length - 1) {
-      setCurrentTaskIndex(currentTaskIndex + 1)
+    if (taskIndex < tasks.length - 1) {
+      console.log(`UNLOCKING NEXT TASK: Moving from ${taskIndex} to ${taskIndex + 1}`);
+      console.log(`Next task will be: ${tasks[taskIndex + 1].title}`);
+      
+      // Force immediate state update and localStorage save
+      const nextIndex = taskIndex + 1;
+      
+      // Store in localStorage first
+      localStorage.setItem("mindTrackCurrentTaskIndex", nextIndex.toString());
+      
+      // Then update React state
+      setCurrentTaskIndex(nextIndex);
+      
+      // Wait a short time to ensure state gets updated
+      setTimeout(() => {
+        // Confirm the localStorage and state are in sync
+        const storedIndex = localStorage.getItem("mindTrackCurrentTaskIndex");
+        if (storedIndex !== nextIndex.toString()) {
+          console.warn("State update failed, forcing update...");
+          localStorage.setItem("mindTrackCurrentTaskIndex", nextIndex.toString());
+          setCurrentTaskIndex(nextIndex);
+        }
+        
+        // Show a toast notification
+        if (nextIndex < tasks.length) {
+          toast({
+            title: "Next Task Unlocked!",
+            description: `${tasks[nextIndex].title} is now available.`,
+          });
+        } else {
+          toast({
+            title: "All Tasks Completed!",
+            description: "Congratulations! You've completed all the tasks for today.",
+          });
+        }
+      }, 100);
+    } else {
+      console.log("All tasks completed, no more tasks to progress to");
     }
+    
+    console.log("=== END DEBUG ===");
   }
 
   const closeReward = () => {
     setShowReward(false)
+    
+    // Force task progression check after popup closes
+    // This ensures we don't lose the task progression if it was missed during popup display
+    const currentTasksCompleted = tasks.filter(task => task.completed).length;
+    console.log(`Popup closed. Total completed tasks: ${currentTasksCompleted}/${tasks.length}`);
+    
+    // Force re-read from localStorage to ensure we have the latest state
+    const savedCurrentTaskIndex = localStorage.getItem("mindTrackCurrentTaskIndex");
+    const parsedIndex = savedCurrentTaskIndex ? parseInt(savedCurrentTaskIndex) : currentTaskIndex;
+    
+    // If localStorage index is different, update it
+    if (parsedIndex !== currentTaskIndex) {
+      console.log(`Fixing task index desync: localStorage=${parsedIndex}, state=${currentTaskIndex}`);
+      setCurrentTaskIndex(parsedIndex);
+    }
   }
 
   const resetTasks = () => {
@@ -254,9 +443,36 @@ export default function ChallengesList() {
             Complete daily wellness tasks to earn rewards and maintain your streak. Your mental health journey
             visualized as a path to wellness.
           </p>
-          <Button variant="outline" className="mt-4" onClick={resetTasks}>
-            Reset Tasks
-          </Button>
+          <div className="flex gap-2 mt-4">
+            <Button variant="outline" onClick={resetTasks}>
+              Reset Tasks
+            </Button>
+            {/* Debug button to manually advance to next task */}
+            <Button 
+              variant="destructive" 
+              size="sm" 
+              onClick={() => {
+                if (currentTaskIndex < tasks.length - 1) {
+                  const nextIndex = currentTaskIndex + 1;
+                  console.log(`DEBUG: Manually advancing to task ${nextIndex}`);
+                  setCurrentTaskIndex(nextIndex);
+                  localStorage.setItem("mindTrackCurrentTaskIndex", nextIndex.toString());
+                  toast({
+                    title: "Debug: Task Advanced",
+                    description: `Manually unlocked ${tasks[nextIndex].title}`,
+                  });
+                } else {
+                  toast({
+                    title: "Debug: No More Tasks",
+                    description: "Already at the last task",
+                    variant: "destructive",
+                  });
+                }
+              }}
+            >
+              Debug: Next Task
+            </Button>
+          </div>
           <div className="flex items-center gap-2 mt-2">
             <Button
               variant="outline"
@@ -280,6 +496,19 @@ export default function ChallengesList() {
               stepCount={stepCount}
               targetSteps={1500}
               targetMinutes={15}
+            />
+          </div>
+        )}
+
+        {/* Show exercise video upload if an exercise task is active */}
+        {showExerciseUpload && currentExerciseType && (
+          <div className="max-w-md mx-auto mb-8">
+            <ExerciseVideoUpload
+              exerciseType={currentExerciseType}
+              taskId={tasks[currentTaskIndex]?.id}
+              taskTitle={tasks[currentTaskIndex]?.title}
+              onExerciseComplete={handleExerciseComplete}
+              onExerciseError={handleExerciseError}
             />
           </div>
         )}
