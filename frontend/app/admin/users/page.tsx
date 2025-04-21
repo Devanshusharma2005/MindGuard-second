@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Search, Filter, MoreHorizontal, UserPlus, Download, Trash2, Edit, Eye, Ban, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { apiUrl } from '@/lib/config';
 
 interface User {
   _id: string;
@@ -68,7 +69,7 @@ export default function UsersPage() {
       
       try {
         // Direct API endpoint with full URL to fetch real users from MongoDB
-        const response = await fetch(`http://localhost:5000/api/test/users`, { headers });
+        const response = await fetch(`${apiUrl}/api/test/users`, { headers });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch patients: ${response.status}`);

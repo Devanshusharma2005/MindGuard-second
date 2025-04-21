@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiUrl } from '@/lib/config';
 
 export async function GET(
   request: NextRequest,
@@ -17,7 +18,7 @@ export async function GET(
     console.log('Fetching health data for user:', userId);
     
     // Call backend API
-    const backendUrl = `http://localhost:5000/api/health-tracking/${userId}`;
+    const backendUrl = `${apiUrl}/api/health-tracking/${userId}`;
     
     const response = await fetch(backendUrl, {
       headers: {

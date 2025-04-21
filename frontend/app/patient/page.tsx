@@ -8,6 +8,7 @@ import { MoodTracker } from "@/components/patient/mood-tracker";
 import { WellnessScore } from "@/components/patient/wellness-score";
 import { RecommendedActivities } from "@/components/patient/recommended-activities";
 import { CommunityHighlights } from "@/components/patient/community-highlights";
+import { apiUrl } from '@/lib/config';
 
 interface UserData {
   username: string;
@@ -43,7 +44,7 @@ export default function PatientDashboard() {
       if (!userId) return;
 
       try {
-        const response = await fetch(`http://localhost:5000/api/health-tracking/${userId}`);
+        const response = await fetch(`${apiUrl}/api/health-tracking/${userId}`);
         if (response.ok) {
           const data = await response.json();
           setHasCompletedAssessment(data.healthreports && data.healthreports.length > 0);

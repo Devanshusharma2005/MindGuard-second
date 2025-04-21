@@ -9,6 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { ArrowRight, ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRouter } from "next/navigation";
+import { apiUrl } from '@/lib/config';
 
 interface Question {
   id: number;
@@ -264,7 +265,7 @@ export function HealthQuestionnaire({ onSubmit, isLoading, onComplete }: HealthQ
         message: 'Processing responses and generating insights...'
       });
 
-      const response = await fetch('http://localhost:5000/api/health-tracking', {
+      const response = await fetch(`${apiUrl}/api/health-tracking`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

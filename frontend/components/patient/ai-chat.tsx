@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, Send, User, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/config";
 
 interface Message {
   id: number;
@@ -203,7 +204,7 @@ export function AIChat() {
       };
 
       // Then, save the conversation to backend history
-      const historyResponse = await fetch("http://localhost:5000/api/health-tracking/chat", {
+      const historyResponse = await fetch(`${apiUrl}/api/health-tracking/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
