@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { userIdKey, tokenKey, apiUrl } from "@/lib/config";
 import Link from "next/link";
+import { MessageSquare } from "lucide-react";
 
 interface Message {
   id: string;
@@ -159,8 +160,17 @@ export function RecentMessages({ messages: externalMessages }: RecentMessagesPro
             </Button>
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-muted-foreground p-4">
-            No recent messages
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="rounded-full bg-muted p-3 mb-4">
+              <MessageSquare className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No Messages</h3>
+            <p className="text-muted-foreground text-center mb-6">
+              When patients send you messages, they'll appear here.
+            </p>
+            <Link href="/doctor/messages">
+              <Button variant="outline">Go to Messages</Button>
+            </Link>
           </div>
         ) : (
           <div className="space-y-4">

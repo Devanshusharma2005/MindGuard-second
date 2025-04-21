@@ -1,109 +1,245 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Users, Calendar, MessageSquare, Activity } from "lucide-react";
+import { Users, Calendar, MessageSquare, Activity, ClipboardList } from "lucide-react";
 import { RecentAppointments } from "./dashboard/recent-appointments";
 import { StatCard } from "./dashboard/stat-card";
 import { RecentMessages } from "./dashboard/recent-messages";
 import { PatientConditionChart } from "./dashboard/patient-condition-chart";
 import { PatientTrendChart } from "./dashboard/patient-trend-chart";
 import { NewPatientSubmissions } from "./dashboard/new-patient-submissions";
+import { apiUrl } from "@/lib/config";
+import { toast } from "@/components/ui/use-toast";
+
+interface DashboardData {
+  stats: {
+    totalPatients: number;
+    appointmentsToday: number;
+    unreadMessages: number;
+    recoveryRate: number;
+    patientTrend: number;
+    appointmentTrend: number;
+    messageTrend: number;
+    recoveryTrend: number;
+  };
+  appointments: {
+    id: string;
+    patientName: string;
+    patientImage?: string;
+    date: string;
+    time: string;
+    status: "upcoming" | "completed" | "cancelled";
+    type: "in-person" | "video";
+  }[];
+  messages: {
+    id: string;
+    senderName: string;
+    senderImage?: string;
+    content: string;
+    time: string;
+    isUnread: boolean;
+  }[];
+}
 
 export default function DashboardPage() {
-  // Mock data - in a real app, this would come from an API
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData>({
+    stats: {
+      totalPatients: 0,
+      appointmentsToday: 0,
+      unreadMessages: 0,
+      recoveryRate: 0,
+      patientTrend: 0,
+      appointmentTrend: 0,
+      messageTrend: 0,
+      recoveryTrend: 0
+    },
+    appointments: [],
+    messages: []
+  });
+  const [doctorName, setDoctorName] = useState("Doctor");
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Get doctor ID from multiple possible storage locations
+        const doctorId = localStorage.getItem('doctor_id') || 
+                        localStorage.getItem('mindguard_user_id') ||
+                        localStorage.getItem('doctorId');
+                        
+        if (!doctorId) {
+          throw new Error("Doctor ID not found. Please log in again.");
+        }
+        
+        // Get auth token
+        const token = localStorage.getItem('doctor_token') || 
+                     localStorage.getItem('mindguard_token') || 
+                     localStorage.getItem('token');
+                     
+        if (!token) {
+          throw new Error("Authentication token not found. Please log in again.");
+        }
+        
+        // Format token properly with Bearer prefix if it doesn't have it
+        const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+        
+        console.log('Fetching dashboard data for doctorId:', doctorId);
+        
+        // Fetch approved patient registrations
+        const registrationsResponse = await fetch(`${apiUrl}/api/patient-registrations/doctor-patients?status=approved&doctorId=${doctorId}`, {
+          headers: {
+            'Authorization': authToken,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!registrationsResponse.ok) {
+          throw new Error(`Failed to fetch patient registrations: ${registrationsResponse.status}`);
+        }
+        
+        const registrationsData = await registrationsResponse.json();
+        const approvedPatients = registrationsData.data?.registrations || [];
+        console.log('Approved patients:', approvedPatients.length);
+        
+        // Fetch pending registrations for the badge count
+        const pendingResponse = await fetch(`${apiUrl}/api/patient-registrations/doctor-patients?status=pending&doctorId=${doctorId}`, {
+          headers: {
+            'Authorization': authToken,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!pendingResponse.ok) {
+          throw new Error(`Failed to fetch pending registrations: ${pendingResponse.status}`);
+        }
+        
+        const pendingData = await pendingResponse.json();
+        const pendingPatients = pendingData.data?.registrations || [];
+        console.log('Pending patients:', pendingPatients.length);
+        
+        // Try to fetch appointments if available
+        let appointments = [];
+        try {
+          const appointmentsResponse = await fetch(`${apiUrl}/api/appointments/doctor/${doctorId}`, {
+            headers: {
+              'Authorization': authToken
+            }
+          });
+          
+          if (appointmentsResponse.ok) {
+            const appointmentsData = await appointmentsResponse.json();
+            appointments = appointmentsData.data || [];
+          }
+        } catch (error) {
+          console.error('Error fetching appointments:', error);
+          // Use fallback data based on approved patients
+          appointments = approvedPatients.slice(0, 4).map((patient: any, index: number) => ({
+            id: patient._id,
+            patientName: patient.patientName,
+            date: "Today",
+            time: `${9 + (index * 2)}:00 ${index < 2 ? 'AM' : 'PM'}`,
+            status: "upcoming",
+            type: index % 2 === 0 ? "in-person" : "video"
+          }));
+        }
+        
+        // Create formatted dashboard data
+        const formattedData: DashboardData = {
+          stats: {
+            totalPatients: approvedPatients.length,
+            appointmentsToday: appointments.length,
+            unreadMessages: pendingPatients.length,
+            recoveryRate: Math.round(approvedPatients.length > 0 ? 78 : 0), // Placeholder recovery rate
+            patientTrend: 12,
+            appointmentTrend: 5,
+            messageTrend: -3,
+            recoveryTrend: 7
+          },
+          appointments: appointments.slice(0, 4).map((appointment: any) => ({
+            id: appointment.id || appointment._id,
+            patientName: appointment.patientName,
+            date: appointment.date || "Today",
+            time: appointment.time || "9:00 AM",
+            status: appointment.status || "upcoming",
+            type: appointment.type || "in-person"
+          })),
+          messages: pendingPatients.slice(0, 3).map((patient: any) => ({
+            id: patient._id,
+            senderName: patient.patientName,
+            content: patient.symptoms || patient.medicalHistory || "New patient registration request",
+            time: patient.createdAt || new Date().toISOString(),
+            isUnread: true
+          }))
+        };
+        
+        setDashboardData(formattedData);
+        
+        // Get doctor name
+        const storedDoctor = localStorage.getItem('doctor');
+        if (storedDoctor) {
+          try {
+            const doctorData = JSON.parse(storedDoctor);
+            if (doctorData && doctorData.name) {
+              setDoctorName(doctorData.name.split(' ')[0] || "Doctor");
+            }
+          } catch (err) {
+            console.error('Error parsing doctor data:', err);
+          }
+        } else {
+          const username = localStorage.getItem('username');
+          if (username) {
+            setDoctorName(username);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load dashboard data",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+
+  // Convert dashboard data to stats format for StatCard components
   const stats = [
     {
       title: "Total Patients",
-      value: 248,
+      value: dashboardData.stats.totalPatients,
       icon: Users,
-      trend: { value: 12, isPositive: true },
+      trend: { value: dashboardData.stats.patientTrend, isPositive: dashboardData.stats.patientTrend > 0 },
     },
     {
       title: "Appointments Today",
-      value: 8,
+      value: dashboardData.stats.appointmentsToday,
       icon: Calendar,
-      trend: { value: 5, isPositive: true },
+      trend: { value: dashboardData.stats.appointmentTrend, isPositive: dashboardData.stats.appointmentTrend > 0 },
     },
     {
-      title: "Unread Messages",
-      value: 12,
-      icon: MessageSquare,
-      trend: { value: 3, isPositive: false },
+      title: "Pending Registrations",
+      value: dashboardData.stats.unreadMessages,
+      icon: ClipboardList,
+      trend: { value: Math.abs(dashboardData.stats.messageTrend), isPositive: dashboardData.stats.messageTrend > 0 },
     },
     {
       title: "Recovery Rate",
-      value: "78%",
+      value: `${dashboardData.stats.recoveryRate}%`,
       icon: Activity,
-      trend: { value: 7, isPositive: true },
+      trend: { value: dashboardData.stats.recoveryTrend, isPositive: dashboardData.stats.recoveryTrend > 0 },
     },
   ];
 
-  const appointments = [
-    {
-      id: "1",
-      patientName: "Sarah Johnson",
-      patientImage: "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=128&h=128&auto=format&fit=crop",
-      date: "Today",
-      time: "9:00 AM",
-      status: "upcoming" as const,
-      type: "in-person" as const,
-    },
-    {
-      id: "2",
-      patientName: "Michael Brown",
-      patientImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=128&h=128&auto=format&fit=crop",
-      date: "Today",
-      time: "11:30 AM",
-      status: "upcoming" as const,
-      type: "video" as const,
-    },
-    {
-      id: "3",
-      patientName: "Emily Davis",
-      patientImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&h=128&auto=format&fit=crop",
-      date: "Today",
-      time: "2:00 PM",
-      status: "upcoming" as const,
-      type: "in-person" as const,
-    },
-    {
-      id: "4",
-      patientName: "David Wilson",
-      patientImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=128&h=128&auto=format&fit=crop",
-      date: "Today",
-      time: "4:30 PM",
-      status: "upcoming" as const,
-      type: "video" as const,
-    },
-  ];
-
-  const messages = [
-    {
-      id: "1",
-      senderName: "Sarah Johnson",
-      senderImage: "https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=128&h=128&auto=format&fit=crop",
-      content: "Dr. Smith, I've been feeling much better since our last session. The new medication seems to be working well.",
-      time: "10 min ago",
-      isUnread: true,
-    },
-    {
-      id: "2",
-      senderName: "Michael Brown",
-      senderImage: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=128&h=128&auto=format&fit=crop",
-      content: "I'm experiencing some side effects from the medication. Could we discuss this during our appointment today?",
-      time: "30 min ago",
-      isUnread: true,
-    },
-    {
-      id: "3",
-      senderName: "Emily Davis",
-      senderImage: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=128&h=128&auto=format&fit=crop",
-      content: "Thank you for the resources you shared last week. They've been very helpful for managing my anxiety.",
-      time: "2 hours ago",
-      isUnread: false,
-    },
-  ];
-
+  // Sample condition data - this would ideally come from the API
   const conditionData = [
     { name: "Anxiety", value: 85, color: "hsl(var(--chart-1))" },
     { name: "Depression", value: 67, color: "hsl(var(--chart-2))" },
@@ -112,6 +248,7 @@ export default function DashboardPage() {
     { name: "Other", value: 26, color: "hsl(var(--chart-5))" },
   ];
 
+  // Sample trend data - this would ideally come from the API
   const trendData = [
     { name: "Jan", newPatients: 20, recoveredPatients: 10 },
     { name: "Feb", newPatients: 25, recoveredPatients: 15 },
@@ -120,16 +257,6 @@ export default function DashboardPage() {
     { name: "May", newPatients: 35, recoveredPatients: 25 },
     { name: "Jun", newPatients: 40, recoveredPatients: 30 },
   ];
-
-  const [doctorName, setDoctorName] = useState("Doctor");
-
-  // Get doctor name from localStorage
-  useEffect(() => {
-    const name = localStorage.getItem('username');
-    if (name) {
-      setDoctorName(name);
-    }
-  }, []);
 
   return (
     <div className="space-y-6">
@@ -152,14 +279,14 @@ export default function DashboardPage() {
         ))}
       </div>
       
-      {/* Add New Patient Submissions section */}
+      {/* New Patient Submissions section */}
       <div className="grid gap-4 md:grid-cols-1">
         <NewPatientSubmissions />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <RecentAppointments appointments={appointments} />
-        <RecentMessages messages={messages} />
+        <RecentAppointments appointments={dashboardData.appointments} />
+        <RecentMessages messages={dashboardData.messages} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

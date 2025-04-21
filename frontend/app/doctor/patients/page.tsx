@@ -109,7 +109,7 @@ export default function PatientsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="registrations" className="space-y-4">
+      <Tabs defaultValue="appointments" className="space-y-4">
         <TabsList>
           <TabsTrigger value="registrations">Registration Requests</TabsTrigger>
           <TabsTrigger value="appointments">Current Patients</TabsTrigger>

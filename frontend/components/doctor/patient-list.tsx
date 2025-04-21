@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,8 +15,8 @@ import {
   DialogClose
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, FileText, Heart, Trash2 } from "lucide-react";
-import { userIdKey } from "@/lib/config";
+import { Calendar, User, Mail, Phone, Clock, AlertCircle, CheckCircle, XCircle, FileText, Heart, Trash2, RefreshCw, Loader2 } from "lucide-react";
+import { userIdKey, apiUrl } from "@/lib/config";
 import { toast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -31,9 +31,9 @@ interface PatientDetails {
   patientEmail: string;
   patientAge: string;
   patientGender: string;
-  hasCompletedQuestionnaire: boolean;
+  hasCompletedQuestionnaire?: boolean;
   mentalHealthConcern?: string;
-  appointmentRequestDate: string;
+  appointmentRequestDate?: string;
   status?: string;
   medicalHistory?: string;
   currentMedications?: string[];
@@ -44,26 +44,27 @@ interface PatientDetails {
   updatedAt?: string;
 }
 
-interface Appointment {
+interface PatientRegistration {
   _id: string;
-  doctorId: string;
-  patientId: string;
   patientName: string;
   patientEmail: string;
   patientAge: string;
   patientGender: string;
-  mentalHealthConcern?: string;
-  hasCompletedQuestionnaire: boolean;
-  appointmentDate: string;
-  status: string;
-  notes?: string;
+  medicalHistory: string;
+  currentMedications: string[];
+  allergies: string[];
+  symptoms: string;
+  notes: string;
+  status: 'pending' | 'approved' | 'rejected';
   createdAt: string;
+  doctorId: string;
+  doctorName?: string;
+  doctorSpecialty?: string;
 }
 
 export function PatientList() {
   const router = useRouter();
   const [patients, setPatients] = useState<PatientDetails[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<PatientDetails | null>(null);
@@ -71,42 +72,119 @@ export function PatientList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deletePatientId, setDeletePatientId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const storedDoctorId = localStorage.getItem(userIdKey);
+  const fetchDoctorId = useCallback(() => {
+    // Try multiple localStorage keys for doctor ID
+    const storedDoctorId = 
+      localStorage.getItem('doctor_id') || 
+      localStorage.getItem('doctorId') || 
+      localStorage.getItem('mindguard_user_id') || 
+      localStorage.getItem(userIdKey);
+    
     if (storedDoctorId) {
+      console.log('Using doctor ID:', storedDoctorId);
       setDoctorId(storedDoctorId);
-      fetchExtraDetailsPatientsData(storedDoctorId);
-    } else {
-      setError("Doctor ID not found. Please log in again.");
-      setLoading(false);
+      return storedDoctorId;
     }
+    
+    setError("Doctor ID not found. Please log in again.");
+    return null;
   }, []);
+
+  const getAuthToken = useCallback(() => {
+    // Try different token storage locations
+    const token = localStorage.getItem('doctor_token') || 
+                 localStorage.getItem('mindguard_token') || 
+                 localStorage.getItem('token');
+                 
+    if (!token) {
+      console.error('Authentication token not found');
+      setError("Authentication token not found. Please log in again.");
+      throw new Error('Authentication token not found');
+    }
+    
+    // Format token properly
+    return token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+  }, []);
+
+  const fetchApprovedRegistrations = useCallback(async (id: string) => {
+    try {
+      setLoading(true);
+      
+      const authToken = getAuthToken();
+      
+      // Fetch approved registrations
+      console.log('Fetching approved registrations for doctor ID:', id);
+      
+      // Use the patient-registrations endpoint with status=approved filter
+      const response = await fetch(`${apiUrl}/api/patient-registrations/doctor-patients?status=approved&doctorId=${id}`, {
+        headers: {
+          'Authorization': authToken,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch approved registrations: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Approved registrations data:', data);
+      
+      if (data.success && data.data && Array.isArray(data.data.registrations)) {
+        // Convert registrations to patient details format
+        const patientDetails: PatientDetails[] = data.data.registrations.map((reg: PatientRegistration) => ({
+          _id: reg._id,
+          doctorId: reg.doctorId,
+          doctorName: reg.doctorName || '',
+          doctorSpecialty: reg.doctorSpecialty || '',
+          patientName: reg.patientName,
+          patientEmail: reg.patientEmail,
+          patientAge: reg.patientAge,
+          patientGender: reg.patientGender,
+          mentalHealthConcern: reg.symptoms,
+          medicalHistory: reg.medicalHistory,
+          currentMedications: reg.currentMedications,
+          allergies: reg.allergies,
+          status: reg.status,
+          hasCompletedQuestionnaire: false,
+          appointmentRequestDate: reg.createdAt,
+          createdAt: reg.createdAt
+        }));
+        
+        console.log('Converted to patient details:', patientDetails);
+        setPatients(patientDetails);
+      } else {
+        console.log('No approved registrations found');
+        setPatients([]);
+      }
+    } catch (error) {
+      console.error('Error fetching approved registrations:', error);
+      setError('Unable to load approved patients. Please try again later.');
+      
+      // Fall back to other methods
+      fetchExtraDetailsPatientsData(id);
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [getAuthToken]);
 
   const fetchExtraDetailsPatientsData = async (id: string) => {
     try {
       setLoading(true);
       
-      // Get auth token from localStorage or your auth system
-      const token = localStorage.getItem('mindguard_token');
-      
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setLoading(false);
-        return;
-      }
-      
-      // Format token properly with Bearer prefix if it doesn't have it
-      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+      // Get auth token from localStorage
+      const authToken = getAuthToken();
       
       console.log("Fetching extraDetailsPatients data for doctor ID:", id);
       
       // Make a direct API call to extraDetailsPatients
-      const response = await fetch(`/api/extra-details-patients/doctor/${id}`, {
+      const response = await fetch(`${apiUrl}/api/extra-details-patients/doctor/${id}`, {
         headers: {
           'Authorization': authToken
-        },
-        cache: 'no-store'
+        }
       });
       
       if (!response.ok) {
@@ -116,207 +194,122 @@ export function PatientList() {
       const data = await response.json();
       console.log("Received extraDetailsPatients data:", data);
       
+      // Filter for approved patients only
+      let patientList: PatientDetails[] = [];
+      
       if (data.status === 'success' && data.data && Array.isArray(data.data)) {
-        console.log("Setting patients state with:", data.data);
-        setPatients(data.data);
-        setError(null);
+        patientList = data.data.filter((p: PatientDetails) => p.status === 'approved');
       } else if (Array.isArray(data)) {
-        // Handle case where API directly returns array
-        console.log("Setting patients state with direct array:", data);
-        setPatients(data);
-        setError(null);
-      } else {
-        console.error("Unexpected data format:", data);
-        throw new Error('Failed to fetch patient data: Invalid response format');
+        patientList = data.filter((p: PatientDetails) => p.status === 'approved');
       }
+      
+      console.log("Filtered approved patients:", patientList);
+      setPatients(patientList);
+      setError(null);
     } catch (error) {
       console.error('Error fetching extraDetailsPatients data:', error);
       setError('Unable to load patient data. Please try again later.');
-      
-      // Fall back to alternative methods if the direct approach fails
-      fetchDoctorDashboardData(id);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
-  const fetchDoctorDashboardData = async (id: string) => {
-    try {
-      setLoading(true);
-      
-      // Get auth token
-      const token = localStorage.getItem('mindguard_token');
-      
-      if (!token) {
-        setError("Authentication token not found. Please log in again.");
-        setLoading(false);
-        return;
-      }
-      
-      // Format token properly with Bearer prefix
-      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      
-      console.log("Falling back to dashboard data for doctor ID:", id);
-      
-      // Fetch dashboard data
-      const dashboardResponse = await fetch(`/api/doctor/dashboard?doctorId=${id}`, {
-        headers: {
-          'Authorization': authToken
-        },
-        cache: 'no-store'
-      });
-      
-      if (dashboardResponse.ok) {
-        const dashboardData = await dashboardResponse.json();
-        console.log("Received dashboard data:", dashboardData);
-        
-        if (dashboardData.status === 'success' && dashboardData.data) {
-          // Set appointments
-          if (Array.isArray(dashboardData.data.appointments)) {
-            console.log("Setting appointments state with:", dashboardData.data.appointments);
-            setAppointments(dashboardData.data.appointments);
-          }
-          
-          // Convert appointments to patient details as a fallback
-          if (patients.length === 0 && Array.isArray(dashboardData.data.appointments)) {
-            const convertedPatients = dashboardData.data.appointments.map((appointment: Appointment) => ({
-              _id: appointment._id,
-              doctorId: appointment.doctorId,
-              doctorName: '',
-              doctorSpecialty: '',
-              patientName: appointment.patientName,
-              patientEmail: appointment.patientEmail,
-              patientAge: appointment.patientAge,
-              patientGender: appointment.patientGender,
-              hasCompletedQuestionnaire: appointment.hasCompletedQuestionnaire,
-              mentalHealthConcern: appointment.mentalHealthConcern,
-              appointmentRequestDate: appointment.appointmentDate || appointment.createdAt,
-              status: appointment.status
-            }));
-            console.log("Creating patient data from appointments:", convertedPatients);
-            setPatients(convertedPatients);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in fallback data fetching:', error);
+  // Function to refresh data
+  const refreshData = () => {
+    setIsRefreshing(true);
+    const id = fetchDoctorId();
+    if (id) {
+      fetchApprovedRegistrations(id);
+    } else {
+      setIsRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    const id = fetchDoctorId();
+    if (id) {
+      fetchApprovedRegistrations(id);
+    }
+  }, [fetchDoctorId, fetchApprovedRegistrations]);
 
   const updatePatientStatus = async (id: string, status: string) => {
     try {
       // Get auth token
-      const token = localStorage.getItem('mindguard_token');
+      const authToken = getAuthToken();
       
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Authentication token not found. Please log in again.",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Format token properly with Bearer prefix
-      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      
-      const response = await fetch(`/api/extra-details-patients/${id}`, {
-        method: 'PUT',
+      const response = await fetch(`${apiUrl}/api/patient-registrations/${id}/status`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': authToken
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ 
+          status,
+          doctorId 
+        })
       });
       
       if (!response.ok) {
         throw new Error('Failed to update patient status');
       }
       
-      const data = await response.json();
+      // Refresh the data to get updated list
+      refreshData();
       
-      if (data.status === 'success') {
-        // Update the patient status in the local state
-        setPatients(patients.map(patient => 
-          patient._id === id ? { ...patient, status } : patient
-        ));
-        
-        // Also update the selected patient if it's the one being modified
-        if (selectedPatient && selectedPatient._id === id) {
-          setSelectedPatient({ ...selectedPatient, status });
-        }
-        
-        toast({
-          title: "Success",
-          description: `Patient status updated to ${status}`,
-        });
-      } else {
-        throw new Error(data.message || 'Failed to update patient status');
-      }
+      toast({
+        title: "Success",
+        description: `Patient status updated to ${status}`,
+      });
     } catch (error) {
       console.error('Error updating patient status:', error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update patient status",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition-colors">Pending</Badge>;
+      case 'approved':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200 transition-colors">Active</Badge>;
       case 'active':
-      case 'confirmed':
-        return <Badge className="bg-green-500">Active</Badge>;
-      case 'completed':
-        return <Badge className="bg-blue-500">Completed</Badge>;
-      case 'cancelled':
-        return <Badge className="bg-red-500">Cancelled</Badge>;
+        return <Badge variant="outline" className="bg-green-100 text-green-800 hover:bg-green-200 transition-colors">Active</Badge>;
+      case 'rejected':
+        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-200 transition-colors">Inactive</Badge>;
       case 'inactive':
-        return <Badge className="bg-gray-500">Inactive</Badge>;
+        return <Badge variant="outline" className="bg-red-100 text-red-800 hover:bg-red-200 transition-colors">Inactive</Badge>;
       default:
-        return <Badge className="bg-yellow-500">Pending</Badge>;
+        return <Badge variant="outline" className="bg-gray-100">Unknown</Badge>;
     }
   };
 
   const renderSkeletons = () => {
-    return Array(3).fill(0).map((_, index) => (
-      <Card key={index} className="mb-4">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-12 w-12 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-3 w-1/2" />
-            </div>
+    return Array(3).fill(0).map((_, i) => (
+      <Card key={i} className="p-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-12 w-12 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
           </div>
-        </CardContent>
+        </div>
       </Card>
     ));
   };
 
-  // Function to delete a patient
   const deletePatient = async (id: string) => {
     try {
       setIsDeleting(true);
       
       // Get auth token
-      const token = localStorage.getItem('mindguard_token');
+      const authToken = getAuthToken();
       
-      if (!token) {
-        toast({
-          title: "Error",
-          description: "Authentication token not found. Please log in again.",
-          variant: "destructive"
-        });
-        setIsDeleting(false);
-        return;
-      }
-      
-      // Format token properly with Bearer prefix
-      const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
-      
-      const response = await fetch(`/api/extra-details-patients/${id}`, {
+      const response = await fetch(`${apiUrl}/api/extra-details-patients/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': authToken
@@ -324,94 +317,82 @@ export function PatientList() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to delete patient record');
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        throw new Error(errorData.message || 'Failed to delete patient');
       }
       
-      const data = await response.json();
+      // Update the local state by removing the deleted patient
+      setPatients(patients.filter(patient => patient._id !== id));
       
-      if (data.status === 'success') {
-        // Remove the patient from the local state
-        setPatients(patients.filter(patient => patient._id !== id));
-        
-        toast({
-          title: "Success",
-          description: "Patient record deleted successfully",
-        });
-        
-        // Close the dialog if open
-        setShowDeleteDialog(false);
-      } else {
-        throw new Error(data.message || 'Failed to delete patient record');
-      }
+      // Close the dialog
+      setShowDeleteDialog(false);
+      
+      toast({
+        title: "Success",
+        description: "Patient has been removed successfully",
+      });
     } catch (error) {
       console.error('Error deleting patient:', error);
       toast({
         title: "Error",
-        description: (error as Error).message || "Failed to delete patient record",
-        variant: "destructive"
+        description: error instanceof Error ? error.message : "Failed to delete patient",
+        variant: "destructive",
       });
     } finally {
       setIsDeleting(false);
       setDeletePatientId(null);
     }
   };
-  
-  // Add a function to confirm delete
+
   const confirmDelete = (id: string) => {
     setDeletePatientId(id);
     setShowDeleteDialog(true);
   };
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Your Patients</h2>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => doctorId && fetchExtraDetailsPatientsData(doctorId)}
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Refreshing...
-              </>
-            ) : "Refresh"}
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center p-8">
+          <AlertCircle className="h-10 w-10 text-destructive mb-4" />
+          <h3 className="text-xl font-semibold mb-2">Unable to Load Patients</h3>
+          <p className="text-muted-foreground text-center mb-6">{error}</p>
+          <Button onClick={() => {
+            // Clear error and retry
+            setError(null);
+            refreshData();
+          }}>
+            Try Again
           </Button>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-semibold">Current Patients</h2>
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={refreshData}
+          disabled={isRefreshing}
+          className="flex items-center gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
+      
       {loading ? (
         renderSkeletons()
-      ) : error ? (
-        <Card className="p-6 text-red-500 flex items-center gap-2">
-          <AlertCircle className="h-5 w-5" />
-          <p>{error}</p>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="ml-4"
-            onClick={() => doctorId && fetchExtraDetailsPatientsData(doctorId)}
-          >
-            Retry
-          </Button>
-        </Card>
-      ) : patients.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="text-muted-foreground">No patient data found.</p>
-          <p className="text-sm text-muted-foreground mt-2">When patients submit their details, they'll appear here.</p>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {console.log("Rendering patients:", patients)}
+      ) : patients.length > 0 ? (
+        <div className="grid gap-4">
           {patients.map((patient) => (
-            <Card key={patient._id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardContent className="p-0">
-                <div className="p-6 flex flex-wrap items-center justify-between border-b">
+            <Card key={patient._id} className="overflow-hidden">
+              <CardContent className="p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <Avatar className="h-14 w-14 border-2 border-primary/10">
                       <AvatarFallback className="bg-primary/10 text-primary font-semibold">
@@ -444,7 +425,7 @@ export function PatientList() {
                     </Button>
                     <Dialog>
                       <DialogTrigger asChild>
-                        <Button 
+                        <Button
                           variant="outline"
                           size="sm"
                           className="text-xs"
@@ -458,155 +439,77 @@ export function PatientList() {
                           <DialogTitle>Patient Details</DialogTitle>
                         </DialogHeader>
                         {selectedPatient && selectedPatient._id === patient._id && (
-                          <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div>
-                                <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
-                                <dl className="space-y-3">
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Full Name</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.patientName}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Email</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.patientEmail}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Age</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.patientAge || 'Not provided'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Gender</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.patientGender || 'Not provided'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Patient ID</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient._id}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Appointment Status</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.status || 'Not set'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Request Date</dt>
-                                    <dd className="text-sm font-medium">
-                                      {selectedPatient.appointmentRequestDate
-                                        ? new Date(selectedPatient.appointmentRequestDate).toLocaleString()
-                                        : 'Not provided'}
-                                    </dd>
-                                  </div>
-                                </dl>
-                              </div>
-                              
-                              <div>
-                                <h3 className="text-lg font-semibold mb-4">Health Information</h3>
-                                <dl className="space-y-3">
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Mental Health Concern</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.mentalHealthConcern || 'Not provided'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Completed Questionnaire</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.hasCompletedQuestionnaire ? 'Yes' : 'No'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Doctor Assigned</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.doctorName || 'Not assigned'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Doctor ID</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.doctorId || 'Not assigned'}</dd>
-                                  </div>
-                                  <div className="flex flex-col">
-                                    <dt className="text-sm font-medium text-muted-foreground">Doctor Specialty</dt>
-                                    <dd className="text-sm font-medium">{selectedPatient.doctorSpecialty || 'Not specified'}</dd>
-                                  </div>
-                                </dl>
-                              </div>
-                            </div>
-                            
-                            <DialogFooter className="border-t pt-3">
-                              {(!selectedPatient.status || selectedPatient.status === 'requested') && (
-                                <div className="flex justify-end gap-2">
-                                  <Button
-                                    variant="destructive"
-                                    onClick={() => updatePatientStatus(selectedPatient._id, 'cancelled')}
-                                  >
-                                    <XCircle className="h-4 w-4 mr-2" />
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    variant="default"
-                                    onClick={() => updatePatientStatus(selectedPatient._id, 'confirmed')}
-                                  >
-                                    <CheckCircle className="h-4 w-4 mr-2" />
-                                    Confirm
-                                  </Button>
-                                </div>
-                              )}
-                            </DialogFooter>
-                          </>
+                          <PatientProfileView patient={selectedPatient} />
                         )}
                       </DialogContent>
                     </Dialog>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-muted/10">
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground text-xs">
-                      <User className="h-3.5 w-3.5 mr-1" />
-                      <span>Age / Gender</span>
-                    </div>
-                    <span className="font-medium">{patient.patientAge || 'N/A'} / {patient.patientGender || 'N/A'}</span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground text-xs">
-                      <Calendar className="h-3.5 w-3.5 mr-1" />
-                      <span>Appointment Date</span>
-                    </div>
-                    <span className="font-medium">
-                      {patient.appointmentRequestDate ? new Date(patient.appointmentRequestDate).toLocaleDateString() : 'N/A'}
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      {patient.patientAge} years, {patient.patientGender === 'male' ? 'Male' : patient.patientGender === 'female' ? 'Female' : 'Other'}
                     </span>
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground text-xs">
-                      <Heart className="h-3.5 w-3.5 mr-1" />
-                      <span>Mental Health Concern</span>
+                  
+                  {patient.appointmentRequestDate && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">
+                        Requested: {new Date(patient.appointmentRequestDate).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="font-medium line-clamp-1 capitalize">
-                      {patient.mentalHealthConcern || 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center text-muted-foreground text-xs">
-                      <CheckCircle className="h-3.5 w-3.5 mr-1" />
-                      <span>Completed Questionnaire</span>
+                  )}
+                  
+                  {patient.medicalHistory && (
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">Has Medical History</span>
                     </div>
-                    <span className="font-medium">
-                      {patient.hasCompletedQuestionnaire ? 'Yes' : 'No'}
-                    </span>
-                  </div>
+                  )}
+                  
+                  {patient.mentalHealthConcern && (
+                    <div className="flex items-center gap-2">
+                      <Heart className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm truncate max-w-[200px]" title={patient.mentalHealthConcern}>
+                        {patient.mentalHealthConcern}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ))}
         </div>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center p-12">
+            <div className="rounded-full bg-muted p-3 mb-4">
+              <User className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No Current Patients</h3>
+            <p className="text-muted-foreground text-center mb-6">
+              You don't have any approved patients yet. Approve registration requests to see them here.
+            </p>
+          </CardContent>
+        </Card>
       )}
-
-      {/* Delete Confirmation Dialog */}
+      
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-center">Delete Patient Record</DialogTitle>
-            <DialogDescription className="text-center">
-              Are you sure you want to delete this patient record? This action cannot be undone.
+            <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to remove this patient? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center gap-4 mt-4">
+          <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
@@ -617,20 +520,14 @@ export function PatientList() {
             >
               {isDeleting ? (
                 <>
-                  <svg className="animate-spin -ml-1 mr-3 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
                 </>
               ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
+                'Delete Patient'
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
