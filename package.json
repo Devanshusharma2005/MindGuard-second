@@ -4,6 +4,7 @@
     "@types/uuid": "^10.0.0",
     "lucide-react": "^0.479.0",
     "mongoose": "^8.12.1",
+    "styled-components": "^6.1.17",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
