@@ -214,30 +214,7 @@ export default function ChallengesList() {
         setCurrentExerciseType(exerciseType);
         setShowExerciseUpload(true);
         
-        // Add task completion safety timer
-        // If the video upload/analysis takes too long or fails, we'll still complete the task
-        const safetyTimer = setTimeout(() => {
-          // First check if this task has already been completed
-          const currentTasks = JSON.parse(localStorage.getItem("mindTrackTasks") || "[]");
-          const currentTask = currentTasks[taskIndex];
-          
-          // Only complete the task if it hasn't been completed already
-          if (currentTaskIndex === taskIndex && currentTask && !currentTask.completed) {
-            console.log("Safety timer triggered - completing task automatically");
-            completeTaskWithReward(taskIndex);
-            setShowExerciseUpload(false);
-            setCurrentExerciseType(null);
-            toast({
-              title: "Task Completed",
-              description: "We've automatically completed your task after a delay.",
-            });
-          } else {
-            console.log("Safety timer triggered but task already completed - skipping");
-          }
-        }, 30000); // 30 second safety timer (reduced from 60)
-        
-        // Store the safety timer ID to clear it if normal completion happens
-        window.sessionStorage.setItem("taskSafetyTimer", safetyTimer.toString());
+        // Safety timer removed - tasks will only complete based on agent responses
         
         return;
       } catch (error) {
@@ -311,13 +288,8 @@ export default function ChallengesList() {
 
   // Function to complete a task and give reward
   const completeTaskWithReward = (taskIndex: number) => {
-    // Clear any existing safety timer
-    const safetyTimerId = window.sessionStorage.getItem("taskSafetyTimer");
-    if (safetyTimerId) {
-      clearTimeout(parseInt(safetyTimerId));
-      window.sessionStorage.removeItem("taskSafetyTimer");
-    }
-
+    // No need to clear safety timer as it's been removed
+    
     // Add debug logging
     console.log("=== TASK COMPLETION DEBUG ===");
     console.log(`Current task index: ${currentTaskIndex}`);

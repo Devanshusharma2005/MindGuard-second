@@ -76,17 +76,6 @@ export default function PatientDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <DashboardOverview onAssessmentStatusChange={setHasCompletedAssessment} />
         
-        {/* Add button to submit details to doctor */}
-        <div className="flex justify-center mt-6">
-          <div 
-            className="bg-primary text-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-primary/90 transition-colors text-center w-full max-w-md"
-            onClick={() => router.push('/patient/submit-to-doctor')}
-          >
-            <h3 className="text-lg font-semibold mb-2">Connect with a Doctor</h3>
-            <p className="text-sm">Share your medical details with a doctor to get personalized care</p>
-          </div>
-        </div>
-        
         {hasCompletedAssessment && (
           <div className="grid grid-cols-1 gap-6 mt-5 md:grid-cols-2 lg:grid-cols-3">
             <WellnessScore />
