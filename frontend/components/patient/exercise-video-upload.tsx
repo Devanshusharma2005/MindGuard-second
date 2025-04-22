@@ -94,7 +94,7 @@ export function ExerciseVideoUpload({
     }
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -118,6 +118,9 @@ export function ExerciseVideoUpload({
       return;
     }
 
+    // Create a unique ID for this upload attempt
+    const uploadId = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
     setIsUploading(true);
     setUploadStatus("uploading");
     setUploadStartTime(Date.now());
@@ -127,7 +130,10 @@ export function ExerciseVideoUpload({
       let result;
       
       // Log context information for debugging
-      console.log(`Uploading ${exerciseType} video for task ID: ${taskId || 'unknown'}, title: ${taskTitle || 'unknown'}`);
+      console.log(`Starting ${exerciseType} video upload for task ID: ${taskId || 'unknown'}...`, file);
+      
+      // Store this upload attempt in session storage to prevent duplicate processing
+      sessionStorage.setItem('lastExerciseUpload', uploadId);
       
       // Standardize exercise type to ensure consistent API calls
       const normalizedExerciseType = exerciseType.toLowerCase().trim();
@@ -151,6 +157,12 @@ export function ExerciseVideoUpload({
           result = await uploadExerciseVideo(exerciseType, file);
       }
 
+      // Double-check this is still the active upload attempt
+      if (sessionStorage.getItem('lastExerciseUpload') !== uploadId) {
+        console.log('Upload superseded by another upload, ignoring results');
+        return;
+      }
+
       // Clear the upload timer since we got a response
       if (uploadTimer) {
         clearTimeout(uploadTimer);
@@ -162,32 +174,50 @@ export function ExerciseVideoUpload({
       }
 
       // Log the response from backend, particularly focusing on treasure
-      console.log(`Backend response for ${exerciseType}:`, {
-        success: result.success,
-        duration: result.duration,
-        treasureEarned: result.treasureEarned,
-        wellnessScore: result.wellnessScore
-      });
+      console.log(`${exerciseType} analysis results:`, result);
+
+      // Important: If treasure is earned, immediately clear the safety timer
+      if (result.treasureEarned === true) {
+        console.log(`Exercise treasureEarned=true detected in ExerciseVideoUpload. Clearing safety timer immediately.`);
+        // Clear any existing safety timer - this is crucial and we need multiple layers
+        // of protection to ensure it doesn't fire incorrectly
+        const safetyTimerId = window.sessionStorage.getItem("taskSafetyTimer");
+        if (safetyTimerId) {
+          clearTimeout(parseInt(safetyTimerId));
+          window.sessionStorage.removeItem("taskSafetyTimer");
+          console.log("Safety timer cleared from ExerciseVideoUpload component due to treasureEarned=true");
+          // Also clear any task completion ID to prevent racing
+          window.sessionStorage.removeItem("currentTaskCompletionId");
+        }
+      }
 
       // Set states before calling callbacks to avoid race conditions
       setUploadStatus("success");
       setWellnessScore(result.wellnessScore || 0);
       setWellnessMessage(result.wellnessMessage || '');
       
+      toast({
+        title: result.treasureEarned ? "Exercise Completed!" : "Exercise Analyzed",
+        description: result.wellnessMessage || 
+          `You maintained the ${exerciseType} for ${result.duration?.toFixed(2) || "0"} seconds.`,
+      });
+      
+      // Explicitly log that we're calling the completion handler
+      console.log(`Calling onExerciseComplete with duration: ${result.duration || 0}`);
+      
       // Create a delay to ensure the UI updates with success state first
       setTimeout(() => {
         // Call the onExerciseComplete callback with the duration
         // This will trigger task completion in the parent component
-        console.log(`Calling onExerciseComplete with duration: ${result.duration || 0}`);
         onExerciseComplete(result.duration || 0);
-        
-        toast({
-          title: result.treasureEarned ? "Treasure Earned!" : "Video analysis complete",
-          description: result.wellnessMessage || 
-            `You maintained the ${exerciseType} for ${result.duration?.toFixed(2) || "0"} seconds.`,
-        });
-      }, 500); // Short delay to ensure proper UI sequence
+      }, 100);
     } catch (error) {
+      // Double-check this is still the active upload attempt
+      if (sessionStorage.getItem('lastExerciseUpload') !== uploadId) {
+        console.log('Upload superseded by another upload, ignoring error');
+        return;
+      }
+      
       // Clear the upload timer
       if (uploadTimer) {
         clearTimeout(uploadTimer);
@@ -201,15 +231,15 @@ export function ExerciseVideoUpload({
       if (uploadDuration > 15) {
         setUploadStatus("success");
         
+        toast({
+          title: "Exercise Recorded",
+          description: "There was an issue with the analysis, but we've recorded your exercise.",
+        });
+        
+        console.log("Calling onExerciseComplete with fallback duration due to error after long attempt");
         setTimeout(() => {
-          console.log("Calling onExerciseComplete with fallback duration of 5 seconds");
           onExerciseComplete(5); // Default 5 second duration as fallback
-          
-          toast({
-            title: "Exercise Recorded",
-            description: "There was an issue with the analysis, but we've recorded your exercise.",
-          });
-        }, 500);
+        }, 100);
       } else {
         setUploadStatus("error");
         const errorMsg = error instanceof Error ? error.message : "An unknown error occurred";
@@ -344,4 +374,4 @@ export function ExerciseVideoUpload({
       </div>
     </Card>
   );
-} 
+}

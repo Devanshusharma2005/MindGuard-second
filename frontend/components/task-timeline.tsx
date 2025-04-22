@@ -18,7 +18,7 @@ import {
 interface TaskTimelineProps {
   tasks: Task[]
   currentTaskIndex: number
-  onCompleteTask: (taskId: string) => void
+  onCompleteTask: (taskId: string, duration?: number) => void
 }
 
 export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTimelineProps) {
@@ -311,7 +311,14 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
           setLastAnalysisData(data);
 
           if (data.success) {
-            // Different exercise types need different handling
+            // Directly complete the exercise if treasureEarned is true
+            if (data.treasureEarned === true) {
+              console.log(`Exercise ${exerciseType} completed with treasureEarned=true. Calling directlyCompleteExercise`);
+              directlyCompleteExercise(data);
+              return; // Exit early to prevent further processing
+            }
+
+            // This code will only run if treasureEarned is not true
             if (exerciseType === 'plank') {
               console.log("PLANK DATA RECEIVED:", JSON.stringify(data)); // Add debugging log
               setPlankAnalysis(data)
@@ -591,6 +598,75 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
     }
   }, [selectedVideo])
 
+  // Add this function to clear safety timer
+  const clearSafetyTimer = () => {
+    try {
+      const safetyTimerId = window.sessionStorage.getItem("taskSafetyTimer");
+      if (safetyTimerId) {
+        clearTimeout(parseInt(safetyTimerId));
+        window.sessionStorage.removeItem("taskSafetyTimer");
+        console.log("Safety timer cleared from TaskTimeline");
+      }
+    } catch (error) {
+      console.error("Error clearing safety timer:", error);
+    }
+  };
+
+  // Add this new function to immediately complete treasureEarned exercises and bypass the safety timer
+  const directlyCompleteExercise = (data: any) => {
+    if (!data || !data.success) return;
+    
+    try {
+      // Only proceed if we have valid data and treasureEarned is true
+      if (data.treasureEarned === true) {
+        // Get the current task
+        const currentTask = tasks[currentTaskIndex];
+        
+        if (!currentTask) return;
+        
+        console.log(`Exercise analysis successful with treasureEarned=true. Directly completing task: ${currentTask.title}`);
+        
+        // Clear any safety timer first - crucial step
+        clearSafetyTimer();
+        
+        // Clear states immediately
+        setIsLoading(false);
+        setSelectedVideo(null);
+        setAnalysisMessage("");
+        setShowExerciseUpload(false);
+        setShowPlankUpload(false);
+        
+        // Reset plank specific states if needed
+        if (currentExerciseType === 'plank') {
+          setIsPlankVideoPlaying(false);
+          setActivePlankTask(null);
+        }
+        
+        // Show reward immediately  
+        setCurrentReward(currentTask.reward);
+        setShowRewardsPopup(true);
+        
+        // *** FIX: Pass the duration from the analysis data ***
+        const duration = data.duration || 0; // Use 0 as fallback if duration is missing
+        console.log(`Calling onCompleteTask with duration: ${duration}`);
+        onCompleteTask(currentTask.id, duration); // Pass duration here
+        
+        // Hide reward popup after a moment
+        setTimeout(() => {
+          setShowRewardsPopup(false);
+          setCurrentReward(null);
+        }, 3000);
+      }
+    } catch (error) {
+      console.error("Error in directlyCompleteExercise:", error);
+      // Attempt to complete anyway as a fallback
+      const currentTask = tasks[currentTaskIndex];
+      if (currentTask) {
+        onCompleteTask(currentTask.id, 0); // Pass 0 duration on error
+      }
+    }
+  };
+
   return (
     <div className="relative max-w-3xl mx-auto">
       {/* Debug data display for immediate visibility */}
@@ -677,6 +753,7 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                   </div>
                   <h3 className="font-semibold">{task.title}</h3>
                 </div>
+                {/* Corrected right side: Moved span inside the div */}
                 <div className="flex items-center gap-1">
                   <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-secondary">{task.category}</span>
                 </div>
