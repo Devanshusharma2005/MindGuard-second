@@ -3,6 +3,13 @@ import type { Metadata } from 'next';
 import { Roboto, Poppins, Montserrat } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/toaster';
+import dynamic from 'next/dynamic';
+
+// Client component for conditional rendering of the chatbot
+const ChatbotWrapper = dynamic(
+  () => import('@/components/chatbot/ChatbotWrapper'),
+  { ssr: false }
+);
 
 const roboto = Roboto({ 
   weight: ['300', '400', '500', '700'],
@@ -10,7 +17,7 @@ const roboto = Roboto({
   variable: '--font-roboto' 
 });
 const poppins = Poppins({ 
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['300', '400', '500', '700'],
   subsets: ['latin'],
   variable: '--font-poppins'
 });
@@ -40,6 +47,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <ChatbotWrapper />
         </ThemeProvider>
       </body>
     </html>

@@ -11,17 +11,19 @@ import {
   MapPin,
   MessageSquare,
   Pill,
-  Settings,
   Users,
   HelpCircle,
+  LogOut,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { handleLogout } from "@/utils/auth";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const routes = [
     {
@@ -65,12 +67,6 @@ export function Sidebar({ className }: SidebarProps) {
       icon: MapPin,
       href: "/doctor/patient-map",
       active: pathname === "/doctor/patient-map",
-    },
-    {
-      label: "Settings",
-      icon: Settings,
-      href: "/doctor/settings",
-      active: pathname === "/doctor/settings",
     },
   ];
 
@@ -218,23 +214,19 @@ export function Sidebar({ className }: SidebarProps) {
             </div>
 
             {/* SYSTEM */}
+
             <div className="space-y-1">
               <h2 className="mb-2 px-4 text-xs font-semibold tracking-tight text-muted-foreground">
-                SYSTEM
+                MISC
               </h2>
               <Button
-                variant={pathname === "/doctor/settings" ? "secondary" : "ghost"}
+                variant="ghost"
                 size="sm"
-                className={cn("w-full justify-start transition-colors", {
-                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/settings",
-                  "hover:bg-accent": pathname !== "/doctor/settings",
-                })}
-                asChild
+                className="w-full justify-start hover:bg-accent"
+                onClick={() => handleLogout(router)}
               >
-                <Link href="/doctor/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
               </Button>
             </div>
           </div>

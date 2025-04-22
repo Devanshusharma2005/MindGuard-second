@@ -214,6 +214,7 @@ export default function ChallengesList() {
         completeTaskLogic(taskId, taskIndex, 5); // Use a default/fallback duration
       } else {
         console.log(`Safety timer for ${completionAttemptId}: Task already completed or not found.`);
+
       }
     }, safetyTimeout);
 

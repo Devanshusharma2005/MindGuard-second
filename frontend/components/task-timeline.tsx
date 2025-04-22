@@ -51,6 +51,7 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
   const [showPlankUpload, setShowPlankUpload] = useState<boolean>(false)
   const [currentExerciseType, setCurrentExerciseType] = useState<string | null>(null)
   const [showExerciseUpload, setShowExerciseUpload] = useState<boolean>(false)
+  const [lastAnalysisData, setLastAnalysisData] = useState<any>(null)
 
   // Initialize animated progress values
   useEffect(() => {
@@ -297,6 +298,18 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
           
           console.log(`${exerciseType} analysis results:`, data)
 
+          // Store analysis data in sessionStorage for reference
+          if (typeof window !== 'undefined') {
+            try {
+              window.sessionStorage.setItem(`${exerciseType}Analysis`, JSON.stringify(data));
+            } catch (e) {
+              console.error('Error storing analysis data in sessionStorage:', e);
+            }
+          }
+
+          // Update the lastAnalysisData state with the received data
+          setLastAnalysisData(data);
+
           if (data.success) {
             // Directly complete the exercise if treasureEarned is true
             if (data.treasureEarned === true) {
@@ -307,9 +320,19 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
 
             // This code will only run if treasureEarned is not true
             if (exerciseType === 'plank') {
+              console.log("PLANK DATA RECEIVED:", JSON.stringify(data)); // Add debugging log
               setPlankAnalysis(data)
               setIsPlankVideoPlaying(true)
               setActivePlankTask(tasks[currentTaskIndex].id)
+              
+              // Store in localStorage for direct access
+              if (typeof window !== 'undefined') {
+                try {
+                  localStorage.setItem('plankAnalysisData', JSON.stringify(data));
+                } catch (e) {
+                  console.error('Error storing plank data:', e);
+                }
+              }
             } else {
               // For other exercises
               setAnalysisMessage(`${exerciseType} analyzed successfully! Duration: ${data.duration?.toFixed(2) || 0} seconds`)
@@ -317,58 +340,69 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
 
             // Show appropriate message based on whether treasure was earned
             if (data.treasureEarned) {
-              // Clear safety timer first
-              clearSafetyTimer();
-              
-              // Show success message and reward
-              setCurrentReward(tasks[currentTaskIndex].reward)
-              setShowRewardsPopup(true)
-              
-              // Complete task immediately when treasure is earned
-              onCompleteTask(tasks[currentTaskIndex].id)
-              
-              // Keep reward popup visible for a moment
-              setTimeout(() => {
-                setShowRewardsPopup(false)
-                setCurrentReward(null)
+              // For plank exercises, don't auto-complete - user must click Complete button
+              if (exerciseType === 'plank') {
+                // Just show the analysis results and let the user complete via button
+                // Don't show reward popup here, it will be shown when user clicks Complete
+                setIsLoading(false);
+                setSelectedVideo(null);
+              } else {
+                // For non-plank exercises, use the original auto-complete behavior
+                // Show success message and reward
+                setCurrentReward(tasks[currentTaskIndex].reward)
+                setShowRewardsPopup(true)
                 
-                // Clear states
-                setIsLoading(false)
-                setSelectedVideo(null)
-                setAnalysisMessage("")
+                // Complete task immediately when treasure is earned
+                onCompleteTask(tasks[currentTaskIndex].id)
                 
-                // For plank exercise
-                if (exerciseType === 'plank') {
-                  setIsPlankVideoPlaying(false)
-                  setActivePlankTask(null)
-                  setPlankAnalysis(null)
-                }
-              }, 3000)
+                // Keep reward popup visible for a moment
+                setTimeout(() => {
+                  setShowRewardsPopup(false)
+                  setCurrentReward(null)
+                  
+                  // Clear states
+                  setIsLoading(false)
+                  setSelectedVideo(null)
+                  setAnalysisMessage("")
+                  
+                  // For plank exercise
+                  if (exerciseType === 'plank') {
+                    setIsPlankVideoPlaying(false)
+                    setActivePlankTask(null)
+                    setPlankAnalysis(null)
+                  }
+                }, 3000)
+              }
             } else {
-              // Clear safety timer even for failed attempts
-              clearSafetyTimer();
-              
-              // Show attempt message but still complete the task
-              setShowFailurePopup(true)
-              
-              // Complete the task even though it didn't meet treasure threshold
-              onCompleteTask(tasks[currentTaskIndex].id)
-              
-              setTimeout(() => {
-                setShowFailurePopup(false)
+              // For plank exercises with failed analysis, don't show generic failure popup
+              if (exerciseType === 'plank') {
+                // Just show the analysis results and let the user try again via button
+                setIsLoading(false);
+                setSelectedVideo(null);
+              } else {
+                // For non-plank exercises, show failure popup
+                // Show attempt message but DO NOT complete the task
+                setShowFailurePopup(true)
                 
-                // Clear states
-                setIsLoading(false)
-                setSelectedVideo(null)
-                setAnalysisMessage("")
+                // DO NOT complete the task if treasure is not earned
+                // onCompleteTask(tasks[currentTaskIndex].id) - removed
                 
-                // For plank exercise
-                if (exerciseType === 'plank') {
-                  setIsPlankVideoPlaying(false)
-                  setActivePlankTask(null)
-                  setPlankAnalysis(null)
-                }
-              }, 3000)
+                setTimeout(() => {
+                  setShowFailurePopup(false)
+                  
+                  // Clear states
+                  setIsLoading(false)
+                  setSelectedVideo(null)
+                  setAnalysisMessage("")
+                  
+                  // For plank exercise
+                  if (exerciseType === 'plank') {
+                    setIsPlankVideoPlaying(false)
+                    setActivePlankTask(null)
+                    setPlankAnalysis(null)
+                  }
+                }, 3000)
+              }
             }
           } else {
             throw new Error(data.message || 'Analysis failed')
@@ -635,6 +669,25 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
 
   return (
     <div className="relative max-w-3xl mx-auto">
+      {/* Debug data display for immediate visibility */}
+      {plankAnalysis && (
+        <div className="mb-6 p-4 bg-black text-white rounded-lg shadow-lg">
+          <h3 className="text-lg font-bold mb-2">Last Plank Analysis Data:</h3>
+          <pre className="whitespace-pre-wrap break-words text-xs bg-gray-800 text-green-400 p-3 rounded border border-gray-700 max-h-60 overflow-auto">
+            {JSON.stringify(plankAnalysis, null, 2)}
+          </pre>
+        </div>
+      )}
+
+      {lastAnalysisData && (
+        <div className="mb-6 p-4 bg-black text-white rounded-lg shadow-lg">
+          <h3 className="text-lg font-bold mb-2">Last Analysis Data:</h3>
+          <pre className="whitespace-pre-wrap break-words text-xs bg-gray-800 text-green-400 p-3 rounded border border-gray-700 max-h-60 overflow-auto">
+            {JSON.stringify(lastAnalysisData, null, 2)}
+          </pre>
+        </div>
+      )}
+
       {/* Central track line */}
       <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500/50 to-pink-500/50 transform -translate-x-1/2 rounded-full" />
 
@@ -712,11 +765,166 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
               {/* Add plank image for plank task */}
               {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && (
                 <div className="mt-4 relative rounded-lg overflow-hidden">
-                  <img
-                    src="/plank.gif"
-                    alt="Plank exercise demonstration"
+                  <video
                     className="w-full rounded-lg"
+                    src={`${window.location.origin}/plank.gif`}
+                    poster="/plank.gif"
+                    playsInline
                   />
+                  <Button
+                    className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-full shadow-lg"
+                    onClick={() => setShowPlankUpload(true)}
+                    disabled={isLoading}
+                  >
+                    Start Plank Exercise
+                  </Button>
+                </div>
+              )}
+
+              {showPlankUpload && !isPlankVideoPlaying && isCurrent && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
+                  <div className="p-6 bg-white rounded-lg max-w-sm w-full">
+                    <h3 className="text-lg font-medium mb-4 text-center">Upload Plank Video</h3>
+                    <p className="text-sm text-gray-600 mb-6 text-center">
+                      Upload a video of your plank exercise for analysis.
+                    </p>
+                    
+                    {selectedVideo && (
+                      <div className="mb-4">
+                        <p className="text-sm font-medium text-gray-700">Selected: {selectedVideo.name}</p>
+                      </div>
+                    )}
+                    
+                    <div className="flex flex-col gap-3">
+                      <input
+                        id="plankVideoUpload"
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setSelectedVideo(file);
+                            setVideoError(null);
+                          }
+                        }}
+                        disabled={isLoading}
+                      />
+                      
+                      <Button 
+                        onClick={() => document.getElementById('plankVideoUpload')?.click()}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? "Processing..." : selectedVideo ? "Change Video" : "Select Video"}
+                      </Button>
+                      
+                      {selectedVideo && !isLoading && (
+                        <Button 
+                          onClick={() => {
+                            if (selectedVideo) {
+                              handleExerciseVideoUpload({ target: { files: [selectedVideo] } } as any, 'plank', task.title);
+                              setShowPlankUpload(false);
+                            }
+                          }}
+                          className="w-full bg-green-500 hover:bg-green-600 text-white"
+                        >
+                          Upload & Analyze
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        onClick={() => setShowPlankUpload(false)}
+                        className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800"
+                        disabled={isLoading}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                    
+                    {videoError && (
+                      <div className="mt-4 text-red-500 text-sm bg-red-50 border border-red-200 rounded p-3">
+                        {videoError}
+                      </div>
+                    )}
+                    
+                    {isLoading && (
+                      <div className="mt-4 flex items-center justify-center">
+                        <div className="animate-spin mr-2">
+                          <svg className="w-5 h-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                        </div>
+                        <p className="text-sm text-blue-700">Analyzing your plank video...</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Plank results display */}
+              {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && isPlankVideoPlaying && activePlankTask === task.id && (
+                <div className="mt-4 relative rounded-lg overflow-hidden">
+                  {videoError && (
+                    <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded mb-2">
+                      {videoError}
+                    </div>
+                  )}
+                  
+                  {plankAnalysis && (
+                    <div className={`p-4 rounded-lg ${plankAnalysis.treasureEarned ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className={`font-medium ${plankAnalysis.treasureEarned ? 'text-green-800' : 'text-red-800'}`}>
+                            {plankAnalysis.treasureEarned ? 'Plank Exercise Complete!' : 'Plank Exercise Failed'}
+                          </h4>
+                          <p className={`text-sm ${plankAnalysis.treasureEarned ? 'text-green-600' : 'text-red-600'}`}>
+                            Duration: {plankAnalysis.duration} seconds
+                          </p>
+                          <p className={`text-sm ${plankAnalysis.treasureEarned ? 'text-green-600' : 'text-red-600'}`}>
+                            {plankAnalysis.message}
+                          </p>
+                        </div>
+                        <div className={`h-10 w-10 ${plankAnalysis.treasureEarned ? 'bg-green-100' : 'bg-red-100'} rounded-full flex items-center justify-center`}>
+                          {plankAnalysis.treasureEarned ? (
+                            <CheckCircle className="h-6 w-6 text-green-500" />
+                          ) : (
+                            <XCircle className="h-6 w-6 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Add explicit complete/try again buttons */}
+                      <div className="mt-4">
+                        {plankAnalysis.treasureEarned ? (
+                          <Button
+                            onClick={() => {
+                              onCompleteTask(task.id);
+                              setIsPlankVideoPlaying(false);
+                              setActivePlankTask(null);
+                              setPlankAnalysis(null);
+                            }}
+                            className="w-full bg-green-500 hover:bg-green-600 text-white"
+                          >
+                            Complete Task & Claim Reward
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => {
+                              setIsPlankVideoPlaying(false);
+                              setActivePlankTask(null);
+                              setPlankAnalysis(null);
+                              setShowPlankUpload(true);
+                            }}
+                            className="w-full bg-red-500 hover:bg-red-600 text-white"
+                          >
+                            Try Again
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -950,125 +1158,6 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                 </div>
               )}
 
-              {/* Video player for plank tasks */}
-              {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && !isPlankVideoPlaying && isCurrent && (
-                <div className="mt-4 relative rounded-lg overflow-hidden">
-                  {showPlankUpload ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mb-4">
-                        <p className="text-sm text-blue-700">
-                          Upload a video of you performing the plank exercise. 
-                          The system will analyze your form and duration.
-                        </p>
-                      </div>
-                      
-                      {/* Show video preview if a file is selected */}
-                      {selectedVideo && (
-                        <div className="mb-4 relative rounded-lg overflow-hidden">
-                          <video 
-                            className="w-full rounded-lg"
-                            src={URL.createObjectURL(selectedVideo)}
-                            controls
-                            playsInline
-                          />
-                          <div className="mt-2 text-sm text-gray-600">
-                            Selected: {selectedVideo.name} ({(selectedVideo.size / (1024 * 1024)).toFixed(2)} MB)
-                          </div>
-                        </div>
-                      )}
-                      
-                      <Button 
-                        onClick={() => document.getElementById('plankVideoUpload')?.click()}
-                        className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? "Analyzing..." : selectedVideo ? "Change Video" : "Upload Plank Video"}
-                      </Button>
-                      
-                      {selectedVideo && !isLoading && (
-                        <Button 
-                          onClick={() => {
-                            if (selectedVideo) {
-                              handleExerciseVideoUpload({ target: { files: [selectedVideo] } } as any, 'plank', task.title)
-                            }
-                          }}
-                          className="w-full bg-green-500 hover:bg-green-600 text-white mt-2"
-                        >
-                          Analyze Plank Video
-                        </Button>
-                      )}
-                      
-                      <input
-                        id="plankVideoUpload"
-                        type="file"
-                        accept="video/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          // Just set the file without starting upload
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            setSelectedVideo(file)
-                            setVideoError(null)
-                          }
-                        }}
-                        disabled={isLoading}
-                      />
-                      
-                      {videoError && (
-                        <div className="text-red-500 text-sm mt-1 bg-red-50 border border-red-200 rounded px-4 py-2">
-                          {videoError}
-                        </div>
-                      )}
-                      
-                      {isLoading && (
-                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg mt-4 flex items-center">
-                          <div className="animate-spin mr-2">
-                            <svg className="w-5 h-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                          </div>
-                          <p className="text-sm text-blue-700">Analyzing your plank video... Please wait.</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      <p>Upload a video of your plank exercise for analysis.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {task.category.toLowerCase() === "exercise" && task.title.toLowerCase() === "plank" && isPlankVideoPlaying && activePlankTask === task.id && (
-                <div className="mt-4 relative rounded-lg overflow-hidden">
-                  {plankAnalysis && (
-                    <div className={`p-4 ${plankAnalysis.treasureEarned ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'} rounded-lg`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className={`font-medium ${plankAnalysis.treasureEarned ? 'text-green-800' : 'text-red-800'}`}>
-                            {plankAnalysis.treasureEarned ? 'Plank Analysis Complete!' : 'Plank Analysis Failed'}
-                          </h4>
-                          <p className={`text-sm ${plankAnalysis.treasureEarned ? 'text-green-600' : 'text-red-600'}`}>
-                            Duration: {plankAnalysis.duration} seconds
-                          </p>
-                          <p className={`text-sm ${plankAnalysis.treasureEarned ? 'text-green-600' : 'text-red-600'}`}>
-                            {plankAnalysis.message}
-                          </p>
-                        </div>
-                        <div className={`h-10 w-10 ${plankAnalysis.treasureEarned ? 'bg-green-100' : 'bg-red-100'} rounded-full flex items-center justify-center`}>
-                          {plankAnalysis.treasureEarned ? (
-                            <CheckCircle className="h-6 w-6 text-green-500" />
-                          ) : (
-                            <XCircle className="h-6 w-6 text-red-500" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Video upload for exercise tasks */}
               {task.category.toLowerCase() === "exercise" && 
                !isPlankVideoPlaying && 
@@ -1149,6 +1238,26 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
                       {analysisMessage && (
                         <div className="p-4 bg-green-50 border border-green-200 rounded-lg mt-4">
                           <p className="text-sm text-green-700">{analysisMessage}</p>
+                          
+                          {/* Add raw data display for other exercise types */}
+                          {currentExerciseType && (
+                            <div className="mt-4 border border-gray-200 rounded-lg p-3 bg-gray-50">
+                              <h5 className="text-sm font-medium mb-2">Raw Analysis Data:</h5>
+                              <pre className="text-xs overflow-auto max-h-40 bg-white p-2 rounded border border-gray-200">
+                                {/* Get data safely from sessionStorage */}
+                                {(() => {
+                                  if (typeof window === 'undefined') return "No data available";
+                                  const rawData = window.sessionStorage.getItem(`${currentExerciseType}Analysis`);
+                                  if (!rawData) return "No detailed data available";
+                                  try {
+                                    return JSON.stringify(JSON.parse(rawData), null, 2);
+                                  } catch {
+                                    return rawData;
+                                  }
+                                })()}
+                              </pre>
+                            </div>
+                          )}
                         </div>
                       )}
                       
@@ -1367,12 +1476,12 @@ export function TaskTimeline({ tasks, currentTaskIndex, onCompleteTask }: TaskTi
               <div className="w-16 h-16 bg-red-100 rounded-full mx-auto flex items-center justify-center mb-4">
                 <XCircle className="h-8 w-8 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold mb-2 text-red-600">Exercise Completed</h3>
+              <h3 className="text-lg font-semibold mb-2 text-red-600">Task Not Completed</h3>
               <p className="text-sm text-gray-600 mb-4">
-                You completed the exercise but did not achieve the target duration or form.
+                Task did not complete, please try again
               </p>
               <div className="bg-red-100 text-red-700 px-4 py-2 rounded-full font-medium">
-                Moving to next task anyway
+                Please try again with better form or longer duration
               </div>
             </div>
           </div>

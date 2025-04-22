@@ -257,28 +257,28 @@ export function MoodTracker() {
                 type="monotone" 
                 dataKey="mood" 
                 name="Mood"
-                stroke="hsl(var(--chart-1))" 
+                stroke="#4F46E5"
                 strokeWidth={2} 
-                dot={{ r: 3 }} 
-                activeDot={{ r: 5 }} 
+                dot={{ r: 3, fill: "#4F46E5" }} 
+                activeDot={{ r: 5, fill: "#4F46E5" }} 
               />
               <Line 
                 type="monotone" 
                 dataKey="anxiety" 
                 name="Anxiety"
-                stroke="hsl(var(--chart-2))" 
+                stroke="#EF4444"
                 strokeWidth={2} 
-                dot={{ r: 3 }} 
-                activeDot={{ r: 5 }} 
+                dot={{ r: 3, fill: "#EF4444" }} 
+                activeDot={{ r: 5, fill: "#EF4444" }} 
               />
               <Line 
                 type="monotone" 
                 dataKey="stress" 
                 name="Stress"
-                stroke="hsl(var(--chart-3))" 
+                stroke="#F59E0B"
                 strokeWidth={2} 
-                dot={{ r: 3 }} 
-                activeDot={{ r: 5 }} 
+                dot={{ r: 3, fill: "#F59E0B" }} 
+                activeDot={{ r: 5, fill: "#F59E0B" }} 
               />
             </LineChart>
           </ResponsiveContainer>
