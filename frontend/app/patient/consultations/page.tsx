@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ConsultationCalendar } from "@/components/patient/consultation-calendar";
-import { ConsultationHistory } from "@/components/patient/consultation-history";
 import { SecureChat } from "@/components/patient/secure-chat";
 import { RoomBookingProvider } from "@/lib/hooks/use-room-booking";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,16 +38,14 @@ export default function Consultations() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="book">Book Appointment</SelectItem>
-                <SelectItem value="history">History</SelectItem>
                 <SelectItem value="chat">Secure Chat</SelectItem>
               </SelectContent>
             </Select>
           </div>
           
           {/* Desktop Tabs View */}
-          <TabsList className="grid w-full grid-cols-3 hidden md:grid">
+          <TabsList className="grid w-full grid-cols-2 hidden md:grid">
             <TabsTrigger value="book">Book Appointment</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
             <TabsTrigger value="chat">Secure Chat</TabsTrigger>
           </TabsList>
           
@@ -67,25 +64,6 @@ export default function Consultations() {
               </CardHeader>
               <CardContent>
                 <ConsultationCalendar />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="history">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Consultation History</CardTitle>
-                    <CardDescription>
-                      View your past appointments, prescriptions, and diagnoses
-                    </CardDescription>
-                  </div>
-                  <Badge variant="outline" className="md:hidden">{activeTab === 'history' ? 'History' : ''}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ConsultationHistory />
               </CardContent>
             </Card>
           </TabsContent>

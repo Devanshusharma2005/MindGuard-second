@@ -58,14 +58,20 @@ export default function PatientDashboard() {
   }, []);
 
   const handleLogout = () => {
-    // Clear localStorage
+    // Clear all localStorage data
     localStorage.removeItem('userData');
     localStorage.removeItem('userType');
+    localStorage.removeItem('token');
+    localStorage.removeItem('mindguard_token');
+    localStorage.removeItem('mindguard_user_id');
+    localStorage.removeItem('mindguard_user_type');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
     
     // Clear token cookie
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     
-    // Redirect to login page
+    // Redirect to landing page
     router.push('/');
   };
 

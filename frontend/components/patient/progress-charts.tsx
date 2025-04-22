@@ -8,7 +8,6 @@ interface ProgressData {
     date: string;
     mood: number;
     anxiety: number;
-    stress: number;
   }>;
   sleepData: Array<{
     date: string;
@@ -24,7 +23,6 @@ interface ProgressData {
   summary: {
     mood: { change: number };
     anxiety: { change: number };
-    stress: { change: number };
     sleep: {
       durationChange: number;
       qualityChange: number;
@@ -74,7 +72,6 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
   const summary = progressData.summary || {
     mood: { change: 0 },
     anxiety: { change: 0 },
-    stress: { change: 0 },
     sleep: {
       durationChange: 0,
       qualityChange: 0
@@ -129,18 +126,10 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
                     strokeWidth={2}
                     dot={{ r: 4, fill: "#EF4444" }}
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="stress"
-                    stroke="#F59E0B"
-                    name="Stress"
-                    strokeWidth={2}
-                    dot={{ r: 4, fill: "#F59E0B" }}
-                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Mood Change</div>
                 <div className={summary.mood.change >= 0 ? "text-green-600" : "text-red-600"}>
@@ -151,12 +140,6 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
                 <div className="text-muted-foreground">Anxiety Change</div>
                 <div className={summary.anxiety.change <= 0 ? "text-green-600" : "text-red-600"}>
                   {formatChange(summary.anxiety.change)}
-                </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Stress Change</div>
-                <div className={summary.stress.change <= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(summary.stress.change)}
                 </div>
               </div>
             </div>
