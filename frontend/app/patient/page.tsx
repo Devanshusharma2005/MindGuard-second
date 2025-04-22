@@ -58,14 +58,20 @@ export default function PatientDashboard() {
   }, []);
 
   const handleLogout = () => {
-    // Clear localStorage
+    // Clear all localStorage data
     localStorage.removeItem('userData');
     localStorage.removeItem('userType');
+    localStorage.removeItem('token');
+    localStorage.removeItem('mindguard_token');
+    localStorage.removeItem('mindguard_user_id');
+    localStorage.removeItem('mindguard_user_type');
+    localStorage.removeItem('username');
+    localStorage.removeItem('email');
     
     // Clear token cookie
     document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     
-    // Redirect to login page
+    // Redirect to landing page
     router.push('/');
   };
 
@@ -75,17 +81,6 @@ export default function PatientDashboard() {
     <div className="space-y-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <DashboardOverview onAssessmentStatusChange={setHasCompletedAssessment} />
-        
-        {/* Add button to submit details to doctor */}
-        <div className="flex justify-center mt-6">
-          <div 
-            className="bg-primary text-white p-4 rounded-lg shadow-md cursor-pointer hover:bg-primary/90 transition-colors text-center w-full max-w-md"
-            onClick={() => router.push('/patient/submit-to-doctor')}
-          >
-            <h3 className="text-lg font-semibold mb-2">Connect with a Doctor</h3>
-            <p className="text-sm">Share your medical details with a doctor to get personalized care</p>
-          </div>
-        </div>
         
         {hasCompletedAssessment && (
           <div className="grid grid-cols-1 gap-6 mt-5 md:grid-cols-2 lg:grid-cols-3">

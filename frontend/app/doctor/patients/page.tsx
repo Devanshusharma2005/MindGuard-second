@@ -113,7 +113,6 @@ export default function PatientsPage() {
         <TabsList>
           <TabsTrigger value="registrations">Registration Requests</TabsTrigger>
           <TabsTrigger value="appointments">Current Patients</TabsTrigger>
-          <TabsTrigger value="legacy">Legacy Patients</TabsTrigger>
         </TabsList>
         
         <TabsContent value="registrations" className="space-y-4">
@@ -122,22 +121,6 @@ export default function PatientsPage() {
 
         <TabsContent value="appointments" className="space-y-4">
           <PatientList key={refreshTrigger} />
-        </TabsContent>
-        
-        <TabsContent value="legacy">
-          <Card>
-            <CardHeader>
-              <CardTitle>Legacy Patient Records</CardTitle>
-              <CardDescription>
-                View your previous patient records from the old system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground py-8 text-center">
-                Legacy patient records will be migrated soon. Please use the Appointments tab to view your current patients.
-              </p>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

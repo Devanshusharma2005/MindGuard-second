@@ -386,33 +386,6 @@ export default function Recommendations({ recommendations, insights }: Recommend
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-primary" />
-            <h3 className="font-medium">Wellness & Self-Care</h3>
-          </div>
-          <div className="mt-4 space-y-6">
-            {finalRecommendations.wellness.lifestyle.map((item, index) => (
-              <div key={index} className="rounded-md border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{item.title}</p>
-                    <Badge variant="outline">{item.duration}</Badge>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">{item.description}</p>
-                <ul className="list-disc list-inside text-xs space-y-1">
-                  {item.steps.map((step, i) => (
-                    <li key={i}>{step}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
             <h3 className="font-medium">Exercise & Movement</h3>
           </div>

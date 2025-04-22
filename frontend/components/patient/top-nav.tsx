@@ -52,7 +52,15 @@ export function TopNav() {
   const handleLogout = () => {
     localStorage.removeItem("userData");
     localStorage.removeItem("token");
-    router.push("/login");
+    localStorage.removeItem("userType");
+    localStorage.removeItem("mindguard_token");
+    localStorage.removeItem("mindguard_user_id");
+    localStorage.removeItem("mindguard_user_type");
+    localStorage.removeItem("username");
+    localStorage.removeItem("email");
+    
+    // Redirect to landing page instead of login
+    router.push("/");
   };
 
   const handleThemeToggle = () => {

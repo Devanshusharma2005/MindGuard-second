@@ -68,7 +68,6 @@ interface MoodData {
     date: string;
     mood: number;
     anxiety: number;
-    stress: number;
   }>;
   insightText: string;
 }
@@ -142,23 +141,10 @@ export function MoodTracker() {
                                            report.questionnaireData.anxiety === 'medium' ? 66 :
                                            report.questionnaireData.anxiety === 'low' ? 33 : 0;
 
-            // Calculate stress using multiple factors
-            const stressFactors = [
-              report.questionnaireData.stress_factors ? 1 : 0, // Presence of stress factors
-              10 - report.questionnaireData.energy_levels, // Inverse of energy levels
-              10 - report.questionnaireData.sleep_quality, // Poor sleep quality
-              report.emotionReport?.summary?.crisis_count || 0, // Crisis indicators
-              (report.emotionReport?.summary?.emotions_count?.['stress'] || 0) > 0 ? 1 : 0 // Detected stress emotion
-            ];
-
-            // Average the stress factors and scale to 0-100
-            const stressLevel = (stressFactors.reduce((a, b) => a + b, 0) / stressFactors.length) * 20;
-
             return {
               date,
               mood: moodScore,
-              anxiety: anxietyFromQuestionnaire,
-              stress: stressLevel
+              anxiety: anxietyFromQuestionnaire
             };
           });
 
@@ -172,13 +158,11 @@ export function MoodTracker() {
             
             const moodChange = lastEntry.mood - firstEntry.mood;
             const anxietyChange = lastEntry.anxiety - firstEntry.anxiety;
-            const stressChange = lastEntry.stress - firstEntry.stress;
             
             // Determine the most significant change
             const changes = [
               { type: 'mood', value: Math.abs(moodChange), direction: moodChange > 0 ? 'improved' : 'decreased' },
-              { type: 'anxiety', value: Math.abs(anxietyChange), direction: anxietyChange < 0 ? 'improved' : 'increased' },
-              { type: 'stress', value: Math.abs(stressChange), direction: stressChange < 0 ? 'improved' : 'increased' }
+              { type: 'anxiety', value: Math.abs(anxietyChange), direction: anxietyChange < 0 ? 'improved' : 'increased' }
             ].sort((a, b) => b.value - a.value);
 
             const mostSignificant = changes[0];
@@ -257,28 +241,19 @@ export function MoodTracker() {
                 type="monotone" 
                 dataKey="mood" 
                 name="Mood"
-                stroke="hsl(var(--chart-1))" 
+                stroke="#4F46E5"
                 strokeWidth={2} 
-                dot={{ r: 3 }} 
-                activeDot={{ r: 5 }} 
+                dot={{ r: 3, fill: "#4F46E5" }} 
+                activeDot={{ r: 5, fill: "#4F46E5" }} 
               />
               <Line 
                 type="monotone" 
                 dataKey="anxiety" 
                 name="Anxiety"
-                stroke="hsl(var(--chart-2))" 
+                stroke="#EF4444"
                 strokeWidth={2} 
-                dot={{ r: 3 }} 
-                activeDot={{ r: 5 }} 
-              />
-              <Line 
-                type="monotone" 
-                dataKey="stress" 
-                name="Stress"
-                stroke="hsl(var(--chart-3))" 
-                strokeWidth={2} 
-                dot={{ r: 3 }} 
-                activeDot={{ r: 5 }} 
+                dot={{ r: 3, fill: "#EF4444" }} 
+                activeDot={{ r: 5, fill: "#EF4444" }} 
               />
             </LineChart>
           </ResponsiveContainer>

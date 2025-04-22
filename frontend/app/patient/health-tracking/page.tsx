@@ -9,7 +9,6 @@ import { VoiceQuestionnaire } from "@/components/patient/voice-questionnaire";
 import { HealthInsights } from "@/components/patient/health-insights";
 import { ProgressCharts } from "@/components/patient/progress-charts";
 import Recommendations from "@/components/patient/recommendations";
-import { ReportSubmission } from "@/components/patient/report-submission";
 import { apiUrl } from '@/lib/config';
 
 interface HealthData {
@@ -127,7 +126,7 @@ interface HealthData {
 
 export default function HealthTracking() {
   const [activeTab, setActiveTab] = useState("questionnaire");
-  const [assessmentType, setAssessmentType] = useState<"text" | "voice" | "report">("text");
+  const [assessmentType, setAssessmentType] = useState<"text" | "voice">("text");
   const [healthData, setHealthData] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
@@ -301,12 +300,6 @@ export default function HealthTracking() {
                 >
                   Voice Assessment
                 </Button>
-                <Button
-                  variant={assessmentType === "report" ? "default" : "outline"}
-                  onClick={() => setAssessmentType("report")}
-                >
-                  Report Submission
-                </Button>
               </div>
               
               <div className="text-sm text-muted-foreground mb-6">
@@ -314,9 +307,7 @@ export default function HealthTracking() {
                   "Answer a series of questions about your mental health to receive personalized insights."
                 ) : assessmentType === "voice" ? (
                   "Speak naturally to our AI assistant for a voice-based mental health assessment."
-                ) : (
-                  "Upload your medical reports in PDF format to have them analyzed for health insights."
-                )}
+                ) : null}
               </div>
               
               {assessmentType === "text" ? (
@@ -329,9 +320,7 @@ export default function HealthTracking() {
                 <VoiceQuestionnaire 
                   onComplete={handleQuestionnaireComplete}
                 />
-              ) : (
-                <ReportSubmission />
-              )}
+              ) : null}
             </CardContent>
           </Card>
         </TabsContent>

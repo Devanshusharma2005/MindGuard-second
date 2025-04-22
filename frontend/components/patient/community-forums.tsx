@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Search, ThumbsUp, Users, X, Send, Circle, Plus } from "lucide-react";
+import { MessageSquare, Search, ThumbsUp, Users, Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -63,7 +63,7 @@ const inspiringPeople = [
   },
   {
     id: 5,
-    name: "Amimesh Lamba",
+    name: "Animesh Lamba",
     description: "Recovered from Mild Mood Disturbance with a disciplined sleep routine.",
     avatar: "https://randomuser.me/api/portraits/women/2.jpg",
     online: true,
@@ -87,7 +87,7 @@ const inspiringPeople = [
   },
   {
     id: 8,
-    name: "Rohan Khanna",
+    name: "Sanjay Gupta",
     description: "Recovered from Self-Care Deficit with a disciplined sleep routine.",
     avatar: "https://randomuser.me/api/portraits/men/3.jpg",
     online: true,
@@ -103,15 +103,15 @@ const inspiringPeople = [
   },
   {
     id: 10,
-    name: "Amit Patel",
-    description: "Recovered from Social Anxiety Support    with a disciplined sleep routine.",
+    name: "Rahul Mehta",
+    description: "Recovered from Social Anxiety Support with a disciplined sleep routine.",
     avatar: "https://randomuser.me/api/portraits/women/2.jpg",
     online: true,
     calLink: "https://cal.com/gauravgupta"
   },
   {
     id: 11,
-    name: "Amit Patel",
+    name: "Karan Malhotra",
     description: "Recovered from Mild Anxiety Symptoms with a disciplined sleep routine.",
     avatar: "https://randomuser.me/api/portraits/men/3.jpg",
     online: true,
@@ -203,11 +203,7 @@ const popularPosts = [
 
 
 export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<string[]>([]);
-  const [chatMessage, setChatMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentChat, setCurrentChat] = useState(inspiringPeople[0]);
   const [newPostOpen, setNewPostOpen] = useState(false);
   const [newPost, setNewPost] = useState({
     title: "",
@@ -223,19 +219,6 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
     "Social Anxiety Support",
     "Stress Management & Burnout"
   ];
-
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      setChatMessages([...chatMessages, chatMessage]);
-      setChatMessage("");
-    }
-  };
-
-  const handleOpenChat = (person: typeof inspiringPeople[0]) => {
-    setCurrentChat(person);
-    setChatMessages([]);
-    setChatOpen(true);
-  };
 
   const handleCreatePost = () => {
     if (newPost.title.trim() && newPost.content.trim() && newPost.forum) {
@@ -347,7 +330,6 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
                     <p className="text-sm text-muted-foreground">{person.description}</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => window.open(person.calLink, "_blank")}>Join</Button>
-                  <Button size="sm" onClick={() => handleOpenChat(person)}>Chat</Button>
                 </div>
               </CardContent>
             </Card>
@@ -382,86 +364,6 @@ export function CommunityForums({ anonymousMode }: CommunityForumsProps) {
           ))}
         </div>
       </div>
-
-
-      {chatOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 p-4 z-50">
-          <div className="bg-background rounded-lg shadow-lg w-full max-w-md flex flex-col h-[600px]">
-            <div className="flex justify-between items-center p-4 border-b">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={currentChat.avatar} />
-                  <AvatarFallback>{currentChat.name[0]}</AvatarFallback>
-                </Avatar>
-                <div>
-                  <h3 className="font-medium">{currentChat.name}</h3>
-                  <span className={`text-sm flex items-center gap-1 ${currentChat.online ? 'text-green-500' : 'text-muted-foreground'}`}>
-                    <Circle className={`h-2 w-2 ${currentChat.online ? 'fill-green-500' : 'fill-muted-foreground'}`} /> 
-                    {currentChat.online ? 'Online' : 'Offline'}
-                  </span>
-                </div>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setChatOpen(false)}
-                className="h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {chatMessages.map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`flex ${index % 2 === 0 ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        index % 2 === 0
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}
-                    >
-                      <p className="text-sm">{msg}</p>
-                      <p className="mt-1 text-right text-xs opacity-70">
-                        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-            <div className="p-4 border-t">
-              <div className="flex items-center gap-2">
-                <Input 
-                  type="text" 
-                  placeholder="Type a message..." 
-                  value={chatMessage} 
-                  onChange={(e) => setChatMessage(e.target.value)}
-                  className="flex-1"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSendMessage();
-                    }
-                  }}
-                />
-                <Button 
-                  onClick={handleSendMessage}
-                  size="icon"
-                  className="h-9 w-9"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Messages are end-to-end encrypted for your privacy
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

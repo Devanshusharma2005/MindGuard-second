@@ -8,7 +8,6 @@ interface ProgressData {
     date: string;
     mood: number;
     anxiety: number;
-    stress: number;
   }>;
   sleepData: Array<{
     date: string;
@@ -24,7 +23,6 @@ interface ProgressData {
   summary: {
     mood: { change: number };
     anxiety: { change: number };
-    stress: { change: number };
     sleep: {
       durationChange: number;
       qualityChange: number;
@@ -61,10 +59,19 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
     return numValue > 0 ? `+${numValue}%` : `${numValue}%`;
   };
 
+  // Sort data by date (oldest to newest)
+  const sortByDate = (data: any[]) => {
+    return [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
+
+  // Prepare sorted data
+  const sortedMoodData = sortByDate(progressData.moodData);
+  const sortedSleepData = sortByDate(progressData.sleepData);
+  const sortedActivityData = sortByDate(progressData.activityData);
+
   const summary = progressData.summary || {
     mood: { change: 0 },
     anxiety: { change: 0 },
-    stress: { change: 0 },
     sleep: {
       durationChange: 0,
       qualityChange: 0
@@ -89,7 +96,7 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={progressData.moodData}>
+                <LineChart data={sortedMoodData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
@@ -106,31 +113,23 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
                   <Line
                     type="monotone"
                     dataKey="mood"
-                    stroke="hsl(var(--primary))"
+                    stroke="#4F46E5"
                     name="Mood"
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: "#4F46E5" }}
                   />
                   <Line
                     type="monotone"
                     dataKey="anxiety"
-                    stroke="hsl(var(--destructive))"
+                    stroke="#EF4444"
                     name="Anxiety"
                     strokeWidth={2}
-                    dot={{ r: 4 }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="stress"
-                    stroke="hsl(var(--warning))"
-                    name="Stress"
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: "#EF4444" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
               <div>
                 <div className="text-muted-foreground">Mood Change</div>
                 <div className={summary.mood.change >= 0 ? "text-green-600" : "text-red-600"}>
@@ -141,12 +140,6 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
                 <div className="text-muted-foreground">Anxiety Change</div>
                 <div className={summary.anxiety.change <= 0 ? "text-green-600" : "text-red-600"}>
                   {formatChange(summary.anxiety.change)}
-                </div>
-              </div>
-              <div>
-                <div className="text-muted-foreground">Stress Change</div>
-                <div className={summary.stress.change <= 0 ? "text-green-600" : "text-red-600"}>
-                  {formatChange(summary.stress.change)}
                 </div>
               </div>
             </div>
@@ -163,7 +156,7 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={progressData.sleepData}>
+                <LineChart data={sortedSleepData}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis 
                     dataKey="date" 
@@ -180,18 +173,18 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
                   <Line
                     type="monotone"
                     dataKey="hours"
-                    stroke="hsl(var(--primary))"
+                    stroke="#0EA5E9"
                     name="Hours"
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: "#0EA5E9" }}
                   />
                   <Line
                     type="monotone"
                     dataKey="quality"
-                    stroke="hsl(var(--secondary))"
+                    stroke="#8B5CF6"
                     name="Quality"
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: "#8B5CF6" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -224,7 +217,7 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
         <CardContent>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={progressData.activityData}>
+              <LineChart data={sortedActivityData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="date" 
@@ -241,26 +234,26 @@ export function ProgressCharts({ progressData }: ProgressChartsProps) {
                 <Line
                   type="monotone"
                   dataKey="exercise"
-                  stroke="hsl(var(--primary))"
+                  stroke="#10B981"
                   name="Exercise"
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 4, fill: "#10B981" }}
                 />
                 <Line
                   type="monotone"
                   dataKey="meditation"
-                  stroke="hsl(var(--secondary))"
+                  stroke="#EC4899"
                   name="Meditation"
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 4, fill: "#EC4899" }}
                 />
                 <Line
                   type="monotone"
                   dataKey="social"
-                  stroke="hsl(var(--accent))"
+                  stroke="#6366F1"
                   name="Social"
                   strokeWidth={2}
-                  dot={{ r: 4 }}
+                  dot={{ r: 4, fill: "#6366F1" }}
                 />
               </LineChart>
             </ResponsiveContainer>

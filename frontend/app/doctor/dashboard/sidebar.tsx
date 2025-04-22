@@ -33,12 +33,6 @@ export function Sidebar({ className }: SidebarProps) {
       active: pathname === "/doctor",
     },
     {
-      label: "Appointments",
-      icon: Calendar,
-      href: "/doctor/appointments",
-      active: pathname === "/doctor/appointments",
-    },
-    {
       label: "Patients",
       icon: Users,
       href: "/doctor/patients",
@@ -125,20 +119,6 @@ export function Sidebar({ className }: SidebarProps) {
                 <Link href="/doctor/patients">
                   <Users className="mr-2 h-4 w-4" />
                   Patients
-                </Link>
-              </Button>
-              <Button
-                variant={pathname === "/doctor/appointments" ? "secondary" : "ghost"}
-                size="sm"
-                className={cn("w-full justify-start transition-colors", {
-                  "bg-secondary hover:bg-secondary/80": pathname === "/doctor/appointments",
-                  "hover:bg-accent": pathname !== "/doctor/appointments",
-                })}
-                asChild
-              >
-                <Link href="/doctor/appointments">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Appointments
                 </Link>
               </Button>
               <Button
